@@ -1,0 +1,46 @@
+@model PPMS.Client.Web.Services.ApiSaveOwnerRequest
+@{
+    ViewData["Title"] = "Create Tenant";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">@L["Create New Tenant Subscription"]</h4>
+            </div>
+            <div class="card-body">
+                <form asp-action="CreateTenant" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label">@L["Tenant / Business Name"]</label>
+                        <input asp-for="Name" class="form-control" required />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                    <hr />
+                    <h5>@L["Initial Admin Account"]</h5>
+                    <p class="text-muted small">@L["This user will be created as the Admin for this tenant."]</p>
+
+                    <div class="mb-3">
+                        <label asp-for="AdminUsername" class="form-label">@L["Admin Username"]</label>
+                        <input asp-for="AdminUsername" class="form-control" required />
+                        <span asp-validation-for="AdminUsername" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="AdminPassword" class="form-label">@L["Admin Password"]</label>
+                        <input asp-for="AdminPassword" type="password" class="form-control" required />
+                        <span asp-validation-for="AdminPassword" class="text-danger"></span>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-action="Index" class="btn btn-outline-secondary">@L["Cancel"]</a>
+                        <button type="submit" class="btn btn-primary">@L["Create Tenant"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

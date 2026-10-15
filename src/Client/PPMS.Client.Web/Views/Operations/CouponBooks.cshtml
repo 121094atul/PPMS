@@ -1,0 +1,223 @@
+@model PPMS.Client.Web.Models.CouponBooksViewModel
+@{
+    ViewData["Title"] = "Coupon Books";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Coupon Book Entry"]</h5>
+                <p class="text-muted small mb-3">@L["Create and issue coupon books to parties."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveCouponBook" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.Id" type="hidden" />
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select" onchange="window.location='/Operations/CouponBooks?pumpId='+this.value">
+                            @if (Model.Pumps.Count == 0)
+                            {
+                                <option value="0">@L["No pump configured"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var p in Model.Pumps)
+                                {
+                                    <option value="@p.Id">@p.Name (@p.City)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Book Code"]</label>
+                        <input asp-for="Form.BookCode" class="form-control" />
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Denomination"]</label>
+                            <input asp-for="Form.Denomination" class="form-control" type="number" min="0.01" step="0.01" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Total Coupons"]</label>
+                            <input asp-for="Form.TotalCoupons" class="form-control" type="number" min="1" step="1" />
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Start Serial"]</label>
+                            <input asp-for="Form.StartSerial" class="form-control" type="number" min="1" step="1" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["End Serial"]</label>
+                            <input asp-for="Form.EndSerial" class="form-control" type="number" min="1" step="1" />
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Issued To Party"]</label>
+                        <select asp-for="Form.IssuedToPartyId" class="form-select">
+                            <option value="">@L["Walk-in / Generic"]</option>
+                            @foreach (var p in Model.Parties)
+                            {
+                                <option value="@p.Id">@p.PartyName</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2 form-check">
+                        <input asp-for="Form.IsActive" class="form-check-input" />
+                        <label class="form-check-label" for="Form_IsActive">@L["Active"]</label>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@L["Save Coupon Book"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Coupon Transaction"]</h5>
+                <p class="text-muted small mb-3">@L["Redeem/record coupon usage."]</p>
+
+                <form asp-action="SaveCouponTransaction" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="TxnForm.OwnerId" type="hidden" />
+                    <input asp-for="TxnForm.PumpId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Coupon Book"]</label>
+                        <select asp-for="TxnForm.CouponBookId" class="form-select" onchange="window.location='/Operations/CouponBooks?pumpId=@Model.TxnForm.PumpId&couponBookId='+this.value">
+                            @foreach (var b in Model.Books)
+                            {
+                                <option value="@b.Id">@b.BookCode (@b.Denomination.ToString("0.00"))</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">@L["Party"]</label>
+                        <select asp-for="TxnForm.PartyId" class="form-select">
+                            <option value="">@L["No party"]</option>
+                            @foreach (var p in Model.Parties)
+                            {
+                                <option value="@p.Id">@p.PartyName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Coupon Serial"]</label>
+                            <input asp-for="TxnForm.CouponSerialNo" class="form-control" type="number" min="1" step="1" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Amount"]</label>
+                            <input asp-for="TxnForm.Amount" class="form-control" type="number" min="0.01" step="0.01" />
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">@L["Entry Date & Time"]</label>
+                        <input asp-for="TxnForm.TxnDateTime" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" />
+                        <div class="form-text">@L["Change this to record an entry you missed on an earlier day."]</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Notes"]</label>
+                        <textarea asp-for="TxnForm.Notes" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-outline-primary">@L["Save Coupon Transaction"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-2">@L["Coupon Books"]</h5>
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Book"]</th>
+                            <th>@L["Party"]</th>
+                            <th class="text-end">@L["Denomination"]</th>
+                            <th>@L["Range"]</th>
+                            <th>@L["Status"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Books.Count == 0)
+                        {
+                            <tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">&#128211;</div><div class="empty-state-title">@L["No coupon books yet"]</div><div class="empty-state-hint">@L["Create your first book with a code, denomination and serial range."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var b in Model.Books)
+                            {
+                                <tr>
+                                    <td data-label="@L["Book"]">@b.BookCode</td>
+                                    <td data-label="@L["Party"]">@b.IssuedToPartyName</td>
+                                    <td class="text-end" data-label="@L["Denomination"]">@b.Denomination.ToString("0.00")</td>
+                                    <td data-label="@L["Range"]">@b.StartSerial - @b.EndSerial</td>
+                                    <td data-label="@L["Status"]">@(b.IsActive ? L["Active"].Value : L["Inactive"].Value)</td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-2">@L["Coupon Transactions"]</h5>
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Date"]</th>
+                            <th>@L["Book"]</th>
+                            <th>@L["Serial"]</th>
+                            <th>@L["Party"]</th>
+                            <th class="text-end">@L["Amount"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Transactions.Count == 0)
+                        {
+                            <tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">&#129534;</div><div class="empty-state-title">@L["No coupons redeemed yet"]</div><div class="empty-state-hint">@L["Once a coupon book exists, record redemptions using the form below."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var t in Model.Transactions)
+                            {
+                                <tr>
+                                    <td data-label="@L["Date"]">@t.TxnDateTime.ToString("dd-MMM-yyyy hh:mm tt")</td>
+                                    <td data-label="@L["Book"]">@t.BookCode</td>
+                                    <td data-label="@L["Serial"]">@t.CouponSerialNo</td>
+                                    <td data-label="@L["Party"]">@t.PartyName</td>
+                                    <td class="text-end" data-label="@L["Amount"]">@t.Amount.ToString("0.00")</td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

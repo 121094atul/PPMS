@@ -1,0 +1,157 @@
+@model PPMS.Client.Web.Models.TankStockViewModel
+@{
+    ViewData["Title"] = "Tank Stock";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Stock Transaction"]</h5>
+                <p class="text-muted small mb-3">@L["Add stock in/out against selected tank."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveTankStock" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select" onchange="window.location='/Operations/TankStock?pumpId='+this.value">
+                            @if (Model.Pumps.Count == 0)
+                            {
+                                <option value="0">@L["No pump configured"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var p in Model.Pumps)
+                                {
+                                    <option value="@p.Id">@p.Name (@p.City)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Tank"]</label>
+                        <select asp-for="Form.TankId" class="form-select" onchange="window.location='/Operations/TankStock?pumpId=@Model.Form.PumpId&tankId='+this.value">
+                            @if (Model.Tanks.Count == 0)
+                            {
+                                <option value="0">@L["No tank available for selected pump"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var t in Model.Tanks)
+                                {
+                                    <option value="@t.Id">@t.Name - @t.ProductName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Type"]</label>
+                            <select asp-for="Form.TxnType" class="form-select">
+                                <option value="PURCHASE">@L["PURCHASE (IN)"]</option>
+                                <option value="RECEIPT">@L["RECEIPT (IN)"]</option>
+                                <option value="SALE">@L["SALE (OUT)"]</option>
+                                <option value="ADJUSTMENT">@L["ADJUSTMENT"]</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Quantity"]</label>
+                            <input asp-for="Form.Quantity" type="number" min="0.01" step="0.01" class="form-control" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Entry Date & Time"]</label>
+                        <input asp-for="Form.TxnDateTime" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" />
+                        <div class="form-text">@L["Change this to record an entry you missed on an earlier day."]</div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Reference No"]</label>
+                        <input asp-for="Form.ReferenceNo" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Notes"]</label>
+                        <textarea asp-for="Form.Notes" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@L["Save Transaction"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                @{
+                    var selectedTank = Model.Tanks.FirstOrDefault(x => x.Id == Model.Form.TankId);
+                }
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 bg-light">
+                            <div class="text-muted small">@L["Selected Tank"]</div>
+                            <div class="fw-semibold">@(selectedTank?.Name ?? "-")</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 bg-light">
+                            <div class="text-muted small">@L["Product"]</div>
+                            <div class="fw-semibold">@(selectedTank?.ProductName ?? "-")</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 bg-light">
+                            <div class="text-muted small">@L["Current Stock"]</div>
+                            <div class="fw-semibold">@(selectedTank?.CurrentStock.ToString("0.##") ?? "-")</div>
+                        </div>
+                    </div>
+                </div>
+                <h5 class="card-title mb-2">@L["Recent Transactions"]</h5>
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Date"]</th>
+                            <th>@L["Tank"]</th>
+                            <th>@L["Type"]</th>
+                            <th class="text-end">@L["Qty"]</th>
+                            <th>@L["Ref"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Transactions.Count == 0)
+                        {
+                            <tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">&#128230;</div><div class="empty-state-title">@L["No entries for this tank"]</div><div class="empty-state-hint">@L["Record stock IN / OUT on the left — the tank balance updates automatically."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var tx in Model.Transactions)
+                            {
+                                <tr>
+                                    <td data-label="@L["Date"]">@tx.TxnDateTime.ToString("dd-MMM-yyyy hh:mm tt")</td>
+                                    <td data-label="@L["Tank"]">@tx.TankName</td>
+                                    <td data-label="@L["Type"]">@tx.TxnType</td>
+                                    <td class="text-end" data-label="@L["Qty"]">@tx.Quantity.ToString("0.##")</td>
+                                    <td data-label="@L["Ref"]">@tx.ReferenceNo</td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

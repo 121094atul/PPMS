@@ -1,0 +1,454 @@
+@model PPMS.Client.Web.Models.PartyLedgerViewModel
+@{
+    ViewData["Title"] = "Party Ledger";
+}
+@functions {
+    // Khaate me EntryType angrezi code me pada hai (SALE, RECEIPT...). Pump wale ko
+    // wahi shabd dikhe jo upar ke jod me hain.
+    string TypeLabel(string? entryType) => (entryType ?? string.Empty).ToUpperInvariant() switch
+    {
+        "SALE" => L["Credit given"].Value,
+        "RECEIPT" => L["Payment received"].Value,
+        "DEBIT" => L["Adjustment (+)"].Value,
+        "CREDIT" => L["Adjustment (-)"].Value,
+        "VOID" => L["Bill cancelled"].Value,
+        _ => entryType ?? string.Empty
+    };
+}
+
+@section Styles {
+<style>
+/* Mobile par har line ek card ban jaati hai (site.css). Jama wali line me "udhaar"
+   ka khaana khaali hota hai aur ulta — khaali khaana sirf naam dikha kar jagah
+   ghere, isse behtar hai wo dikhe hi nahi. */
+@@media screen and (max-width: 767.98px) {
+    .pl-stmt tbody td:empty { display: none !important; }
+}
+
+/* Khaane ke naam ("PAYMENT RECEIVED (−)") ek line me na samayein to do line me
+   aayein — warna table apne dabbe se bahar nikal kar neeche scroll-patti la deti hai. */
+.pl-stmt thead th { white-space: normal; }
+</style>
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Ledger Entry"]</h5>
+                <p class="text-muted small mb-3">@L["Post payment/debit entries for party balance tracking."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SavePartyLedger" asp-controller="Operations" method="post" id="ledgerForm">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.OwnerId" type="hidden" />
+                    @* 0 = nayi entry. Khaate ki line par "Badlein" dabane se JS yahan us entry ka Id
+                       bharta hai aur form usi entry ko sudharta hai (Section AI). *@
+                    <input asp-for="Form.Id" type="hidden" />
+
+                    <div id="ledgerEditBox" class="alert alert-warning py-2 small d-none">
+                        <div class="fw-semibold mb-1">@L["Changing an existing entry:"] <span id="ledgerEditWhat"></span></div>
+                        <label class="form-label mb-1" for="Form_Reason">@L["Why are you changing it?"] *</label>
+                        <input asp-for="Form.Reason" class="form-control form-control-sm" maxlength="400" autocomplete="off" />
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="ledgerEditCancel">@L["Cancel"]</button>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select" onchange="window.location='/Operations/PartyLedger?pumpId='+this.value">
+                            @if (Model.Pumps.Count == 0)
+                            {
+                                <option value="0">@L["No pump configured"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var p in Model.Pumps)
+                                {
+                                    <option value="@p.Id">@p.Name (@p.City)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Party"]</label>
+                        <select asp-for="Form.PartyId" class="form-select" onchange="window.location='/Operations/PartyLedger?pumpId=@Model.Form.PumpId&partyId='+this.value">
+                            @if (Model.Parties.Count == 0)
+                            {
+                                <option value="0">@L["No party available for selected pump"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var p in Model.Parties)
+                                {
+                                    <option value="@p.Id">@p.PartyName (@p.PartyType)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-4">
+                            <label class="form-label">@L["Date"]</label>
+                            <input asp-for="Form.EntryDate" type="date" class="form-control" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@L["Entry Type"]</label>
+                            <select asp-for="Form.EntryType" class="form-select">
+                                <option value="RECEIPT">@L["RECEIPT (PARTY PAID US)"]</option>
+                                <option value="SALE">@L["SALE (CREDIT GIVEN TO PARTY)"]</option>
+                                <option value="DEBIT">@L["ADJUSTMENT (BALANCE INCREASE)"]</option>
+                                <option value="CREDIT">@L["ADJUSTMENT (BALANCE DECREASE)"]</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@L["Amount"]</label>
+                            <input asp-for="Form.Amount" type="number" min="0.01" step="0.01" class="form-control" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Reference No"]</label>
+                        <input asp-for="Form.ReferenceNo" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Notes"]</label>
+                        <textarea asp-for="Form.Notes" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary" id="ledgerSubmit" data-edit-text="@L["Update Entry"]">@L["Save Ledger Entry"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                @{
+                    var selectedParty = Model.Parties.FirstOrDefault(x => x.Id == Model.Form.PartyId);
+                    var st = Model.Statement;
+                    var hasSearch = !string.IsNullOrWhiteSpace(Model.SearchTerm);
+                }
+                @if (st is not null)
+                {
+                    @* Hisaab ek nazar me:  purana baki + udhaar - jama = abhi ka baki.
+                       Purana baki khaate ki line nahi hai, isliye neeche ki list me nahi dikhta —
+                       yahan na dikhayein to "jama kiya phir bhi utna hi baki" jaisa lagta hai. *@
+                    <div class="mb-2">
+                        <div class="text-muted small">@L["Selected Party"]</div>
+                        <div class="fw-semibold fs-5">@st.Header.PartyName</div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 bg-light h-100">
+                                <div class="text-muted small">@L["Opening balance"]</div>
+                                <div class="fw-semibold">@st.Header.OpeningBalance.ToString("N2")</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 bg-light h-100">
+                                <div class="text-muted small">+ @L["Credit given"]</div>
+                                <div class="fw-semibold text-danger">@st.Header.TotalDebit.ToString("N2")</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 bg-light h-100">
+                                <div class="text-muted small">&minus; @L["Payment received"]</div>
+                                <div class="fw-semibold text-success">@st.Header.TotalCredit.ToString("N2")</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border border-primary rounded p-2 h-100">
+                                <div class="text-muted small">= @L["Balance now"]</div>
+                                <div class="fw-bold fs-5">@st.Header.CurrentBalance.ToString("N2")</div>
+                            </div>
+                        </div>
+                    </div>
+                    @* "Purana baki" = jo baki us din HAATH se bhara gaya tha (party banate waqt, ya baad
+                       me form se badal kar). Us din se pehle ki entry usi me shaamil hain — unhe alag
+                       dikha kar jodne se lagta hai ki purana udhaar dobara jud raha hai. *@
+                    <div class="form-text mb-3">
+                        @if (st.Header.OpeningAsOf.HasValue)
+                        {
+                            @L["Opening balance is the dues you entered for this party on {0}. Everything entered after that is listed below.", st.Header.OpeningAsOf.Value.ToString("dd-MMM-yyyy")]
+                        }
+                        else
+                        {
+                            @L["Opening balance is what the party already owed when it was added to the software. It is not a line in the ledger, so it is shown separately."]
+                        }
+                    </div>
+                    @if (st.Header.CurrentBalance != st.Header.LedgerBalance)
+                    {
+                        <div class="alert alert-warning py-2 small">
+                            @L["The saved balance ({0}) does not match opening balance + ledger ({1}). Ask support to run \"Recount\" for your account.", st.Header.CurrentBalance.ToString("N2"), st.Header.LedgerBalance.ToString("N2")]
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <div class="border rounded p-2 bg-light">
+                                <div class="text-muted small">@L["Selected Party"]</div>
+                                <div class="fw-semibold">@(selectedParty?.PartyName ?? "-")</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-2 bg-light">
+                                <div class="text-muted small">@L["Outstanding Balance"]</div>
+                                <div class="fw-semibold">@(selectedParty?.CurrentBalance.ToString("0.00") ?? "-")</div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="card-title mb-0">@L["Ledger History"]</h5>
+                    <form asp-action="PartyLedger" asp-controller="Operations" method="get" class="d-flex" style="width: 350px;">
+                        <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                        <input type="hidden" name="partyId" value="@Model.Form.PartyId" />
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="searchTerm" class="form-control" placeholder="@L["Search entries..."]" value="@Model.SearchTerm" />
+                            <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-search"></i> @L["Search"]</button>
+                        </div>
+                    </form>
+                </div>
+                @if (st is not null)
+                {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle pl-stmt">
+                        <thead>
+                        <tr>
+                            <th>@L["Date"]</th>
+                            <th>@L["Type"]</th>
+                            <th class="text-end">@L["Credit given"] (+)</th>
+                            <th class="text-end">@L["Payment received"] (&minus;)</th>
+                            <th class="text-end">@L["Balance"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @* "Koi hisaab nahi" tabhi, jab sach me kuch na ho. Purana baki ho to uski line
+                           neeche dikh rahi hai — uske upar "koi hisaab nahi" likhna ulta lagta hai. *@
+                        @if (st.Lines.Count == 0 && (hasSearch || (st.Header.OpeningBalance == 0 && st.Header.EarlierCount == 0)))
+                        {
+                            <tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">&#128220;</div><div class="empty-state-title">@(hasSearch ? L["No entries match your search."] : L["No ledger entries for this party"])</div><div class="empty-state-hint">@L["Pick a party, then record a receipt or credit entry on the left."]</div></div></td></tr>
+                        }
+                        @foreach (var e in st.Lines)
+                        {
+                            <tr>
+                                @* Sirf tareekh se bhari entry raat 12 baje ki hoti hai — waqt dikhana shor hai *@
+                                @* Ek hi span me: mobile card me tareekh aur waqt saath rahein. Tareekh beech se na toote,
+                                   jagah kam ho to waqt neeche chala jaye. *@
+                                <td data-label="@L["Date"]"><span><span class="text-nowrap">@e.EntryDateTime.ToString("dd-MMM-yyyy")</span>@if (e.EntryDateTime.TimeOfDay != TimeSpan.Zero) {<text> </text><span class="text-nowrap text-muted small">@e.EntryDateTime.ToString("hh:mm tt")</span>}</span></td>
+                                @* Ref ka alag khaana nahi: 5 khaano me hi jagah tang hai, aur "COLL-49-CR-20"
+                                   patle khaane me chaar line me toot-ta tha. Prakar ke neeche chhote akshar me. *@
+                                <td data-label="@L["Type"]" title="@e.Notes">
+                                    <span>
+                                        <span class="text-nowrap">@TypeLabel(e.EntryType)</span>
+                                        @if (!string.IsNullOrWhiteSpace(e.ReferenceNo))
+                                        {
+                                            <br /><span class="text-nowrap text-muted small">@e.ReferenceNo</span>
+                                        }
+                                        @* Sirf haath se bani entry (Party Ledger form) — din ke collection / bill wali
+                                           line ka jod wahan bhi pada hai, wo wahin se badalti hai (Section AI). *@
+                                        @if (e.CanEdit)
+                                        {
+                                            <br />
+                                            <span class="text-nowrap">
+                                                <button type="button" class="btn btn-link btn-sm p-0 me-2 ledger-edit"
+                                                        data-id="@e.Id"
+                                                        data-date="@e.EntryDateTime.ToString("yyyy-MM-dd")"
+                                                        data-type="@e.EntryType.ToUpperInvariant()"
+                                                        data-amount="@e.Amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                                        data-ref="@e.ReferenceNo"
+                                                        data-notes="@e.Notes"
+                                                        data-what="@(e.EntryDateTime.ToString("dd-MMM-yyyy") + " · " + TypeLabel(e.EntryType) + " · " + e.Amount.ToString("N2"))">@L["Edit"]</button>
+                                                <form asp-action="DeletePartyLedger" asp-controller="Operations" method="post" class="d-inline"
+                                                      onsubmit="return askLedgerDeleteReason(this);">
+                                                    <input type="hidden" name="id" value="@e.Id" />
+                                                    <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                                                    <input type="hidden" name="partyId" value="@Model.Form.PartyId" />
+                                                    <input type="hidden" name="reason" value="" />
+                                                    <button type="submit" class="btn btn-link btn-sm p-0 text-danger">@L["Delete"]</button>
+                                                </form>
+                                            </span>
+                                        }
+                                    </span>
+                                </td>
+                                <td class="text-end text-danger" data-label="@L["Credit given"] (+)">@(e.SignedAmount > 0 ? e.SignedAmount.ToString("N2") : "")</td>
+                                <td class="text-end text-success" data-label="@L["Payment received"] (−)">@(e.SignedAmount < 0 ? (-e.SignedAmount).ToString("N2") : "")</td>
+                                <td class="text-end fw-semibold" data-label="@L["Balance"]">@e.RunningBalance.ToString("N2")</td>
+                            </tr>
+                        }
+                        @* Sabse purani line ke neeche: jahan se hisaab shuru hua. Khoj ke nateeje me nahi. *@
+                        @if (!hasSearch && st.PageNumber >= st.TotalPages)
+                        {
+                            <tr class="table-light">
+                                <td></td>
+                                <td data-label="@L["Type"]">
+                                    <span>
+                                        <span class="fw-semibold text-nowrap">@L["Opening balance"]</span><br />
+                                        <span class="text-muted small">
+                                            @if (st.Header.OpeningAsOf.HasValue)
+                                            {
+                                                @L["Entered on {0}", st.Header.OpeningAsOf.Value.ToString("dd-MMM-yyyy")]
+                                            }
+                                            else
+                                            {
+                                                @L["Dues from before the software"]
+                                            }
+                                        </span>
+                                        @if (st.Header.EarlierCount > 0)
+                                        {
+                                            <br /><span class="text-muted small">@L["{0} older entries are already included in this figure - they are not added again.", st.Header.EarlierCount]</span>
+                                        }
+                                    </span>
+                                </td>
+                                <td></td>
+                                <td></td>
+                                <td class="text-end fw-semibold" data-label="@L["Balance"]">@st.Header.OpeningBalance.ToString("N2")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (st.Lines.Any(x => !x.CanEdit))
+                {
+                    <div class="form-text">@L["Entries from a day collection (COLL-...) or a sale bill change from there - they cannot be edited here."]</div>
+                }
+                @if (st.TotalPages > 1)
+                {
+                    <div class="mt-3 d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Page @st.PageNumber of @st.TotalPages (Total: @st.Header.TotalCount)</span>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary" @(st.PageNumber > 1 ? "" : "disabled") onclick="changePage(@(st.PageNumber - 1))">@L["Previous"]</button>
+                            <button type="button" class="btn btn-outline-secondary" @(st.PageNumber < st.TotalPages ? "" : "disabled") onclick="changePage(@(st.PageNumber + 1))">@L["Next"]</button>
+                        </div>
+                    </div>
+                }
+                }
+                else
+                {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Date"]</th>
+                            <th>@L["Party"]</th>
+                            <th>@L["Type"]</th>
+                            <th class="text-end">@L["Amount"]</th>
+                            <th>@L["Ref"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.LedgerEntries?.Items is null || Model.LedgerEntries.Items.Count == 0)
+                        {
+                            <tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">&#128220;</div><div class="empty-state-title">@L["No ledger entries for this party"]</div><div class="empty-state-hint">@L["Pick a party, then record a receipt or credit entry on the left."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var e in Model.LedgerEntries.Items)
+                            {
+                                <tr>
+                                    <td data-label="@L["Date"]">@e.EntryDateTime.ToString("dd-MMM-yyyy hh:mm tt")</td>
+                                    <td data-label="@L["Party"]">@e.PartyName</td>
+                                    <td data-label="@L["Type"]">@e.EntryType</td>
+                                    <td class="text-end" data-label="@L["Amount"]">@e.Amount.ToString("0.00")</td>
+                                    <td data-label="@L["Ref"]">@e.ReferenceNo</td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.LedgerEntries != null && Model.LedgerEntries.TotalPages > 1)
+                {
+                    <div class="mt-3 d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Page @Model.LedgerEntries.PageNumber of @Model.LedgerEntries.TotalPages (Total: @Model.LedgerEntries.TotalCount)</span>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary" @(Model.LedgerEntries.HasPreviousPage ? "" : "disabled") onclick="changePage(@(Model.LedgerEntries.PageNumber - 1))">@L["Previous"]</button>
+                            <button type="button" class="btn btn-outline-secondary" @(Model.LedgerEntries.HasNextPage ? "" : "disabled") onclick="changePage(@(Model.LedgerEntries.PageNumber + 1))">@L["Next"]</button>
+                        </div>
+                    </div>
+                }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function changePage(page) {
+        const pumpId = document.querySelector('input[name="pumpId"]').value || document.getElementById('Form_PumpId').value;
+        const partyId = document.querySelector('input[name="partyId"]').value || document.getElementById('Form_PartyId').value;
+        const searchTerm = document.querySelector('input[name="searchTerm"]').value || '';
+        
+        let url = '/Operations/PartyLedger?pumpId=' + pumpId + '&partyId=' + partyId + '&pageNumber=' + page;
+        if (searchTerm) {
+            url += '&searchTerm=' + encodeURIComponent(searchTerm);
+        }
+        window.location = url;
+    }
+
+    // ── Khaate ki haath se bani entry sudharna (Section AI) ──
+    // "Badlein" dabane par usi entry ki baatein baayein form me bhar jaati hain, Form.Id me uska
+    // Id, aur "kyun badal rahe hain" ka khaana zaroori ho jaata hai. Save = wahi entry sudhrti hai.
+    (function () {
+        var form = document.getElementById('ledgerForm');
+        if (!form) { return; }
+        var box = document.getElementById('ledgerEditBox');
+        var what = document.getElementById('ledgerEditWhat');
+        var reason = document.getElementById('Form_Reason');
+        var submit = document.getElementById('ledgerSubmit');
+
+        function setVal(id, v) { var el = document.getElementById(id); if (el) { el.value = v || ''; } }
+
+        document.querySelectorAll('.ledger-edit').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var d = btn.dataset;
+                setVal('Form_Id', d.id);
+                setVal('Form_EntryDate', d.date);
+                setVal('Form_EntryType', d.type);
+                setVal('Form_Amount', d.amount);
+                setVal('Form_ReferenceNo', d.ref);
+                setVal('Form_Notes', d.notes);
+                what.textContent = d.what;
+                reason.value = '';
+                reason.required = true;
+                box.classList.remove('d-none');
+                submit.textContent = submit.getAttribute('data-edit-text');
+                form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                setTimeout(function () { reason.focus(); }, 350);
+            });
+        });
+
+        // Wapas "nayi entry" — page dobara khol do, form apne aap khaali.
+        document.getElementById('ledgerEditCancel').addEventListener('click', function () {
+            window.location.href = window.location.href;
+        });
+    })();
+
+    function askLedgerDeleteReason(form) {
+        if (form.dataset.reasonAsked === 'yes') { return true; }
+        window.ppmsPrompt(@Json.Serialize(L["Why are you deleting this entry? The old details stay in the record."].Value), {
+            title: @Json.Serialize(L["Delete entry"].Value),
+            okText: @Json.Serialize(L["Delete entry"].Value),
+            required: true,
+            errorText: @Json.Serialize(L["Please write the reason."].Value)
+        }).then(function (reason) {
+            if (reason === null) { return; }          // Cancel - kuch mat karo
+            form.querySelector('input[name="reason"]').value = reason.trim();
+            form.dataset.reasonAsked = 'yes';
+            form.submit();
+        });
+        return false;
+    }
+</script>
+}

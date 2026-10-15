@@ -1,0 +1,48 @@
+@model PPMS.Client.Web.Models.ReportsHomeViewModel
+@{
+    ViewData["Title"] = "Reports";
+}
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">@L["Outstanding Report"]</h5>
+                <p class="text-muted small">@L["Party-wise current outstanding and credit status."]</p>
+                <form method="get" asp-action="Outstanding" asp-controller="Operations">
+                    <div class="mb-3">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select class="form-select" name="pumpId">
+                            @foreach (var p in Model.Pumps)
+                            {
+                                <option value="@p.Id" selected="@(p.Id == Model.PumpId)">@p.Name (@p.City)</option>
+                            }
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" type="submit">@L["Open Outstanding"]</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">@L["Pump Comparison"]</h5>
+                <p class="text-muted small">@L["Sales, purchase, expense and net by pump for date range."]</p>
+                <form method="get" asp-action="PumpComparison" asp-controller="Operations">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["From"]</label>
+                            <input class="form-control" type="date" name="dateFrom" value="@Model.DateFrom.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["To"]</label>
+                            <input class="form-control" type="date" name="dateTo" value="@Model.DateTo.ToString("yyyy-MM-dd")" />
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" type="submit">@L["Open Pump Comparison"]</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

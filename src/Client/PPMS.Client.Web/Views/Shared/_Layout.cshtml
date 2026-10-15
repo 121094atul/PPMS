@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PPMS</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/PPMS.Client.Web.styles.css" asp-append-version="true" />
+
+    @* ---- PWA: phone par "app" ki tarah install ho sake ----
+       Chrome me kholne par "Install app" ka option aata hai; install karne par
+       apne icon ke saath poori screen me khulta hai, address bar ke bina. *@
+    <link rel="manifest" href="~/manifest.webmanifest" />
+    <meta name="theme-color" content="#0f172a" />
+    <link rel="icon" href="~/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="192x192" href="~/images/icon-192.png" />
+
+    @* iOS manifest ko poora nahi maanta — uske liye alag se *@
+    <link rel="apple-touch-icon" href="~/images/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PPMS" />
+
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+@* Validation ke sandesh yahan se site.js tak jaate hain — taaki wo bhi Hindi me
+   tarjuma ho saken (site.js ek static file hai, usme @L[] nahi chal sakta). *@
+@* data-ss-* / data-pg-* : khojne wale dropdown aur paging ke shabd (js/ppms-ui.js).
+   data-pg-info me {0} {1} {2} JS bharta hai. Localizer bina value ke {0} dekh kar
+   FormatException deta hai — poora layout, yaani HAR page, 500 ho jaata hai. Isliye
+   wahi nishaan value ki tarah de diye hain; unhe hatana mat. *@
+<body data-msg-required="@L["This field is required."]"
+      data-msg-fill="@L["Please fill in:"]"
+      data-msg-one-field="@L["Please fill in this field before saving."]"
+      data-msg-saving="@L["Saving..."]"
+      data-ss-search="@L["Type to search..."]"
+      data-ss-empty="@L["No match found"]"
+      data-pg-prev="@L["Previous"]"
+      data-pg-next="@L["Next"]"
+      data-pg-info="@L["Showing {0}-{1} of {2}", "{0}", "{1}", "{2}"]">
+    <div class="app-shell">
+        <aside class="side-nav" id="sideNav">
+            <div class="brand-block">
+                <div class="brand-title">@L["PPMS"]</div>
+                <div class="brand-subtitle">@L["Petrol Pump Suite"]</div>
+                <button class="hamburger-btn d-lg-none" id="closeSideNav" type="button" aria-label="@L["Close navigation"]">
+                    &#10005;
+                </button>
+            </div>
+            @await Component.InvokeAsync("SideMenu")
+        </aside>
+        <div class="side-nav-overlay d-lg-none" id="sideNavOverlay"></div>
+
+        <section class="main-pane">
+            <header class="top-strip">
+                <div class="d-flex align-items-center gap-2">
+                    <button class="hamburger-btn d-lg-none" id="openSideNav" type="button" aria-label="@L["Open navigation"]">
+                        &#9776;
+                    </button>
+                    <div>
+                        <h1 class="page-title">@ViewData["Title"]</h1>
+                        <p class="page-subtitle">@L["PUMP Operations &amp; Management Suite"]</p>
+                    </div>
+                </div>
+                <div class="operator-box-wrap">
+                    @{
+                        var currentCulture = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+                        var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+                    }
+                    <div class="lang-switch" role="group" aria-label="@L["Change language"]">
+                        <a class="lang-option @(currentCulture == "en" ? "active" : "")"
+                           href="@Url.Action("Set", "Language", new { culture = "en", returnUrl })"
+                           title="@L["English"]">@L["EN"]</a>
+                        <a class="lang-option @(currentCulture == "hi" ? "active" : "")"
+                           href="@Url.Action("Set", "Language", new { culture = "hi", returnUrl })"
+                           title="हिंदी">हिं</a>
+                    </div>
+                    <div class="operator-box">@Context.Session.GetString("full_name")</div>
+                    @* data-no-guard: double-submit wala guard isse door rahe.
+                       Logout par spinner aur "Saving..." dikhana galat tha. *@
+                    <form asp-controller="Account" asp-action="Logout" method="post" data-no-guard="true">
+                        @Html.AntiForgeryToken()
+                        @* Pehle yahan browser ka confirm() popup tha — bhadda dikhta tha,
+                           theme se mel nahi khaata tha aur us par koi control nahi tha.
+                           Ab data-confirm hai, jise site.js ka Bootstrap modal pakadta hai. *@
+                        <button type="submit" class="btn btn-sm btn-outline-dark"
+                                data-confirm="@L["Are you sure you want to logout?"]"
+                                data-confirm-title="@L["Logout"]"
+                                data-confirm-ok="@L["Logout"]">@L["Logout"]</button>
+                    </form>
+                </div>
+            </header>
+
+            <main class="content-pane">
+                @RenderBody()
+            </main>
+        </section>
+    </div>
+
+    @* ---- Poore app ka ek hi confirm modal ----
+       Browser ke confirm() ki jagah. site.js har [data-confirm] element ko isse jodta hai. *@
+    <div class="modal fade" id="appConfirmModal" tabindex="-1" aria-hidden="true" aria-labelledby="appConfirmTitle">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title" id="appConfirmTitle">@L["Please confirm"]</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@L["Close"]"></button>
+                </div>
+                <div class="modal-body small" id="appConfirmBody"></div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">@L["Cancel"]</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="appConfirmOk">@L["Confirm"]</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ---- Poore app ka ek hi prompt modal ----
+       Browser ke prompt() ki jagah (bill void ka kaaran, superadmin ka password
+       reset). Wo popup bhadda dikhta tha, uska text browser ki apni bhasha me
+       hota tha, aur password type karte waqt akshar khule dikhte the. *@
+    <div class="modal fade" id="appPromptModal" tabindex="-1" aria-hidden="true" aria-labelledby="appPromptTitle">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title" id="appPromptTitle">@L["Please enter"]</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@L["Close"]"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label small mb-1" id="appPromptLabel" for="appPromptInput"></label>
+                    <input type="text" class="form-control form-control-sm" id="appPromptInput" autocomplete="off" />
+                    <div class="form-text text-danger d-none" id="appPromptError"></div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">@L["Cancel"]</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="appPromptOk">@L["OK"]</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Chhote "ho gaya" type sandesh yahan aate hain — page hilta nahi. *@
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="appToastContainer" style="z-index:1090"></div>
+
+    @* Antiforgery token har page par. Jo POST <form> se jaate hain unme apna token
+       pehle se hota hai; ye un `fetch` waale POST ke liye hai jo JSON bhejte hain
+       (jaise cash denomination aur superadmin ka password reset). site.js ka
+       ppmsFetch() yahi value uthakar RequestVerificationToken header me bhejta hai. *@
+    @Html.AntiForgeryToken()
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @* Khojne wala dropdown + lambi list me page — har page par. Page ki apni
+       script (neeche) isse pehle nahi, BAAD me chalti hai; ye file sirf event
+       sunti hai, isliye kram se farak nahi padta. *@
+    <script src="~/js/ppms-ui.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+
+    @* Service worker sirf HTTPS par (ya localhost par) chalta hai — browser ka
+       niyam hai. Isliye http par koi error nahi aata, wo chup-chaap skip ho jaata. *@
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/service-worker.js').catch(function () {
+                    // Register na ho paye to app waise hi chalti rahegi — sirf
+                    // "install" wala option nahi milega.
+                });
+            });
+        }
+    </script>
+</body>
+</html>

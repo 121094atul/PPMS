@@ -1,0 +1,3274 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="metadata">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" />
+              </xs:sequence>
+              <xs:attribute name="name" use="required" type="xsd:string" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+              <xs:attribute ref="xml:space" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="assembly">
+            <xs:complexType>
+              <xs:attribute name="alias" type="xsd:string" />
+              <xs:attribute name="name" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" ns1:Ordinal="1" />
+              <xs:attribute name="type" type="xsd:string" ns1:Ordinal="3" />
+              <xs:attribute name="mimetype" type="xsd:string" ns1:Ordinal="4" />
+              <xs:attribute ref="xml:space" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="No cash entries yet" xml:space="preserve">
+    <value>अभी कोई कैश एंट्री नहीं है</value>
+  </data>
+  <data name="No coupon books yet" xml:space="preserve">
+    <value>अभी कोई कूपन बुक नहीं बनी</value>
+  </data>
+  <data name="No coupons redeemed yet" xml:space="preserve">
+    <value>अभी कोई कूपन रिडीम नहीं हुआ</value>
+  </data>
+  <data name="No shifts in this date range" xml:space="preserve">
+    <value>इस तारीख़ सीमा में कोई शिफ़्ट नहीं मिली</value>
+  </data>
+  <data name="No entries in this range" xml:space="preserve">
+    <value>इस सीमा में कोई एंट्री नहीं</value>
+  </data>
+  <data name="No dip readings yet" xml:space="preserve">
+    <value>अभी कोई डिप रीडिंग नहीं</value>
+  </data>
+  <data name="No employees added" xml:space="preserve">
+    <value>अभी कोई कर्मचारी नहीं जोड़ा गया</value>
+  </data>
+  <data name="No expenses in this range" xml:space="preserve">
+    <value>इस सीमा में कोई ख़र्च नहीं</value>
+  </data>
+  <data name="No fleet contracts" xml:space="preserve">
+    <value>कोई फ़्लीट कॉन्ट्रैक्ट नहीं</value>
+  </data>
+  <data name="No nozzles on this pump" xml:space="preserve">
+    <value>इस पंप पर कोई नोज़ल नहीं</value>
+  </data>
+  <data name="No outstanding dues" xml:space="preserve">
+    <value>किसी पार्टी का उधार बाक़ी नहीं</value>
+  </data>
+  <data name="No parties found" xml:space="preserve">
+    <value>कोई पार्टी नहीं मिली</value>
+  </data>
+  <data name="No ledger entries for this party" xml:space="preserve">
+    <value>इस पार्टी का कोई हिसाब नहीं</value>
+  </data>
+  <data name="No products added" xml:space="preserve">
+    <value>अभी कोई प्रोडक्ट नहीं जोड़ा गया</value>
+  </data>
+  <data name="No data in this range" xml:space="preserve">
+    <value>इस सीमा में कोई आँकड़ा नहीं</value>
+  </data>
+  <data name="No pumps added" xml:space="preserve">
+    <value>अभी कोई पंप नहीं जोड़ा गया</value>
+  </data>
+  <data name="No purchase entries" xml:space="preserve">
+    <value>कोई ख़रीद एंट्री नहीं</value>
+  </data>
+  <data name="No roles created" xml:space="preserve">
+    <value>अभी कोई रोल नहीं बना</value>
+  </data>
+  <data name="No salary entries this month" xml:space="preserve">
+    <value>इस महीने की कोई सैलरी एंट्री नहीं</value>
+  </data>
+  <data name="No sales yet" xml:space="preserve">
+    <value>अभी कोई बिक्री नहीं हुई</value>
+  </data>
+  <data name="No tanks added" xml:space="preserve">
+    <value>अभी कोई टैंक नहीं जोड़ा गया</value>
+  </data>
+  <data name="No entries for this tank" xml:space="preserve">
+    <value>इस टैंक की कोई एंट्री नहीं</value>
+  </data>
+  <data name="No users created" xml:space="preserve">
+    <value>अभी कोई यूज़र नहीं बना</value>
+  </data>
+  <data name="No dip testing entries" xml:space="preserve">
+    <value>कोई डिप टेस्टिंग एंट्री नहीं</value>
+  </data>
+  <data name="No vendors added" xml:space="preserve">
+    <value>अभी कोई वेंडर नहीं जोड़ा गया</value>
+  </data>
+  <data name="Record cash IN / OUT or a bank deposit using the form on the left." xml:space="preserve">
+    <value>बाएँ फ़ॉर्म से कैश IN / OUT या बैंक जमा दर्ज करें &amp;mdash; सब यहाँ दिखेगा।</value>
+  </data>
+  <data name="Create your first book with a code, denomination and serial range." xml:space="preserve">
+    <value>बाएँ फ़ॉर्म में बुक कोड, डिनॉमिनेशन और सीरियल रेंज डालकर पहली बुक बनाएँ।</value>
+  </data>
+  <data name="Once a coupon book exists, record redemptions using the form below." xml:space="preserve">
+    <value>कूपन बुक बन जाने के बाद नीचे वाले फ़ॉर्म से कूपन रिडीम दर्ज करें।</value>
+  </data>
+  <data name="Pick a different date range above, or open a new shift from the Shift page." xml:space="preserve">
+    <value>ऊपर से दूसरी तारीख़ सीमा चुनें, या शिफ़्ट पेज से नई शिफ़्ट खोलें।</value>
+  </data>
+  <data name="Sales, expenses and cash entries appear here automatically." xml:space="preserve">
+    <value>बिक्री, ख़र्च या कैश एंट्री होते ही वो अपने आप यहाँ आ जाएगी।</value>
+  </data>
+  <data name="Enter the tank dip (CM) in the form above to save your first reading." xml:space="preserve">
+    <value>ऊपर वाले फ़ॉर्म में टैंक का डिप (CM) डालकर पहली रीडिंग सेव करें।</value>
+  </data>
+  <data name="Add a salesman or manager with their name and employee code." xml:space="preserve">
+    <value>बाएँ फ़ॉर्म में सेल्समैन या मैनेजर का नाम और कर्मचारी कोड डालकर जोड़ें।</value>
+  </data>
+  <data name="Record any expense — electricity, salary, maintenance — from the form on the left." xml:space="preserve">
+    <value>बिजली, सैलरी, रखरखाव — कोई भी ख़र्च बाएँ फ़ॉर्म से दर्ज करें।</value>
+  </data>
+  <data name="Create a contract to give a fleet party a special rate." xml:space="preserve">
+    <value>फ़्लीट पार्टी को ख़ास रेट देना हो तो बाएँ फ़ॉर्म से कॉन्ट्रैक्ट बनाएँ।</value>
+  </data>
+  <data name="Add a nozzle by choosing its code, product and tank on the left." xml:space="preserve">
+    <value>बाएँ फ़ॉर्म में नोज़ल कोड, प्रोडक्ट और टैंक चुनकर नोज़ल जोड़ें।</value>
+  </data>
+  <data name="All clear. Balances from credit sales will show up here." xml:space="preserve">
+    <value>सब साफ़ है। उधार बिक्री होने पर बाक़ी रक़म यहाँ दिखेगी।</value>
+  </data>
+  <data name="Use the form on the left to add a credit or fleet customer." xml:space="preserve">
+    <value>उधार या फ़्लीट ग्राहक जोड़ने के लिए बाएँ फ़ॉर्म का इस्तेमाल करें।</value>
+  </data>
+  <data name="Pick a party, then record a receipt or credit entry on the left." xml:space="preserve">
+    <value>पार्टी चुनें, फिर बाएँ फ़ॉर्म से रसीद या उधार की एंट्री करें।</value>
+  </data>
+  <data name="Add products like Petrol, Diesel or CNG first — nozzles and sales depend on them." xml:space="preserve">
+    <value>पेट्रोल, डीज़ल या CNG जैसे प्रोडक्ट पहले जोड़ें &amp;mdash; नोज़ल और बिक्री इन्हीं पर बनते हैं।</value>
+  </data>
+  <data name="Pick a different date range above to compare sales, purchases and expenses." xml:space="preserve">
+    <value>ऊपर से दूसरी तारीख़ सीमा चुनें &amp;mdash; बिक्री, ख़रीद और ख़र्च की तुलना यहाँ आएगी।</value>
+  </data>
+  <data name="Add your pump first — tanks, nozzles and sales all build on it." xml:space="preserve">
+    <value>सबसे पहले अपना पंप जोड़ें &amp;mdash; टैंक, नोज़ल और बिक्री सब इसी पर बनते हैं।</value>
+  </data>
+  <data name="When a tanker arrives, record the invoice, vendor and quantity above." xml:space="preserve">
+    <value>टैंकर आने पर ऊपर वाले फ़ॉर्म में इनवॉइस, वेंडर और मात्रा दर्ज करें।</value>
+  </data>
+  <data name="Create roles like Manager or Cashier and give them menu-wise permissions." xml:space="preserve">
+    <value>मैनेजर या कैशियर जैसे रोल बनाएँ और उन्हें मेन्यू-वार अनुमति दें।</value>
+  </data>
+  <data name="Record a salary by picking the employee, month and amount on the left." xml:space="preserve">
+    <value>बाएँ फ़ॉर्म में कर्मचारी, महीना और रक़म चुनकर सैलरी दर्ज करें।</value>
+  </data>
+  <data name="With a shift open, create a sale on the left — the receipt is generated automatically." xml:space="preserve">
+    <value>शिफ़्ट खुली हो तो बाएँ फ़ॉर्म से बिक्री बनाएँ &amp;mdash; रसीद अपने आप बन जाएगी।</value>
+  </data>
+  <data name="Add an underground or overhead tank and set its product and capacity." xml:space="preserve">
+    <value>अंडरग्राउंड या ओवरहेड टैंक जोड़ें और उसका प्रोडक्ट व क्षमता तय करें।</value>
+  </data>
+  <data name="Record stock IN / OUT on the left — the tank balance updates automatically." xml:space="preserve">
+    <value>स्टॉक IN / OUT बाएँ फ़ॉर्म से दर्ज करें &amp;mdash; टैंक का स्टॉक अपने आप अपडेट होगा।</value>
+  </data>
+  <data name="Create logins for your staff and assign them a role." xml:space="preserve">
+    <value>अपने स्टाफ़ के लिए लॉगिन बनाएँ और उन्हें रोल दें।</value>
+  </data>
+  <data name="Pick a tank and enter the dip rod reading — the variance against book stock is calculated for you." xml:space="preserve">
+    <value>टैंक चुनकर डिप रॉड की रीडिंग डालें &amp;mdash; बुक स्टॉक से अंतर अपने आप निकल आएगा।</value>
+  </data>
+  <data name="Add suppliers like HPCL, BPCL or IOCL — you will pick them on purchase entries." xml:space="preserve">
+    <value>HPCL, BPCL या IOCL जैसे सप्लायर जोड़ें &amp;mdash; ख़रीद एंट्री में इन्हीं को चुनेंगे।</value>
+  </data>
+  <data name="-- Not linked to a shift --" xml:space="preserve">
+    <value>-- किसी शिफ़्ट से न जोड़ें --</value>
+  </data>
+  <data name="No shift is open right now. Open a shift first if you want to link this entry." xml:space="preserve">
+    <value>अभी कोई शिफ़्ट खुली नहीं है। जोड़ना हो तो पहले शिफ़्ट खोलें।</value>
+  </data>
+  <data name="No shift is open right now." xml:space="preserve">
+    <value>अभी कोई शिफ़्ट खुली नहीं है।</value>
+  </data>
+  <data name="Only cash linked to a shift counts towards that shift's expected cash on closing." xml:space="preserve">
+    <value>शिफ़्ट से जुड़ा कैश ही शिफ़्ट बंद करते समय “अपेक्षित कैश” में गिना जाता है।</value>
+  </data>
+  <data name="Linking a cash expense to a shift reduces that shift's expected cash automatically." xml:space="preserve">
+    <value>कैश ख़र्च शिफ़्ट से जुड़ा हो तो शिफ़्ट बंद करते समय अपेक्षित कैश अपने आप घट जाता है।</value>
+  </data>
+  <data name="(Open)" xml:space="preserve">
+    <value>(खुली)</value>
+  </data>
+  <data name="The tank this nozzle draws from. Only tanks of the same pump and product are listed." xml:space="preserve">
+    <value>नोज़ल जिस टैंक से घटाएगा। सिर्फ़ उसी पंप और प्रोडक्ट के टैंक दिखते हैं।</value>
+  </data>
+  <data name="-- Select a party --" xml:space="preserve">
+    <value>-- पार्टी चुनें --</value>
+  </data>
+  <data name="-- Select a shift --" xml:space="preserve">
+    <value>-- शिफ़्ट चुनें --</value>
+  </data>
+  <data name="-- none --" xml:space="preserve">
+    <value>-- कोई नहीं --</value>
+  </data>
+  <data name="Action" xml:space="preserve">
+    <value>काम</value>
+  </data>
+  <data name="Add your fuel grades (Petrol, Premium, E20, Diesel) under Products first. Each grade needs its own product so it can carry its own rate." xml:space="preserve">
+    <value>पहले Products में अपने सारे fuel grade (पेट्रोल, प्रीमियम, E20, डीज़ल) बना लीजिए। हर grade का अपना product होगा, तभी उसका अपना रेट चलेगा।</value>
+  </data>
+  <data name="Are you sure you want to logout?" xml:space="preserve">
+    <value>क्या आप लॉगआउट करना चाहते हैं?</value>
+  </data>
+  <data name="Assign attendants to nozzles on the Nozzle Cash screen, then collect their cash." xml:space="preserve">
+    <value>Nozzle Cash स्क्रीन पर हर nozzle पर आदमी लगाइए, फिर उनसे कैश लीजिए।</value>
+  </data>
+  <data name="Attendant" xml:space="preserve">
+    <value>आदमी</value>
+  </data>
+  <data name="Attendant Cash Report" xml:space="preserve">
+    <value>आदमी-वार कैश रिपोर्ट</value>
+  </data>
+  <data name="Attendant Report" xml:space="preserve">
+    <value>आदमी-वार रिपोर्ट</value>
+  </data>
+  <data name="Bill Date &amp; Time" xml:space="preserve">
+    <value>बिल की तारीख़ और समय</value>
+  </data>
+  <data name="Cash" xml:space="preserve">
+    <value>कैश</value>
+  </data>
+  <data name="Cash still to collect" xml:space="preserve">
+    <value>कैश अभी लेना बाक़ी है</value>
+  </data>
+  <data name="Catching up an earlier day — this shift will be recorded on the date shown above." xml:space="preserve">
+    <value>पुराने दिन की एंट्री — यह शिफ़्ट ऊपर दिखाई गई तारीख़ पर दर्ज होगी।</value>
+  </data>
+  <data name="Change" xml:space="preserve">
+    <value>बदलाव</value>
+  </data>
+  <data name="Change language" xml:space="preserve">
+    <value>भाषा बदलें</value>
+  </data>
+  <data name="Choose a shift above to set attendants, give float, and collect cash nozzle by nozzle." xml:space="preserve">
+    <value>ऊपर से शिफ़्ट चुनिए — फिर हर nozzle पर आदमी लगाइए, छुट्टा दीजिए और कैश लीजिए।</value>
+  </data>
+  <data name="Click a date to open that day's shift and back-date the entry. Change the month above to check older months." xml:space="preserve">
+    <value>किसी तारीख़ पर क्लिक कीजिए — उसी दिन की शिफ़्ट खुलेगी। पुराने महीने देखने के लिए ऊपर महीना बदलिए।</value>
+  </data>
+  <data name="Closing Stock" xml:space="preserve">
+    <value>बचा हुआ स्टॉक</value>
+  </data>
+  <data name="Collect" xml:space="preserve">
+    <value>कैश लें</value>
+  </data>
+  <data name="Date" xml:space="preserve">
+    <value>तारीख़</value>
+  </data>
+  <data name="Each grade keeps its own rate." xml:space="preserve">
+    <value>हर grade का अपना रेट रहता है।</value>
+  </data>
+  <data name="Each nozzle has its own attendant. Give float at shift start, collect cash later - even after all shifts are closed." xml:space="preserve">
+    <value>हर nozzle पर अलग आदमी होता है। शिफ़्ट शुरू में छुट्टा दीजिए, कैश बाद में लीजिए — सारी शिफ़्ट बंद होने के बाद भी।</value>
+  </data>
+  <data name="Exact" xml:space="preserve">
+    <value>बराबर</value>
+  </data>
+  <data name="Export to CSV" xml:space="preserve">
+    <value>CSV में निकालें</value>
+  </data>
+  <data name="Float" xml:space="preserve">
+    <value>छुट्टा</value>
+  </data>
+  <data name="Float given" xml:space="preserve">
+    <value>दिया गया छुट्टा</value>
+  </data>
+  <data name="From" xml:space="preserve">
+    <value>से</value>
+  </data>
+  <data name="Fuel" xml:space="preserve">
+    <value>फ़्यूल</value>
+  </data>
+  <data name="Go to Products" xml:space="preserve">
+    <value>Products पर जाएँ</value>
+  </data>
+  <data name="Load Report" xml:space="preserve">
+    <value>रिपोर्ट देखें</value>
+  </data>
+  <data name="Manage Products" xml:space="preserve">
+    <value>Products संभालें</value>
+  </data>
+  <data name="Meter Sale" xml:space="preserve">
+    <value>मीटर बिक्री</value>
+  </data>
+  <data name="No fuel products yet" xml:space="preserve">
+    <value>अभी कोई fuel product नहीं है</value>
+  </data>
+  <data name="No nozzles in this shift" xml:space="preserve">
+    <value>इस शिफ़्ट में कोई nozzle नहीं है</value>
+  </data>
+  <data name="Nothing in this period" xml:space="preserve">
+    <value>इस अवधि में कुछ नहीं मिला</value>
+  </data>
+  <data name="Nozzle" xml:space="preserve">
+    <value>नोज़ल</value>
+  </data>
+  <data name="Nozzle Cash" xml:space="preserve">
+    <value>Nozzle का कैश</value>
+  </data>
+  <data name="Open" xml:space="preserve">
+    <value>खोलें</value>
+  </data>
+  <data name="Open a shift for this day" xml:space="preserve">
+    <value>इस दिन की शिफ़्ट खोलें</value>
+  </data>
+  <data name="Pending entries" xml:space="preserve">
+    <value>बाक़ी एंट्री</value>
+  </data>
+  <data name="Pick a shift" xml:space="preserve">
+    <value>शिफ़्ट चुनिए</value>
+  </data>
+  <data name="Previous" xml:space="preserve">
+    <value>पिछला</value>
+  </data>
+  <data name="Pump" xml:space="preserve">
+    <value>पंप</value>
+  </data>
+  <data name="Received" xml:space="preserve">
+    <value>मिला</value>
+  </data>
+  <data name="Remove this cash entry?" xml:space="preserve">
+    <value>यह कैश एंट्री हटानी है?</value>
+  </data>
+  <data name="Save Today's Rates" xml:space="preserve">
+    <value>आज के रेट सेव करें</value>
+  </data>
+  <data name="Set" xml:space="preserve">
+    <value>लगाएँ</value>
+  </data>
+  <data name="Set today's rate for every fuel in one place. Each grade keeps its own rate." xml:space="preserve">
+    <value>सारे fuel के आज के रेट एक ही जगह। हर grade का अपना रेट रहता है।</value>
+  </data>
+  <data name="Shift" xml:space="preserve">
+    <value>शिफ़्ट</value>
+  </data>
+  <data name="Shifts" xml:space="preserve">
+    <value>शिफ़्ट</value>
+  </data>
+  <data name="Short / Excess" xml:space="preserve">
+    <value>कम / ज़्यादा</value>
+  </data>
+  <data name="Should Receive" xml:space="preserve">
+    <value>मिलना चाहिए</value>
+  </data>
+  <data name="Slips" xml:space="preserve">
+    <value>पर्ची</value>
+  </data>
+  <data name="Still Pending" xml:space="preserve">
+    <value>अभी बाक़ी</value>
+  </data>
+  <data name="The two passwords do not match." xml:space="preserve">
+    <value>दोनों पासवर्ड अलग हैं।</value>
+  </data>
+  <data name="These days in the last 15 have no record. Open the day's entry and back-date it to catch up." xml:space="preserve">
+    <value>इन दिनों का कोई रिकॉर्ड नहीं है। उस दिन की एंट्री खोलकर पुरानी तारीख़ से भर दीजिए।</value>
+  </data>
+  <data name="This shift was opened without any nozzle readings." xml:space="preserve">
+    <value>यह शिफ़्ट बिना किसी nozzle रीडिंग के खोली गई थी।</value>
+  </data>
+  <data name="To" xml:space="preserve">
+    <value>तक</value>
+  </data>
+  <data name="To Collect" xml:space="preserve">
+    <value>लेना है</value>
+  </data>
+  <data name="Today's Rate" xml:space="preserve">
+    <value>आज का रेट</value>
+  </data>
+  <data name="Today's Rates" xml:space="preserve">
+    <value>आज के रेट</value>
+  </data>
+  <data name="Total" xml:space="preserve">
+    <value>कुल</value>
+  </data>
+  <data name="Undo" xml:space="preserve">
+    <value>वापस लें</value>
+  </data>
+  <data name="Undo changes" xml:space="preserve">
+    <value>बदलाव वापस लें</value>
+  </data>
+  <data name="VOID" xml:space="preserve">
+    <value>रद्द</value>
+  </data>
+  <data name="Void sale" xml:space="preserve">
+    <value>बिक्री रद्द करें</value>
+  </data>
+  <data name="Who came up short and who came up over, per attendant." xml:space="preserve">
+    <value>किस आदमी का कैश कम पड़ा और किसका ज़्यादा निकला।</value>
+  </data>
+  <data name="day(s) with no shift or sale" xml:space="preserve">
+    <value>दिन जिनमें न शिफ़्ट है न बिक्री</value>
+  </data>
+  <data name="days" xml:space="preserve">
+    <value>दिन</value>
+  </data>
+  <data name="excess" xml:space="preserve">
+    <value>ज़्यादा</value>
+  </data>
+  <data name="last changed" xml:space="preserve">
+    <value>पिछली बार बदला</value>
+  </data>
+  <data name="per" xml:space="preserve">
+    <value>प्रति</value>
+  </data>
+  <data name="short" xml:space="preserve">
+    <value>कम</value>
+  </data>
+  <data name="Entry Date &amp; Time" xml:space="preserve">
+    <value>एंट्री की तारीख़ और समय</value>
+  </data>
+  <data name="Change this to record an entry you missed on an earlier day." xml:space="preserve">
+    <value>किसी पुराने दिन की छूटी एंट्री भरनी हो तो यह तारीख़ बदल दीजिए।</value>
+  </data>
+  <data name="Leave as today for a normal sale. Change it to record an entry you missed on an earlier day." xml:space="preserve">
+    <value>आम बिक्री के लिए आज की तारीख़ रहने दीजिए। पुराने दिन की छूटी एंट्री भरनी हो तो बदल दीजिए।</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>लॉगआउट</value>
+  </data>
+  <data name="Missed a day? Just change this date to record that day's shift." xml:space="preserve">
+    <value>कोई दिन छूट गया? बस यह तारीख़ बदल दीजिए, उसी दिन की शिफ़्ट बन जाएगी।</value>
+  </data>
+  <data name="Optional." xml:space="preserve">
+    <value>यह ज़रूरी नहीं है।</value>
+  </data>
+  <data name="If you only track cash at shift level (opening and closing cash), you can skip this screen completely — nothing here is required. Use it only when each nozzle has its own attendant and you hand out float separately." xml:space="preserve">
+    <value>अगर आप सिर्फ़ शिफ़्ट के opening और closing cash से हिसाब रखते हैं, तो यह स्क्रीन पूरी तरह छोड़ सकते हैं — यहाँ कुछ भरना ज़रूरी नहीं। इसका इस्तेमाल तभी कीजिए जब हर nozzle पर अलग आदमी हो और आप अलग-अलग छुट्टा देते हों।</value>
+  </data>
+  <data name="optional" xml:space="preserve">
+    <value>ज़रूरी नहीं</value>
+  </data>
+  <data name="(leave blank to keep the current one)" xml:space="preserve">
+    <value>(ख़ाली छोड़ें तो पुराना ही रहेगा)</value>
+  </data>
+  <data name="-- Not assigned --" xml:space="preserve">
+    <value>-- किसी को नहीं सौंपा --</value>
+  </data>
+  <data name="-- Select Role --" xml:space="preserve">
+    <value>-- रोल चुनें --</value>
+  </data>
+  <data name="A few one-time steps. Do them in order and you are ready." xml:space="preserve">
+    <value>कुछ एक बार के काम। क्रम से कर लें, फिर पंप चलाने को तैयार।</value>
+  </data>
+  <data name="A person's details and, if they need one, their login — all in one form." xml:space="preserve">
+    <value>आदमी का रिकॉर्ड और, ज़रूरत हो तो उसका लॉगिन — सब एक ही फ़ॉर्म में।</value>
+  </data>
+  <data name="Active" xml:space="preserve">
+    <value>चालू</value>
+  </data>
+  <data name="Add Person" xml:space="preserve">
+    <value>नया आदमी जोड़ें</value>
+  </data>
+  <data name="Add your fuels" xml:space="preserve">
+    <value>अपने ईंधन जोड़ें</value>
+  </data>
+  <data name="Add your nozzles" xml:space="preserve">
+    <value>अपने नोज़ल जोड़ें</value>
+  </data>
+  <data name="Add your tanks" xml:space="preserve">
+    <value>अपने टैंक जोड़ें</value>
+  </data>
+  <data name="All Pumps" xml:space="preserve">
+    <value>सभी पंप</value>
+  </data>
+  <data name="Also give this person a login" xml:space="preserve">
+    <value>इसे सॉफ़्टवेयर का लॉगिन भी दें</value>
+  </data>
+  <data name="At least 6 characters" xml:space="preserve">
+    <value>कम से कम 6 अक्षर</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>रद्द करें</value>
+  </data>
+  <data name="Clear all filters" xml:space="preserve">
+    <value>सारे फ़िल्टर हटाएँ</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>बंद करें</value>
+  </data>
+  <data name="Code" xml:space="preserve">
+    <value>कोड</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>हाँ, करें</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>हटाएँ</value>
+  </data>
+  <data name="Delete vendor" xml:space="preserve">
+    <value>वेंडर हटाएँ</value>
+  </data>
+  <data name="Designation" xml:space="preserve">
+    <value>पद</value>
+  </data>
+  <data name="Each fuel has its own rate. You will update these every morning." xml:space="preserve">
+    <value>हर ईंधन का अपना रेट होता है। इन्हें रोज़ सुबह अपडेट करना होगा।</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>बदलें</value>
+  </data>
+  <data name="Edit Person" xml:space="preserve">
+    <value>आदमी की जानकारी बदलें</value>
+  </data>
+  <data name="Employee Code" xml:space="preserve">
+    <value>कर्मचारी कोड</value>
+  </data>
+  <data name="Enter each nozzle's meter reading. Close it at the end and the day's sale is calculated for you." xml:space="preserve">
+    <value>हर नोज़ल की मीटर रीडिंग डालें। आख़िर में शिफ़्ट बंद करें, दिन की बिक्री अपने आप बन जाएगी।</value>
+  </data>
+  <data name="Enter each nozzle's opening meter reading to start the shift." xml:space="preserve">
+    <value>शिफ़्ट शुरू करने के लिए हर नोज़ल की शुरुआती मीटर रीडिंग डालें।</value>
+  </data>
+  <data name="Enter opening stock" xml:space="preserve">
+    <value>शुरुआती स्टॉक डालें</value>
+  </data>
+  <data name="From date" xml:space="preserve">
+    <value>किस तारीख़ से</value>
+  </data>
+  <data name="Full Name" xml:space="preserve">
+    <value>पूरा नाम</value>
+  </data>
+  <data name="How much fuel is in each tank right now. Use OPENING as the entry type." xml:space="preserve">
+    <value>अभी हर टैंक में कितना ईंधन है। एंट्री टाइप में OPENING चुनें।</value>
+  </data>
+  <data name="Inactive" xml:space="preserve">
+    <value>बंद</value>
+  </data>
+  <data name="Join Date" xml:space="preserve">
+    <value>जॉइन करने की तारीख़</value>
+  </data>
+  <data name="Leave blank to keep current" xml:space="preserve">
+    <value>ख़ाली छोड़ें तो पुराना ही रहेगा</value>
+  </data>
+  <data name="Link every nozzle to its fuel and its tank, so stock comes off the right tank." xml:space="preserve">
+    <value>हर नोज़ल को उसके ईंधन और टैंक से जोड़ें, ताकि स्टॉक सही टैंक से घटे।</value>
+  </data>
+  <data name="Login" xml:space="preserve">
+    <value>लॉगिन</value>
+  </data>
+  <data name="Low Tank Stock Alert" xml:space="preserve">
+    <value>टैंक में स्टॉक कम है</value>
+  </data>
+  <data name="Mobile" xml:space="preserve">
+    <value>मोबाइल</value>
+  </data>
+  <data name="Monthly Salary" xml:space="preserve">
+    <value>महीने की सैलरी</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>नाम</value>
+  </data>
+  <data name="Next" xml:space="preserve">
+    <value>आगे</value>
+  </data>
+  <data name="No login" xml:space="preserve">
+    <value>लॉगिन नहीं</value>
+  </data>
+  <data name="No staff added yet — you can leave this blank and add people later from Employees." xml:space="preserve">
+    <value>अभी कोई स्टाफ़ नहीं जुड़ा — इसे ख़ाली छोड़ सकते हैं, लोग बाद में जोड़ लें।</value>
+  </data>
+  <data name="Nobody added yet. Add your first person using the form on the left." xml:space="preserve">
+    <value>अभी कोई नहीं जुड़ा। बाएँ फ़ॉर्म से पहला आदमी जोड़ें।</value>
+  </data>
+  <data name="One tank per fuel. Enter its capacity and the level at which you want a refill warning." xml:space="preserve">
+    <value>हर ईंधन का एक टैंक। उसकी क्षमता डालें और वो लेवल जिस पर रिफ़िल की चेतावनी चाहिए।</value>
+  </data>
+  <data name="Open your first shift" xml:space="preserve">
+    <value>अपनी पहली शिफ़्ट खोलें</value>
+  </data>
+  <data name="Operator / Manager / Cashier / Guard" xml:space="preserve">
+    <value>ऑपरेटर / मैनेजर / कैशियर / गार्ड</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>पासवर्ड</value>
+  </data>
+  <data name="People on this pump. A blank Login means that person does not sign in to the software." xml:space="preserve">
+    <value>इस पंप के लोग। लॉगिन ख़ाली हो तो वो आदमी सॉफ़्टवेयर में साइन इन नहीं करता।</value>
+  </data>
+  <data name="Petrol, Diesel, and any premium grade you sell - each one is a separate product." xml:space="preserve">
+    <value>पेट्रोल, डीज़ल, और जो भी प्रीमियम ग्रेड आप बेचते हैं — हर एक अलग प्रोडक्ट है।</value>
+  </data>
+  <data name="Please confirm" xml:space="preserve">
+    <value>पुष्टि करें</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>हटाएँ</value>
+  </data>
+  <data name="Remove entry" xml:space="preserve">
+    <value>एंट्री हटाएँ</value>
+  </data>
+  <data name="Reset" xml:space="preserve">
+    <value>रीसेट</value>
+  </data>
+  <data name="Role" xml:space="preserve">
+    <value>रोल</value>
+  </data>
+  <data name="Salary" xml:space="preserve">
+    <value>सैलरी</value>
+  </data>
+  <data name="Save Changes" xml:space="preserve">
+    <value>बदलाव सेव करें</value>
+  </data>
+  <data name="Search" xml:space="preserve">
+    <value>खोजें</value>
+  </data>
+  <data name="Set today's rates" xml:space="preserve">
+    <value>आज के रेट डालें</value>
+  </data>
+  <data name="Set up your pump" xml:space="preserve">
+    <value>अपना पंप तैयार करें</value>
+  </data>
+  <data name="Shift In-charge" xml:space="preserve">
+    <value>शिफ़्ट का ज़िम्मेदार</value>
+  </data>
+  <data name="Shift code / notes" xml:space="preserve">
+    <value>शिफ़्ट कोड / नोट</value>
+  </data>
+  <data name="Staff List" xml:space="preserve">
+    <value>स्टाफ़ की सूची</value>
+  </data>
+  <data name="Staff like guards and helpers usually do not need a login — leave this off for them." xml:space="preserve">
+    <value>चौकीदार या हेल्पर जैसे लोगों को लॉगिन की ज़रूरत नहीं होती — उनके लिए इसे बंद रहने दें।</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>स्थिति</value>
+  </data>
+  <data name="This cannot be undone." xml:space="preserve">
+    <value>इसे वापस नहीं किया जा सकता।</value>
+  </data>
+  <data name="This record shows on this pump only." xml:space="preserve">
+    <value>यह रिकॉर्ड सिर्फ़ इसी पंप पर दिखेगा।</value>
+  </data>
+  <data name="To date" xml:space="preserve">
+    <value>किस तारीख़ तक</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>यूज़रनेम</value>
+  </data>
+  <data name="Who is responsible for this shift. Leave blank if you are running it yourself." xml:space="preserve">
+    <value>इस शिफ़्ट का ज़िम्मेदार कौन है। ख़ुद चला रहे हों तो ख़ाली छोड़ दें।</value>
+  </data>
+  <data name="disabled" xml:space="preserve">
+    <value>बंद</value>
+  </data>
+  <data name="done" xml:space="preserve">
+    <value>हो गया</value>
+  </data>
+  <data name="-- Select tank --" xml:space="preserve">
+    <value>-- टैंक चुनें --</value>
+  </data>
+  <data name="Add the tank first" xml:space="preserve">
+    <value>पहले टैंक जोड़ें</value>
+  </data>
+  <data name="Create Nozzle" xml:space="preserve">
+    <value>नोज़ल बनाएँ</value>
+  </data>
+  <data name="Tank" xml:space="preserve">
+    <value>टैंक</value>
+  </data>
+  <data name="This product has no tank on this pump yet." xml:space="preserve">
+    <value>इस पंप पर इस प्रोडक्ट का अभी कोई टैंक नहीं है।</value>
+  </data>
+  <data name="Update Nozzle" xml:space="preserve">
+    <value>नोज़ल अपडेट करें</value>
+  </data>
+  <data name="then come back and create the nozzle." xml:space="preserve">
+    <value>फिर वापस आकर नोज़ल बनाएँ।</value>
+  </data>
+  <data name="Please fill in this field before saving." xml:space="preserve">
+    <value>सेव करने से पहले यह खाना भर दें।</value>
+  </data>
+  <data name="Please fill in:" xml:space="preserve">
+    <value>ये खाने भरें:</value>
+  </data>
+  <data name="This field is required." xml:space="preserve">
+    <value>यह खाना भरना ज़रूरी है।</value>
+  </data>
+  <data name="10-digit mobile number" xml:space="preserve">
+    <value>10 अंकों का मोबाइल नंबर</value>
+  </data>
+  <data name="Alert" xml:space="preserve">
+    <value>अलर्ट</value>
+  </data>
+  <data name="Alert number" xml:space="preserve">
+    <value>अलर्ट का नंबर</value>
+  </data>
+  <data name="Alerts about your pump — shift closed, stock loss, big expenses — go to this number." xml:space="preserve">
+    <value>आपके पंप के अलर्ट — शिफ़्ट बंद होना, स्टॉक की कमी, बड़ा ख़र्च — इसी नंबर पर आते हैं।</value>
+  </data>
+  <data name="Click to turn off" xml:space="preserve">
+    <value>बंद करने के लिए दबाएँ</value>
+  </data>
+  <data name="Click to turn on" xml:space="preserve">
+    <value>चालू करने के लिए दबाएँ</value>
+  </data>
+  <data name="Leave it blank to stop all alerts." xml:space="preserve">
+    <value>ख़ाली छोड़ दें तो कोई अलर्ट नहीं जाएगा।</value>
+  </data>
+  <data name="Mobile number" xml:space="preserve">
+    <value>मोबाइल नंबर</value>
+  </data>
+  <data name="No number is set, so no alerts are being sent at the moment." xml:space="preserve">
+    <value>अभी कोई नंबर सेट नहीं है, इसलिए कोई अलर्ट नहीं जा रहा।</value>
+  </data>
+  <data name="Off" xml:space="preserve">
+    <value>बंद</value>
+  </data>
+  <data name="On" xml:space="preserve">
+    <value>चालू</value>
+  </data>
+  <data name="Right now these go out as SMS. WhatsApp can be switched on later without changing anything here." xml:space="preserve">
+    <value>अभी ये SMS से जाते हैं। आगे WhatsApp चालू करने पर यहाँ कुछ बदलना नहीं पड़ेगा।</value>
+  </data>
+  <data name="Save number" xml:space="preserve">
+    <value>नंबर सेव करें</value>
+  </data>
+  <data name="Turn off the ones you do not need. Each message you receive costs money, so fewer alerts means a smaller bill." xml:space="preserve">
+    <value>जो न चाहिए उन्हें बंद कर दें। हर सन्देश का पैसा लगता है — जितने कम अलर्ट, उतना कम ख़र्च।</value>
+  </data>
+  <data name="Which alerts do you want?" xml:space="preserve">
+    <value>आपको कौन-से अलर्ट चाहिए?</value>
+  </data>
+  <data name="Added" xml:space="preserve">
+    <value>जुड़ गया</value>
+  </data>
+  <data name="Alert sent" xml:space="preserve">
+    <value>अलर्ट भेजा गया</value>
+  </data>
+  <data name="Amount" xml:space="preserve">
+    <value>रक़म</value>
+  </data>
+  <data name="Amount you paid (₹)" xml:space="preserve">
+    <value>आपने कितने रुपये भेजे</value>
+  </data>
+  <data name="Balance" xml:space="preserve">
+    <value>बाक़ी</value>
+  </data>
+  <data name="Checking" xml:space="preserve">
+    <value>जाँच हो रही है</value>
+  </data>
+  <data name="Each alert sent to your mobile uses one message from this balance." xml:space="preserve">
+    <value>आपके मोबाइल पर जाने वाला हर अलर्ट इसी बैलेंस से एक सन्देश ख़र्च करता है।</value>
+  </data>
+  <data name="From your payment app" xml:space="preserve">
+    <value>अपने पेमेंट ऐप से</value>
+  </data>
+  <data name="Message balance" xml:space="preserve">
+    <value>सन्देश का बैलेंस</value>
+  </data>
+  <data name="Messages" xml:space="preserve">
+    <value>सन्देश</value>
+  </data>
+  <data name="No recharges yet." xml:space="preserve">
+    <value>अभी कोई रिचार्ज नहीं हुआ।</value>
+  </data>
+  <data name="Nothing yet." xml:space="preserve">
+    <value>अभी कुछ नहीं।</value>
+  </data>
+  <data name="Rate" xml:space="preserve">
+    <value>दर</value>
+  </data>
+  <data name="Recent activity" xml:space="preserve">
+    <value>हाल का हिसाब</value>
+  </data>
+  <data name="Recharge" xml:space="preserve">
+    <value>रिचार्ज</value>
+  </data>
+  <data name="Recharge is not available yet. Please contact support." xml:space="preserve">
+    <value>रिचार्ज की सुविधा अभी चालू नहीं है। कृपया सहायता से सम्पर्क करें।</value>
+  </data>
+  <data name="Refund (message failed)" xml:space="preserve">
+    <value>वापसी (सन्देश नहीं गया)</value>
+  </data>
+  <data name="Rejected" xml:space="preserve">
+    <value>मना कर दिया</value>
+  </data>
+  <data name="Send recharge request" xml:space="preserve">
+    <value>रिचार्ज की request भेजें</value>
+  </data>
+  <data name="Send the money to the UPI ID below, then enter the amount and the UPI reference number here." xml:space="preserve">
+    <value>नीचे दी गई UPI ID पर पैसे भेजें, फिर रक़म और UPI रेफ़रेंस नंबर यहाँ डालें।</value>
+  </data>
+  <data name="This helps us find your payment faster." xml:space="preserve">
+    <value>इससे आपका पेमेंट जल्दी मिल जाएगा।</value>
+  </data>
+  <data name="UPI ID" xml:space="preserve">
+    <value>UPI ID</value>
+  </data>
+  <data name="UPI reference number" xml:space="preserve">
+    <value>UPI रेफ़रेंस नंबर</value>
+  </data>
+  <data name="Used so far" xml:space="preserve">
+    <value>अब तक ख़र्च</value>
+  </data>
+  <data name="What" xml:space="preserve">
+    <value>क्या</value>
+  </data>
+  <data name="When" xml:space="preserve">
+    <value>कब</value>
+  </data>
+  <data name="You will get about" xml:space="preserve">
+    <value>आपको लगभग</value>
+  </data>
+  <data name="Your balance is empty, so no alerts are being sent right now. Recharge to start them again." xml:space="preserve">
+    <value>आपका बैलेंस ख़त्म है, इसलिए अभी कोई अलर्ट नहीं जा रहा। रिचार्ज करने पर दोबारा चालू हो जाएगा।</value>
+  </data>
+  <data name="Your balance is running low." xml:space="preserve">
+    <value>आपका बैलेंस कम होता जा रहा है।</value>
+  </data>
+  <data name="Your last recharge is still being checked. You can send another one after it is done." xml:space="preserve">
+    <value>आपका पिछला रिचार्ज अभी जाँचा जा रहा है। वो पूरा होने के बाद अगला भेज सकते हैं।</value>
+  </data>
+  <data name="Your recharges" xml:space="preserve">
+    <value>आपके रिचार्ज</value>
+  </data>
+  <data name="messages left" xml:space="preserve">
+    <value>सन्देश बाक़ी</value>
+  </data>
+  <data name="per message" xml:space="preserve">
+    <value>प्रति सन्देश</value>
+  </data>
+  <data name="waiting for approval" xml:space="preserve">
+    <value>मंज़ूरी का इंतज़ार</value>
+  </data>
+  <data name="Meter was changed - accept a difference from the last reading" xml:space="preserve">
+    <value>मीटर बदला गया है — पिछली रीडिंग से फर्क स्वीकार करें</value>
+  </data>
+  <data name="Only tick this if the meter was replaced or rolled over. Otherwise correct the opening reading." xml:space="preserve">
+    <value>यह तभी लगाएँ जब मीटर बदला गया हो या घूम कर शून्य पर आ गया हो। वरना ओपनिंग रीडिंग ठीक करें।</value>
+  </data>
+  <data name="Meter readings do not join up" xml:space="preserve">
+    <value>मीटर की रीडिंग आपस में नहीं जुड़ रही</value>
+  </data>
+  <data name="A shift's opening reading does not match the previous shift's closing reading. The fuel in between is not accounted for anywhere - sale, stock and cash for that day will all be wrong." xml:space="preserve">
+    <value>किसी शिफ्ट की ओपनिंग रीडिंग पिछली शिफ्ट की क्लोजिंग रीडिंग से मेल नहीं खाती। बीच का ईंधन कहीं दर्ज नहीं है — उस दिन की बिक्री, स्टॉक और नकदी तीनों गलत होंगे।</value>
+  </data>
+  <data name="Previous shift" xml:space="preserve">
+    <value>पिछली शिफ्ट</value>
+  </data>
+  <data name="Closed at" xml:space="preserve">
+    <value>बंद हुई</value>
+  </data>
+  <data name="This shift" xml:space="preserve">
+    <value>यह शिफ्ट</value>
+  </data>
+  <data name="Opened at" xml:space="preserve">
+    <value>शुरू हुई</value>
+  </data>
+  <data name="Difference" xml:space="preserve">
+    <value>फर्क</value>
+  </data>
+  <data name="Last 90 days. If the meter really was replaced, this is expected - keep a note of it." xml:space="preserve">
+    <value>पिछले 90 दिन। मीटर सच में बदला हो तो यह स्वाभाविक है — उसका रिकॉर्ड रखें।</value>
+  </data>
+  <data name="Please enter" xml:space="preserve">
+    <value>कृपया दर्ज करें</value>
+  </data>
+  <data name="OK" xml:space="preserve">
+    <value>ठीक है</value>
+  </data>
+  <data name="New password for" xml:space="preserve">
+    <value>का नया पासवर्ड</value>
+  </data>
+  <data name="Reset password" xml:space="preserve">
+    <value>पासवर्ड रीसेट करें</value>
+  </data>
+  <data name="Password must be at least 6 characters." xml:space="preserve">
+    <value>पासवर्ड कम से कम 6 अक्षर का होना चाहिए।</value>
+  </data>
+  <data name="Why are you voiding this bill? It is kept in the record." xml:space="preserve">
+    <value>यह बिल क्यों रद्द कर रहे हैं? यह रिकॉर्ड में रखा जाता है।</value>
+  </data>
+  <data name="Void bill" xml:space="preserve">
+    <value>बिल रद्द करें</value>
+  </data>
+  <data name="This cannot be left blank." xml:space="preserve">
+    <value>यह खाली नहीं छोड़ सकते।</value>
+  </data>
+  <data name="Cash received" xml:space="preserve">
+    <value>मिली नकदी</value>
+  </data>
+  <data name="No shift is open right now. The reading will still be saved, just not linked to any shift." xml:space="preserve">
+    <value>अभी कोई शिफ्ट खुली नहीं है। रीडिंग फिर भी सेव होगी, बस किसी शिफ्ट से नहीं जुड़ेगी।</value>
+  </data>
+  <data name="Linking to a shift makes the variance easier to trace later." xml:space="preserve">
+    <value>शिफ्ट से जोड़ने पर बाद में अंतर ढूंढना आसान रहता है।</value>
+  </data>
+  <data name="Measured with the dip rod" xml:space="preserve">
+    <value>डिप रॉड से नापा हुआ</value>
+  </data>
+  <data name="From the system - filled in for you" xml:space="preserve">
+    <value>सिस्टम से — अपने आप भरा हुआ</value>
+  </data>
+  <data name="Dip" xml:space="preserve">
+    <value>डिप</value>
+  </data>
+  <data name="Water Dip" xml:space="preserve">
+    <value>पानी की डिप</value>
+  </data>
+  <data name="cm" xml:space="preserve">
+    <value>सेमी</value>
+  </data>
+  <data name="Density" xml:space="preserve">
+    <value>घनत्व</value>
+  </data>
+  <data name="Temperature" xml:space="preserve">
+    <value>तापमान</value>
+  </data>
+  <data name="Dip Reading Entry" xml:space="preserve">
+    <value>डिप रीडिंग दर्ज करें</value>
+  </data>
+  <data name="Measure the tank with the dip rod and compare it with the book stock." xml:space="preserve">
+    <value>टैंक को डिप रॉड से नापें और खाते के स्टॉक से मिलाएँ।</value>
+  </data>
+  <data name="Reading date and time" xml:space="preserve">
+    <value>रीडिंग की तारीख और समय</value>
+  </data>
+  <data name="Save Dip Reading" xml:space="preserve">
+    <value>डिप रीडिंग सेव करें</value>
+  </data>
+  <data name="Apply Filter" xml:space="preserve">
+    <value>फ़िल्टर लगाएँ</value>
+  </data>
+  <data name="Book Stock" xml:space="preserve">
+    <value>खाते का स्टॉक</value>
+  </data>
+  <data name="Actual Stock" xml:space="preserve">
+    <value>असली स्टॉक</value>
+  </data>
+  <data name="Open a shift" xml:space="preserve">
+    <value>शिफ्ट खोलें</value>
+  </data>
+  <data name="Open a shift before recording a sale." xml:space="preserve">
+    <value>बिक्री दर्ज करने से पहले शिफ्ट खोलें।</value>
+  </data>
+  <data name="Day Collection" xml:space="preserve">
+    <value>दिन का कलेक्शन</value>
+  </data>
+  <data name="Collection" xml:space="preserve">
+    <value>कलेक्शन</value>
+  </data>
+  <data name="Record online, card and credit for this shift" xml:space="preserve">
+    <value>इस शिफ्ट का ऑनलाइन, कार्ड और उधार दर्ज करें</value>
+  </data>
+  <data name="The meter already tells us how much fuel was sold. Here you only record how that money came in - not everything comes as cash." xml:space="preserve">
+    <value>कितना तेल बिका, यह मीटर से पता चल जाता है। यहाँ सिर्फ़ यह लिखना है कि वह पैसा किस-किस तरीक़े से आया — सब कुछ नकद में नहीं आता।</value>
+  </data>
+  <data name="Online" xml:space="preserve">
+    <value>ऑनलाइन</value>
+  </data>
+  <data name="PhonePe, GPay, Paytm - all together" xml:space="preserve">
+    <value>फ़ोन पे, जी-पे, पेटीएम — सब मिलाकर</value>
+  </data>
+  <data name="Card" xml:space="preserve">
+    <value>कार्ड</value>
+  </data>
+  <data name="Credit (udhaar)" xml:space="preserve">
+    <value>उधार</value>
+  </data>
+  <data name="Customer" xml:space="preserve">
+    <value>ग्राहक</value>
+  </data>
+  <data name="Add line" xml:space="preserve">
+    <value>एक और लाइन</value>
+  </data>
+  <data name="Each customer's account is updated, so it shows in the Outstanding report." xml:space="preserve">
+    <value>हर ग्राहक का खाता अपने आप बढ़ जाता है, इसलिए यह बक़ाया रिपोर्ट में दिखता है।</value>
+  </data>
+  <data name="Save Collection" xml:space="preserve">
+    <value>कलेक्शन सेव करें</value>
+  </data>
+  <data name="Cash check" xml:space="preserve">
+    <value>नकद का मिलान</value>
+  </data>
+  <data name="Sale by meter" xml:space="preserve">
+    <value>मीटर से बिक्री</value>
+  </data>
+  <data name="Not received as cash" xml:space="preserve">
+    <value>जो नकद में नहीं आया</value>
+  </data>
+  <data name="Cash there should be" xml:space="preserve">
+    <value>नकद इतना होना चाहिए</value>
+  </data>
+  <data name="Cash entered at shift close" xml:space="preserve">
+    <value>शिफ्ट बंद करते समय भरा गया नकद</value>
+  </data>
+  <data name="Cash matches." xml:space="preserve">
+    <value>नकद मिल गया।</value>
+  </data>
+  <data name="Short by" xml:space="preserve">
+    <value>इतना कम</value>
+  </data>
+  <data name="Excess of" xml:space="preserve">
+    <value>इतना ज़्यादा</value>
+  </data>
+  <data name="Why this matters" xml:space="preserve">
+    <value>यह ज़रूरी क्यों है</value>
+  </data>
+  <data name="Without this, every shift shows a big shortage - and a real shortage hides inside it. Once online and credit are recorded, any shortage left is a real one." xml:space="preserve">
+    <value>इसके बिना हर शिफ्ट में बड़ी कमी दिखती है — और असली कमी उसी में छुप जाती है। ऑनलाइन और उधार दर्ज हो जाने के बाद जो कमी बचे, वही असली है।</value>
+  </data>
+  <data name="Auto" xml:space="preserve">
+    <value>अपने आप</value>
+  </data>
+  <data name="Measure" xml:space="preserve">
+    <value>नाप</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>सेव करें</value>
+  </data>
+  <data name="&amp;#127749; All fuels on one screen" xml:space="preserve">
+    <value>&amp;#127749; सारे फ़्यूल एक ही स्क्रीन पर</value>
+  </data>
+  <data name="&amp;#127769; Collect the whole day&amp;#39;s cash at night" xml:space="preserve">
+    <value>&amp;#127769; रात में पूरे दिन का कैश एक साथ</value>
+  </data>
+  <data name="&amp;#127903; Coupon books" xml:space="preserve">
+    <value>&amp;#127903; कूपन बुक</value>
+  </data>
+  <data name="&amp;#127970; Multi-Pump Comparison" xml:space="preserve">
+    <value>&amp;#127970; कई पंपों की तुलना</value>
+  </data>
+  <data name="&amp;#127974; Bank deposits" xml:space="preserve">
+    <value>&amp;#127974; बैंक जमा</value>
+  </data>
+  <data name="&amp;#128100; Attendant Cash" xml:space="preserve">
+    <value>&amp;#128100; हर आदमी का कैश</value>
+  </data>
+  <data name="&amp;#128100; Employee records" xml:space="preserve">
+    <value>&amp;#128100; कर्मचारियों का रिकॉर्ड</value>
+  </data>
+  <data name="&amp;#128176; Monthly salary payment" xml:space="preserve">
+    <value>&amp;#128176; महीने की तनख़्वाह</value>
+  </data>
+  <data name="&amp;#128176; Outstanding (Credit)" xml:space="preserve">
+    <value>&amp;#128176; बक़ाया उधार</value>
+  </data>
+  <data name="&amp;#128179; Payment collection" xml:space="preserve">
+    <value>&amp;#128179; वसूली</value>
+  </data>
+  <data name="&amp;#128181; Cash / credit / UPI / card" xml:space="preserve">
+    <value>&amp;#128181; नक़द / उधार / UPI / कार्ड</value>
+  </data>
+  <data name="&amp;#128190; Automatic daily backup" xml:space="preserve">
+    <value>&amp;#128190; रोज़ अपने आप बैकअप</value>
+  </data>
+  <data name="&amp;#128190; CSV export on every report" xml:space="preserve">
+    <value>&amp;#128190; हर रिपोर्ट CSV में डाउनलोड</value>
+  </data>
+  <data name="&amp;#128193; Head-wise categories" xml:space="preserve">
+    <value>&amp;#128193; मद के हिसाब से ख़र्च</value>
+  </data>
+  <data name="&amp;#128197; Forgot a day? Enter it later" xml:space="preserve">
+    <value>&amp;#128197; कोई दिन छूट गया? बाद में भर दीजिए</value>
+  </data>
+  <data name="&amp;#128200; Shows what moved up or down" xml:space="preserve">
+    <value>&amp;#128200; क्या ऊपर गया, क्या नीचे — सब दिखता है</value>
+  </data>
+  <data name="&amp;#128201; Variance in litres and &amp;#8377;" xml:space="preserve">
+    <value>&amp;#128201; फ़र्क़ लीटर और रुपये दोनों में</value>
+  </data>
+  <data name="&amp;#128202; Daily Stock Register (DSR)" xml:space="preserve">
+    <value>&amp;#128202; डेली स्टॉक रजिस्टर (DSR)</value>
+  </data>
+  <data name="&amp;#128203; Credit / UPI slips deducted" xml:space="preserve">
+    <value>&amp;#128203; उधार और UPI की पर्चियाँ घटाकर</value>
+  </data>
+  <data name="&amp;#128207; Fuel dip &amp;amp; water dip" xml:space="preserve">
+    <value>&amp;#128207; तेल और पानी दोनों की डिप</value>
+  </data>
+  <data name="&amp;#128210; Party ledger" xml:space="preserve">
+    <value>&amp;#128210; पार्टी का खाता</value>
+  </data>
+  <data name="&amp;#128214; Day Book" xml:space="preserve">
+    <value>&amp;#128214; रोज़नामचा</value>
+  </data>
+  <data name="&amp;#128214; Manual built in (download / print)" xml:space="preserve">
+    <value>&amp;#128214; मैनुअल साथ में (डाउनलोड / प्रिंट)</value>
+  </data>
+  <data name="&amp;#128220; Full rate history" xml:space="preserve">
+    <value>&amp;#128220; रेट का पूरा इतिहास</value>
+  </data>
+  <data name="&amp;#128221; Operating expenses" xml:space="preserve">
+    <value>&amp;#128221; रोज़मर्रा के ख़र्च</value>
+  </data>
+  <data name="&amp;#128241; Password reset by OTP" xml:space="preserve">
+    <value>&amp;#128241; OTP से पासवर्ड बदलिए</value>
+  </data>
+  <data name="&amp;#128241; Pending list with phone numbers" xml:space="preserve">
+    <value>&amp;#128241; बक़ाया की सूची, फ़ोन नंबर के साथ</value>
+  </data>
+  <data name="&amp;#128241; Works on a phone" xml:space="preserve">
+    <value>&amp;#128241; फ़ोन पर भी चलता है</value>
+  </data>
+  <data name="&amp;#128260; Shift open &amp;amp; close" xml:space="preserve">
+    <value>&amp;#128260; शिफ़्ट खोलना और बंद करना</value>
+  </data>
+  <data name="&amp;#128269; Who did what, and when" xml:space="preserve">
+    <value>&amp;#128269; किसने क्या किया, कब किया</value>
+  </data>
+  <data name="&amp;#128272; Each pump&amp;#39;s data stays its own" xml:space="preserve">
+    <value>&amp;#128272; हर पंप का डेटा अलग और सुरक्षित</value>
+  </data>
+  <data name="&amp;#128274; Account lock after failed logins" xml:space="preserve">
+    <value>&amp;#128274; ग़लत पासवर्ड बार-बार डालने पर खाता बंद</value>
+  </data>
+  <data name="&amp;#128276; Low stock alert" xml:space="preserve">
+    <value>&amp;#128276; स्टॉक कम होने पर चेतावनी</value>
+  </data>
+  <data name="&amp;#128424; Print-ready registers" xml:space="preserve">
+    <value>&amp;#128424; रजिस्टर सीधे छापने लायक़</value>
+  </data>
+  <data name="&amp;#128666; Tanker purchase entry" xml:space="preserve">
+    <value>&amp;#128666; टैंकर की ख़रीद की एंट्री</value>
+  </data>
+  <data name="&amp;#128667; Fleet contracts" xml:space="preserve">
+    <value>&amp;#128667; फ़्लीट कॉन्ट्रैक्ट</value>
+  </data>
+  <data name="&amp;#128683; Voided bills are never deleted" xml:space="preserve">
+    <value>&amp;#128683; रद्द बिल कभी मिटते नहीं</value>
+  </data>
+  <data name="&amp;#128721; Wrong-tank entry blocked" xml:space="preserve">
+    <value>&amp;#128721; ग़लत टैंक में एंट्री रुक जाती है</value>
+  </data>
+  <data name="&amp;#128738; Tank Dip Testing" xml:space="preserve">
+    <value>&amp;#128738; टैंक की डिप जाँच</value>
+  </data>
+  <data name="&amp;#129534; Note-by-note cash count" xml:space="preserve">
+    <value>&amp;#129534; नोट-दर-नोट कैश की गिनती</value>
+  </data>
+  <data name="&amp;#129689; Float given per nozzle" xml:space="preserve">
+    <value>&amp;#129689; हर नोज़ल का छुट्टा अलग</value>
+  </data>
+  <data name="&amp;#9200; Old entries use that day&amp;#39;s rate" xml:space="preserve">
+    <value>&amp;#9200; पुरानी एंट्री उसी दिन के रेट पर</value>
+  </data>
+  <data name="&amp;#9878; Short / excess per man" xml:space="preserve">
+    <value>&amp;#9878; हर आदमी का कम-ज़्यादा अलग</value>
+  </data>
+  <data name="&amp;#9888; Credit limit enforced on sale" xml:space="preserve">
+    <value>&amp;#9888; उधार की सीमा बिक्री पर ही लागू</value>
+  </data>
+  <data name="&amp;#9889; Multi-pump support" xml:space="preserve">
+    <value>&amp;#9889; एक से ज़्यादा पंप</value>
+  </data>
+  <data name="&amp;#9981; Nozzle meter reading" xml:space="preserve">
+    <value>&amp;#9981; नोज़ल की मीटर रीडिंग</value>
+  </data>
+  <data name="&amp;#9989; Step-by-step setup on day one" xml:space="preserve">
+    <value>&amp;#9989; पहले दिन का सेटअप क़दम दर क़दम</value>
+  </data>
+  <data name="(Dip)" xml:space="preserve">
+    <value>(डिप)</value>
+  </data>
+  <data name="+ Add Vendor" xml:space="preserve">
+    <value>+ वेंडर जोड़िए</value>
+  </data>
+  <data name="-- Not linked --" xml:space="preserve">
+    <value>-- जुड़ा नहीं --</value>
+  </data>
+  <data name="1 Year" xml:space="preserve">
+    <value>1 साल</value>
+  </data>
+  <data name="6 Month" xml:space="preserve">
+    <value>6 महीने</value>
+  </data>
+  <data name="6-digit OTP" xml:space="preserve">
+    <value>6 अंकों का OTP</value>
+  </data>
+  <data name="7 Days" xml:space="preserve">
+    <value>7 दिन</value>
+  </data>
+  <data name="ADJUSTMENT" xml:space="preserve">
+    <value>समायोजन</value>
+  </data>
+  <data name="ADJUSTMENT (BALANCE DECREASE)" xml:space="preserve">
+    <value>समायोजन (बक़ाया घटा)</value>
+  </data>
+  <data name="ADJUSTMENT (BALANCE INCREASE)" xml:space="preserve">
+    <value>समायोजन (बक़ाया बढ़ा)</value>
+  </data>
+  <data name="Actions" xml:space="preserve">
+    <value>काम</value>
+  </data>
+  <data name="Actual" xml:space="preserve">
+    <value>असल</value>
+  </data>
+  <data name="Add stock in/out against selected tank." xml:space="preserve">
+    <value>चुने हुए टैंक में स्टॉक डालिए या निकालिए।</value>
+  </data>
+  <data name="Address" xml:space="preserve">
+    <value>पता</value>
+  </data>
+  <data name="All active products loaded from database." xml:space="preserve">
+    <value>डेटाबेस से लिए गए सभी चालू प्रोडक्ट।</value>
+  </data>
+  <data name="Amount (&amp;#8377;)" xml:space="preserve">
+    <value>रक़म (&amp;#8377;)</value>
+  </data>
+  <data name="An error occurred while processing your request." xml:space="preserve">
+    <value>आपकी माँग पूरी करते समय कोई दिक़्क़त आ गई।</value>
+  </data>
+  <data name="April (Apr)" xml:space="preserve">
+    <value>अप्रैल</value>
+  </data>
+  <data name="Assign party-wise contract rate for a product." xml:space="preserve">
+    <value>किसी प्रोडक्ट का पार्टी-वार कॉन्ट्रैक्ट रेट तय कीजिए।</value>
+  </data>
+  <data name="Attendant Name" xml:space="preserve">
+    <value>आदमी का नाम</value>
+  </data>
+  <data name="Attendant:" xml:space="preserve">
+    <value>आदमी:</value>
+  </data>
+  <data name="August (Aug)" xml:space="preserve">
+    <value>अगस्त</value>
+  </data>
+  <data name="BANK DEPOSIT" xml:space="preserve">
+    <value>बैंक जमा</value>
+  </data>
+  <data name="Back to Roles" xml:space="preserve">
+    <value>रोल पर वापस</value>
+  </data>
+  <data name="Bank" xml:space="preserve">
+    <value>बैंक</value>
+  </data>
+  <data name="Base Amount" xml:space="preserve">
+    <value>मूल रक़म</value>
+  </data>
+  <data name="Bill" xml:space="preserve">
+    <value>बिल</value>
+  </data>
+  <data name="Bill No" xml:space="preserve">
+    <value>बिल नंबर</value>
+  </data>
+  <data name="Book" xml:space="preserve">
+    <value>किताब</value>
+  </data>
+  <data name="Book (Ltr)" xml:space="preserve">
+    <value>किताब (लीटर)</value>
+  </data>
+  <data name="Book Closing" xml:space="preserve">
+    <value>किताब का आख़िरी स्टॉक</value>
+  </data>
+  <data name="Book Code" xml:space="preserve">
+    <value>बुक कोड</value>
+  </data>
+  <data name="Book Stock (Ltr)" xml:space="preserve">
+    <value>किताब का स्टॉक (लीटर)</value>
+  </data>
+  <data name="CGST %" xml:space="preserve">
+    <value>CGST %</value>
+  </data>
+  <data name="Call or WhatsApp for immediate setup" xml:space="preserve">
+    <value>तुरंत सेटअप के लिए फ़ोन या व्हाट्सएप कीजिए</value>
+  </data>
+  <data name="Cancel Edit" xml:space="preserve">
+    <value>बदलाव रद्द कीजिए</value>
+  </data>
+  <data name="Capacity" xml:space="preserve">
+    <value>क्षमता</value>
+  </data>
+  <data name="Cash Delta" xml:space="preserve">
+    <value>कैश का फ़र्क़</value>
+  </data>
+  <data name="Cash Transaction" xml:space="preserve">
+    <value>कैश की एंट्री</value>
+  </data>
+  <data name="Cashbook Entries" xml:space="preserve">
+    <value>कैशबुक की एंट्रियाँ</value>
+  </data>
+  <data name="Category" xml:space="preserve">
+    <value>श्रेणी</value>
+  </data>
+  <data name="City" xml:space="preserve">
+    <value>शहर</value>
+  </data>
+  <data name="Click to Request 7-Day Free Trial" xml:space="preserve">
+    <value>7 दिन का मुफ़्त ट्रायल माँगने के लिए दबाइए</value>
+  </data>
+  <data name="Close Cash" xml:space="preserve">
+    <value>बंद करते समय कैश</value>
+  </data>
+  <data name="Close navigation" xml:space="preserve">
+    <value>मेन्यू बंद कीजिए</value>
+  </data>
+  <data name="Closed by mistake? Update the closing readings" xml:space="preserve">
+    <value>ग़लती से बंद हो गई? आख़िरी रीडिंग ठीक कीजिए</value>
+  </data>
+  <data name="Closing" xml:space="preserve">
+    <value>आख़िरी</value>
+  </data>
+  <data name="Closing Reading" xml:space="preserve">
+    <value>आख़िरी रीडिंग</value>
+  </data>
+  <data name="Complete Software Features" xml:space="preserve">
+    <value>सॉफ़्टवेयर की पूरी ख़ूबियाँ</value>
+  </data>
+  <data name="Configure underground/overhead tank details by pump and product." xml:space="preserve">
+    <value>पंप और प्रोडक्ट के हिसाब से टैंक की जानकारी भरिए।</value>
+  </data>
+  <data name="Configured pumps under this owner." xml:space="preserve">
+    <value>इस मालिक के अधीन बने हुए पंप।</value>
+  </data>
+  <data name="Contact" xml:space="preserve">
+    <value>संपर्क</value>
+  </data>
+  <data name="Contact / GSTIN" xml:space="preserve">
+    <value>संपर्क / GSTIN</value>
+  </data>
+  <data name="Contact No" xml:space="preserve">
+    <value>संपर्क नंबर</value>
+  </data>
+  <data name="Contract List" xml:space="preserve">
+    <value>कॉन्ट्रैक्ट की सूची</value>
+  </data>
+  <data name="Contract Rate" xml:space="preserve">
+    <value>कॉन्ट्रैक्ट का रेट</value>
+  </data>
+  <data name="Count cash note by note and match it against closing cash" xml:space="preserve">
+    <value>नोट-दर-नोट कैश गिनिए और आख़िरी कैश से मिलाइए</value>
+  </data>
+  <data name="Coupon Book" xml:space="preserve">
+    <value>कूपन बुक</value>
+  </data>
+  <data name="Coupon Book Entry" xml:space="preserve">
+    <value>कूपन बुक की एंट्री</value>
+  </data>
+  <data name="Coupon Books" xml:space="preserve">
+    <value>कूपन बुक</value>
+  </data>
+  <data name="Coupon Serial" xml:space="preserve">
+    <value>कूपन सीरियल</value>
+  </data>
+  <data name="Coupon Transaction" xml:space="preserve">
+    <value>कूपन की एंट्री</value>
+  </data>
+  <data name="Coupon Transactions" xml:space="preserve">
+    <value>कूपन की एंट्रियाँ</value>
+  </data>
+  <data name="Create" xml:space="preserve">
+    <value>बनाइए</value>
+  </data>
+  <data name="Create Product" xml:space="preserve">
+    <value>प्रोडक्ट बनाइए</value>
+  </data>
+  <data name="Create Sale" xml:space="preserve">
+    <value>बिक्री दर्ज कीजिए</value>
+  </data>
+  <data name="Create and issue coupon books to parties." xml:space="preserve">
+    <value>कूपन बुक बनाकर पार्टियों को दीजिए।</value>
+  </data>
+  <data name="Create and update role definitions." xml:space="preserve">
+    <value>रोल बनाइए और बदलिए।</value>
+  </data>
+  <data name="Create or update pump profile with contact details." xml:space="preserve">
+    <value>पंप की जानकारी और संपर्क बनाइए या बदलिए।</value>
+  </data>
+  <data name="Create or update user and assign role." xml:space="preserve">
+    <value>यूज़र बनाइए या बदलिए और रोल दीजिए।</value>
+  </data>
+  <data name="Credit" xml:space="preserve">
+    <value>उधार</value>
+  </data>
+  <data name="Credit Limit" xml:space="preserve">
+    <value>उधार की सीमा</value>
+  </data>
+  <data name="Cumulative" xml:space="preserve">
+    <value>अब तक का जोड़</value>
+  </data>
+  <data name="Cumulative Sales" xml:space="preserve">
+    <value>अब तक की कुल बिक्री</value>
+  </data>
+  <data name="Current Balance" xml:space="preserve">
+    <value>अभी का बक़ाया</value>
+  </data>
+  <data name="Current Stock" xml:space="preserve">
+    <value>अभी का स्टॉक</value>
+  </data>
+  <data name="Customer Name" xml:space="preserve">
+    <value>ग्राहक का नाम</value>
+  </data>
+  <data name="Customer:" xml:space="preserve">
+    <value>ग्राहक:</value>
+  </data>
+  <data name="Daily" xml:space="preserve">
+    <value>रोज़ का</value>
+  </data>
+  <data name="Date:" xml:space="preserve">
+    <value>तारीख़:</value>
+  </data>
+  <data name="Day Book Entries" xml:space="preserve">
+    <value>रोज़नामचे की एंट्रियाँ</value>
+  </data>
+  <data name="Debit" xml:space="preserve">
+    <value>नामे</value>
+  </data>
+  <data name="December (Dec)" xml:space="preserve">
+    <value>दिसंबर</value>
+  </data>
+  <data name="Define product, category, unit and current rate for selected pump." xml:space="preserve">
+    <value>चुने हुए पंप के लिए प्रोडक्ट, श्रेणी, इकाई और मौजूदा रेट तय कीजिए।</value>
+  </data>
+  <data name="Del" xml:space="preserve">
+    <value>हटाइए</value>
+  </data>
+  <data name="Deleted" xml:space="preserve">
+    <value>हटा दिया गया</value>
+  </data>
+  <data name="Denomination" xml:space="preserve">
+    <value>नोट का मूल्य</value>
+  </data>
+  <data name="Description" xml:space="preserve">
+    <value>ब्यौरा</value>
+  </data>
+  <data name="Diesel" xml:space="preserve">
+    <value>डीज़ल</value>
+  </data>
+  <data name="Dip (Ltr)" xml:space="preserve">
+    <value>डिप (लीटर)</value>
+  </data>
+  <data name="Dip Testing Date" xml:space="preserve">
+    <value>डिप जाँच की तारीख़</value>
+  </data>
+  <data name="Dip Testing History" xml:space="preserve">
+    <value>डिप जाँच का इतिहास</value>
+  </data>
+  <data name="Direct Super Admin Contact" xml:space="preserve">
+    <value>सुपर एडमिन से सीधा संपर्क</value>
+  </data>
+  <data name="Driver Name" xml:space="preserve">
+    <value>ड्राइवर का नाम</value>
+  </data>
+  <data name="E.g., Evaporation loss, Tank leak, Short delivery, etc." xml:space="preserve">
+    <value>जैसे — भाप बनकर उड़ना, टैंक का रिसाव, कम डिलीवरी वग़ैरह।</value>
+  </data>
+  <data name="Edit Dip Reading" xml:space="preserve">
+    <value>डिप रीडिंग बदलिए</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>ईमेल</value>
+  </data>
+  <data name="Employee" xml:space="preserve">
+    <value>कर्मचारी</value>
+  </data>
+  <data name="Employee Form" xml:space="preserve">
+    <value>कर्मचारी फ़ॉर्म</value>
+  </data>
+  <data name="Employee List" xml:space="preserve">
+    <value>कर्मचारियों की सूची</value>
+  </data>
+  <data name="End Serial" xml:space="preserve">
+    <value>आख़िरी सीरियल</value>
+  </data>
+  <data name="Enter Dip Rod Reading" xml:space="preserve">
+    <value>डिप रॉड की रीडिंग भरिए</value>
+  </data>
+  <data name="Enter party name" xml:space="preserve">
+    <value>पार्टी का नाम भरिए</value>
+  </data>
+  <data name="Enter password" xml:space="preserve">
+    <value>पासवर्ड भरिए</value>
+  </data>
+  <data name="Enter your password" xml:space="preserve">
+    <value>अपना पासवर्ड भरिए</value>
+  </data>
+  <data name="Enter your username" xml:space="preserve">
+    <value>अपना यूज़रनेम भरिए</value>
+  </data>
+  <data name="Entry Type" xml:space="preserve">
+    <value>एंट्री का प्रकार</value>
+  </data>
+  <data name="Error." xml:space="preserve">
+    <value>ग़लती।</value>
+  </data>
+  <data name="Estimated Total" xml:space="preserve">
+    <value>अनुमानित कुल</value>
+  </data>
+  <data name="Expected" xml:space="preserve">
+    <value>होना चाहिए</value>
+  </data>
+  <data name="Expense" xml:space="preserve">
+    <value>ख़र्च</value>
+  </data>
+  <data name="Expense Entry" xml:space="preserve">
+    <value>ख़र्च की एंट्री</value>
+  </data>
+  <data name="Expense Head" xml:space="preserve">
+    <value>ख़र्च का मद</value>
+  </data>
+  <data name="Expense Register" xml:space="preserve">
+    <value>ख़र्च रजिस्टर</value>
+  </data>
+  <data name="February (Feb)" xml:space="preserve">
+    <value>फ़रवरी</value>
+  </data>
+  <data name="Filter" xml:space="preserve">
+    <value>छाँटिए</value>
+  </data>
+  <data name="First page" xml:space="preserve">
+    <value>पहला पन्ना</value>
+  </data>
+  <data name="Fleet" xml:space="preserve">
+    <value>फ़्लीट</value>
+  </data>
+  <data name="Fleet Contract Entry" xml:space="preserve">
+    <value>फ़्लीट कॉन्ट्रैक्ट की एंट्री</value>
+  </data>
+  <data name="Forecourt staff" xml:space="preserve">
+    <value>पंप पर काम करने वाले</value>
+  </data>
+  <data name="Free Trial" xml:space="preserve">
+    <value>मुफ़्त ट्रायल</value>
+  </data>
+  <data name="Fuel/stock purchase entry with invoice, vendor and item lines." xml:space="preserve">
+    <value>बिल, वेंडर और सामान की लाइनों के साथ ख़रीद की एंट्री।</value>
+  </data>
+  <data name="Full address" xml:space="preserve">
+    <value>पूरा पता</value>
+  </data>
+  <data name="Get Free 7-Day Trial" xml:space="preserve">
+    <value>7 दिन का मुफ़्त ट्रायल लीजिए</value>
+  </data>
+  <data name="HSN / Tax" xml:space="preserve">
+    <value>HSN / कर</value>
+  </data>
+  <data name="HSN Code" xml:space="preserve">
+    <value>HSN कोड</value>
+  </data>
+  <data name="Head" xml:space="preserve">
+    <value>मद</value>
+  </data>
+  <data name="History" xml:space="preserve">
+    <value>इतिहास</value>
+  </data>
+  <data name="Install PPMS on this phone" xml:space="preserve">
+    <value>इस फ़ोन में PPMS लगाइए</value>
+  </data>
+  <data name="Invoice" xml:space="preserve">
+    <value>बिल</value>
+  </data>
+  <data name="Invoice Date" xml:space="preserve">
+    <value>बिल की तारीख़</value>
+  </data>
+  <data name="Invoice No" xml:space="preserve">
+    <value>बिल नंबर</value>
+  </data>
+  <data name="Issued To Party" xml:space="preserve">
+    <value>किस पार्टी को दिया</value>
+  </data>
+  <data name="It expires in 10 minutes." xml:space="preserve">
+    <value>यह 10 मिनट में ख़त्म हो जाएगा।</value>
+  </data>
+  <data name="January (Jan)" xml:space="preserve">
+    <value>जनवरी</value>
+  </data>
+  <data name="July (Jul)" xml:space="preserve">
+    <value>जुलाई</value>
+  </data>
+  <data name="June (Jun)" xml:space="preserve">
+    <value>जून</value>
+  </data>
+  <data name="Last Credit Sale" xml:space="preserve">
+    <value>पिछली उधार बिक्री</value>
+  </data>
+  <data name="Last page" xml:space="preserve">
+    <value>आख़िरी पन्ना</value>
+  </data>
+  <data name="Latest Receipt" xml:space="preserve">
+    <value>सबसे नई रसीद</value>
+  </data>
+  <data name="Latest transactions from database." xml:space="preserve">
+    <value>डेटाबेस से ली गई सबसे नई एंट्रियाँ।</value>
+  </data>
+  <data name="Ledger Entry" xml:space="preserve">
+    <value>खाते की एंट्री</value>
+  </data>
+  <data name="Ledger History" xml:space="preserve">
+    <value>खाते का इतिहास</value>
+  </data>
+  <data name="Linked Login User (Optional)" xml:space="preserve">
+    <value>जुड़ा हुआ लॉगिन यूज़र (ज़रूरी नहीं)</value>
+  </data>
+  <data name="Liters taken out for testing" xml:space="preserve">
+    <value>जाँच के लिए निकाला गया तेल (लीटर)</value>
+  </data>
+  <data name="Litre" xml:space="preserve">
+    <value>लीटर</value>
+  </data>
+  <data name="Load" xml:space="preserve">
+    <value>लाइए</value>
+  </data>
+  <data name="Load Day Book" xml:space="preserve">
+    <value>रोज़नामचा लाइए</value>
+  </data>
+  <data name="Loading..." xml:space="preserve">
+    <value>आ रहा है...</value>
+  </data>
+  <data name="Low!" xml:space="preserve">
+    <value>कम है!</value>
+  </data>
+  <data name="Ltr" xml:space="preserve">
+    <value>लीटर</value>
+  </data>
+  <data name="Lubricant" xml:space="preserve">
+    <value>लुब्रिकेंट</value>
+  </data>
+  <data name="Manage fleet and credit parties for invoicing and dues." xml:space="preserve">
+    <value>बिल और बक़ाया के लिए फ़्लीट और उधार वाली पार्टियाँ सँभालिए।</value>
+  </data>
+  <data name="Manage fuel suppliers and vendors for purchase entries." xml:space="preserve">
+    <value>ख़रीद की एंट्री के लिए सप्लायर और वेंडर सँभालिए।</value>
+  </data>
+  <data name="Management System &amp;bull; Secure Access" xml:space="preserve">
+    <value>प्रबंधन प्रणाली &amp;bull; सुरक्षित प्रवेश</value>
+  </data>
+  <data name="Map nozzle code with pump and product." xml:space="preserve">
+    <value>नोज़ल कोड को पंप और प्रोडक्ट से जोड़िए।</value>
+  </data>
+  <data name="March (Mar)" xml:space="preserve">
+    <value>मार्च</value>
+  </data>
+  <data name="May (May)" xml:space="preserve">
+    <value>मई</value>
+  </data>
+  <data name="Measure the physical stock using the dip rod and compare it with the book stock. The variance helps identify evaporation or leaks." xml:space="preserve">
+    <value>डिप रॉड से असली स्टॉक नापिए और किताब के स्टॉक से मिलाइए। फ़र्क़ से पता चलता है कि तेल उड़ा है या कहीं रिसाव है।</value>
+  </data>
+  <data name="Measured dip rod reading in liters" xml:space="preserve">
+    <value>डिप रॉड से नापी गई मात्रा (लीटर)</value>
+  </data>
+  <data name="Menu Item" xml:space="preserve">
+    <value>मेन्यू की चीज़</value>
+  </data>
+  <data name="Meter" xml:space="preserve">
+    <value>मीटर</value>
+  </data>
+  <data name="Meter Sales" xml:space="preserve">
+    <value>मीटर से बिक्री</value>
+  </data>
+  <data name="Mobile Number *" xml:space="preserve">
+    <value>मोबाइल नंबर *</value>
+  </data>
+  <data name="Mode" xml:space="preserve">
+    <value>तरीक़ा</value>
+  </data>
+  <data name="Month" xml:space="preserve">
+    <value>महीना</value>
+  </data>
+  <data name="Monthly Salary Payment" xml:space="preserve">
+    <value>महीने की तनख़्वाह</value>
+  </data>
+  <data name="Narration" xml:space="preserve">
+    <value>ब्यौरा</value>
+  </data>
+  <data name="Net" xml:space="preserve">
+    <value>शुद्ध</value>
+  </data>
+  <data name="Net Sales (Meter)" xml:space="preserve">
+    <value>शुद्ध बिक्री (मीटर से)</value>
+  </data>
+  <data name="New Rate" xml:space="preserve">
+    <value>नया रेट</value>
+  </data>
+  <data name="New password" xml:space="preserve">
+    <value>नया पासवर्ड</value>
+  </data>
+  <data name="New password dobara" xml:space="preserve">
+    <value>नया पासवर्ड दोबारा</value>
+  </data>
+  <data name="No data available for the selected month." xml:space="preserve">
+    <value>चुने हुए महीने का कोई डेटा नहीं है।</value>
+  </data>
+  <data name="No employee found" xml:space="preserve">
+    <value>कोई कर्मचारी नहीं मिला</value>
+  </data>
+  <data name="No expense head available" xml:space="preserve">
+    <value>कोई ख़र्च का मद नहीं है</value>
+  </data>
+  <data name="No open shift for selected pump" xml:space="preserve">
+    <value>चुने हुए पंप की कोई शिफ़्ट खुली नहीं है</value>
+  </data>
+  <data name="No outstanding dues." xml:space="preserve">
+    <value>कोई बक़ाया नहीं है।</value>
+  </data>
+  <data name="No party" xml:space="preserve">
+    <value>कोई पार्टी नहीं</value>
+  </data>
+  <data name="No party available for selected pump" xml:space="preserve">
+    <value>चुने हुए पंप की कोई पार्टी नहीं है</value>
+  </data>
+  <data name="No product for selected pump" xml:space="preserve">
+    <value>चुने हुए पंप का कोई प्रोडक्ट नहीं है</value>
+  </data>
+  <data name="No pump available" xml:space="preserve">
+    <value>कोई पंप नहीं है</value>
+  </data>
+  <data name="No receipt generated in current session." xml:space="preserve">
+    <value>इस बार कोई रसीद नहीं बनी।</value>
+  </data>
+  <data name="No tank available" xml:space="preserve">
+    <value>कोई टैंक नहीं है</value>
+  </data>
+  <data name="No tank available for selected pump" xml:space="preserve">
+    <value>चुने हुए पंप का कोई टैंक नहीं है</value>
+  </data>
+  <data name="No vendor available" xml:space="preserve">
+    <value>कोई वेंडर नहीं है</value>
+  </data>
+  <data name="November (Nov)" xml:space="preserve">
+    <value>नवंबर</value>
+  </data>
+  <data name="Nozzle Code" xml:space="preserve">
+    <value>नोज़ल कोड</value>
+  </data>
+  <data name="Nozzle Form" xml:space="preserve">
+    <value>नोज़ल फ़ॉर्म</value>
+  </data>
+  <data name="Nozzle List" xml:space="preserve">
+    <value>नोज़ल की सूची</value>
+  </data>
+  <data name="Nozzles for selected pump." xml:space="preserve">
+    <value>चुने हुए पंप के नोज़ल।</value>
+  </data>
+  <data name="October (Oct)" xml:space="preserve">
+    <value>अक्तूबर</value>
+  </data>
+  <data name="Old Rate" xml:space="preserve">
+    <value>पुराना रेट</value>
+  </data>
+  <data name="Open Cash" xml:space="preserve">
+    <value>खोलते समय कैश</value>
+  </data>
+  <data name="Open Outstanding" xml:space="preserve">
+    <value>बक़ाया खोलिए</value>
+  </data>
+  <data name="Open Pump Comparison" xml:space="preserve">
+    <value>पंपों की तुलना खोलिए</value>
+  </data>
+  <data name="Open navigation" xml:space="preserve">
+    <value>मेन्यू खोलिए</value>
+  </data>
+  <data name="Opening Stock" xml:space="preserve">
+    <value>शुरुआती स्टॉक</value>
+  </data>
+  <data name="Opening meter reading from when this shift was started" xml:space="preserve">
+    <value>इस शिफ़्ट के शुरू होते समय की मीटर रीडिंग</value>
+  </data>
+  <data name="Operator" xml:space="preserve">
+    <value>चलाने वाला</value>
+  </data>
+  <data name="Operator / Manager / Cashier" xml:space="preserve">
+    <value>ऑपरेटर / मैनेजर / कैशियर</value>
+  </data>
+  <data name="Operator/attendant master with optional login user mapping." xml:space="preserve">
+    <value>ऑपरेटर और आदमी की सूची, चाहें तो लॉगिन यूज़र से जोड़ दीजिए।</value>
+  </data>
+  <data name="Optional address" xml:space="preserve">
+    <value>पता (ज़रूरी नहीं)</value>
+  </data>
+  <data name="Outstanding" xml:space="preserve">
+    <value>बक़ाया</value>
+  </data>
+  <data name="Outstanding Balance" xml:space="preserve">
+    <value>बक़ाया रक़म</value>
+  </data>
+  <data name="Outstanding Report" xml:space="preserve">
+    <value>बक़ाया रिपोर्ट</value>
+  </data>
+  <data name="Outstanding: -" xml:space="preserve">
+    <value>बक़ाया: -</value>
+  </data>
+  <data name="PUMP Operations &amp;amp; Management Suite" xml:space="preserve">
+    <value>पंप संचालन एवं प्रबंधन सुइट</value>
+  </data>
+  <data name="PURCHASE (IN)" xml:space="preserve">
+    <value>ख़रीद (अंदर)</value>
+  </data>
+  <data name="Paid On" xml:space="preserve">
+    <value>किस दिन दिया</value>
+  </data>
+  <data name="Party" xml:space="preserve">
+    <value>पार्टी</value>
+  </data>
+  <data name="Party Form" xml:space="preserve">
+    <value>पार्टी फ़ॉर्म</value>
+  </data>
+  <data name="Party List" xml:space="preserve">
+    <value>पार्टियों की सूची</value>
+  </data>
+  <data name="Party Name" xml:space="preserve">
+    <value>पार्टी का नाम</value>
+  </data>
+  <data name="Party Type" xml:space="preserve">
+    <value>पार्टी का प्रकार</value>
+  </data>
+  <data name="Party-wise current outstanding and credit status." xml:space="preserve">
+    <value>पार्टी-वार अभी का बक़ाया और उधार की स्थिति।</value>
+  </data>
+  <data name="Password *" xml:space="preserve">
+    <value>पासवर्ड *</value>
+  </data>
+  <data name="Password changed" xml:space="preserve">
+    <value>पासवर्ड बदल गया</value>
+  </data>
+  <data name="Payment" xml:space="preserve">
+    <value>भुगतान</value>
+  </data>
+  <data name="Payment Mode" xml:space="preserve">
+    <value>भुगतान का तरीक़ा</value>
+  </data>
+  <data name="Payment Mode:" xml:space="preserve">
+    <value>भुगतान का तरीक़ा:</value>
+  </data>
+  <data name="Permissions" xml:space="preserve">
+    <value>अधिकार</value>
+  </data>
+  <data name="Petrol" xml:space="preserve">
+    <value>पेट्रोल</value>
+  </data>
+  <data name="Petrol Pump Management Software" xml:space="preserve">
+    <value>पेट्रोल पंप प्रबंधन सॉफ़्टवेयर</value>
+  </data>
+  <data name="Petrol Pump Name" xml:space="preserve">
+    <value>पेट्रोल पंप का नाम</value>
+  </data>
+  <data name="Petrol Pump Operations &amp;amp; Accounting Suite" xml:space="preserve">
+    <value>पेट्रोल पंप संचालन एवं लेखा सुइट</value>
+  </data>
+  <data name="Petrol Pump Portal" xml:space="preserve">
+    <value>पेट्रोल पंप पोर्टल</value>
+  </data>
+  <data name="Petrol Pump Suite" xml:space="preserve">
+    <value>पेट्रोल पंप सुइट</value>
+  </data>
+  <data name="Physical (Dip)" xml:space="preserve">
+    <value>असली (डिप से)</value>
+  </data>
+  <data name="Piece" xml:space="preserve">
+    <value>नग</value>
+  </data>
+  <data name="Pieces" xml:space="preserve">
+    <value>नग</value>
+  </data>
+  <data name="Plan" xml:space="preserve">
+    <value>प्लान</value>
+  </data>
+  <data name="Post daily operational expenses with payment mode tracking." xml:space="preserve">
+    <value>रोज़ के ख़र्च भुगतान के तरीक़े के साथ दर्ज कीजिए।</value>
+  </data>
+  <data name="Post payment/debit entries for party balance tracking." xml:space="preserve">
+    <value>पार्टी का बक़ाया रखने के लिए भुगतान की एंट्री दर्ज कीजिए।</value>
+  </data>
+  <data name="Print Receipt" xml:space="preserve">
+    <value>रसीद छापिए</value>
+  </data>
+  <data name="Product / Qty" xml:space="preserve">
+    <value>प्रोडक्ट / मात्रा</value>
+  </data>
+  <data name="Product List" xml:space="preserve">
+    <value>प्रोडक्ट की सूची</value>
+  </data>
+  <data name="Product Name" xml:space="preserve">
+    <value>प्रोडक्ट का नाम</value>
+  </data>
+  <data name="Pump Comparison" xml:space="preserve">
+    <value>पंपों की तुलना</value>
+  </data>
+  <data name="Pump Form" xml:space="preserve">
+    <value>पंप फ़ॉर्म</value>
+  </data>
+  <data name="Pump List" xml:space="preserve">
+    <value>पंपों की सूची</value>
+  </data>
+  <data name="Pump Name" xml:space="preserve">
+    <value>पंप का नाम</value>
+  </data>
+  <data name="Pump Test" xml:space="preserve">
+    <value>पंप टेस्ट</value>
+  </data>
+  <data name="Pump full address" xml:space="preserve">
+    <value>पंप का पूरा पता</value>
+  </data>
+  <data name="Purchase" xml:space="preserve">
+    <value>ख़रीद</value>
+  </data>
+  <data name="Purchase Entry" xml:space="preserve">
+    <value>ख़रीद की एंट्री</value>
+  </data>
+  <data name="Purchase Lines" xml:space="preserve">
+    <value>ख़रीद की लाइनें</value>
+  </data>
+  <data name="Qty" xml:space="preserve">
+    <value>मात्रा</value>
+  </data>
+  <data name="Qty (Litres)" xml:space="preserve">
+    <value>मात्रा (लीटर)</value>
+  </data>
+  <data name="Quantity" xml:space="preserve">
+    <value>मात्रा</value>
+  </data>
+  <data name="Quick Add Party" xml:space="preserve">
+    <value>फटाफट पार्टी जोड़िए</value>
+  </data>
+  <data name="Quick:" xml:space="preserve">
+    <value>फटाफट:</value>
+  </data>
+  <data name="RECEIPT (IN)" xml:space="preserve">
+    <value>रसीद (अंदर)</value>
+  </data>
+  <data name="RECEIPT (PARTY PAID US)" xml:space="preserve">
+    <value>रसीद (पार्टी ने हमें दिया)</value>
+  </data>
+  <data name="Range" xml:space="preserve">
+    <value>अवधि</value>
+  </data>
+  <data name="Rate (&amp;#8377;)" xml:space="preserve">
+    <value>रेट (&amp;#8377;)</value>
+  </data>
+  <data name="Re-enter the same password" xml:space="preserve">
+    <value>वही पासवर्ड दोबारा भरिए</value>
+  </data>
+  <data name="Reason" xml:space="preserve">
+    <value>वजह</value>
+  </data>
+  <data name="Reason / Note" xml:space="preserve">
+    <value>वजह / टिप्पणी</value>
+  </data>
+  <data name="Receipt" xml:space="preserve">
+    <value>रसीद</value>
+  </data>
+  <data name="Receipt:" xml:space="preserve">
+    <value>रसीद:</value>
+  </data>
+  <data name="Recent Dip Readings" xml:space="preserve">
+    <value>पिछली डिप रीडिंग</value>
+  </data>
+  <data name="Recent Purchases" xml:space="preserve">
+    <value>पिछली ख़रीद</value>
+  </data>
+  <data name="Recent Sales" xml:space="preserve">
+    <value>पिछली बिक्री</value>
+  </data>
+  <data name="Recent Transactions" xml:space="preserve">
+    <value>पिछली एंट्रियाँ</value>
+  </data>
+  <data name="Record manual cash in/out entries for day cashbook." xml:space="preserve">
+    <value>दिन की कैशबुक के लिए कैश आने-जाने की एंट्री कीजिए।</value>
+  </data>
+  <data name="Redeem/record coupon usage." xml:space="preserve">
+    <value>कूपन का इस्तेमाल दर्ज कीजिए।</value>
+  </data>
+  <data name="Ref" xml:space="preserve">
+    <value>संदर्भ</value>
+  </data>
+  <data name="Reference No" xml:space="preserve">
+    <value>संदर्भ नंबर</value>
+  </data>
+  <data name="Register Closing" xml:space="preserve">
+    <value>रजिस्टर का आख़िरी स्टॉक</value>
+  </data>
+  <data name="Remarks" xml:space="preserve">
+    <value>टिप्पणी</value>
+  </data>
+  <data name="Request Received Successfully!" xml:space="preserve">
+    <value>आपकी माँग मिल गई!</value>
+  </data>
+  <data name="Reset your password" xml:space="preserve">
+    <value>अपना पासवर्ड बदलिए</value>
+  </data>
+  <data name="Role Form" xml:space="preserve">
+    <value>रोल फ़ॉर्म</value>
+  </data>
+  <data name="Role List" xml:space="preserve">
+    <value>रोल की सूची</value>
+  </data>
+  <data name="Role Name" xml:space="preserve">
+    <value>रोल का नाम</value>
+  </data>
+  <data name="Rush cash flow: Go to Shift Meter Entry" xml:space="preserve">
+    <value>भीड़ के समय: शिफ़्ट मीटर एंट्री पर जाइए</value>
+  </data>
+  <data name="SALE (CREDIT GIVEN TO PARTY)" xml:space="preserve">
+    <value>बिक्री (पार्टी को उधार दिया)</value>
+  </data>
+  <data name="SALE (OUT)" xml:space="preserve">
+    <value>बिक्री (बाहर)</value>
+  </data>
+  <data name="SGST %" xml:space="preserve">
+    <value>SGST %</value>
+  </data>
+  <data name="STOCK / SALES DETAILS" xml:space="preserve">
+    <value>स्टॉक / बिक्री का ब्यौरा</value>
+  </data>
+  <data name="Safe Fill Level" xml:space="preserve">
+    <value>सुरक्षित भराव सीमा</value>
+  </data>
+  <data name="Safe Level" xml:space="preserve">
+    <value>सुरक्षित सीमा</value>
+  </data>
+  <data name="Salary Month" xml:space="preserve">
+    <value>तनख़्वाह का महीना</value>
+  </data>
+  <data name="Salary Payments" xml:space="preserve">
+    <value>तनख़्वाह के भुगतान</value>
+  </data>
+  <data name="Salary Year" xml:space="preserve">
+    <value>तनख़्वाह का साल</value>
+  </data>
+  <data name="Sale Amount" xml:space="preserve">
+    <value>बिक्री की रक़म</value>
+  </data>
+  <data name="Sale Line Items" xml:space="preserve">
+    <value>बिक्री की लाइनें</value>
+  </data>
+  <data name="Sale Value" xml:space="preserve">
+    <value>बिक्री का मूल्य</value>
+  </data>
+  <data name="Sales" xml:space="preserve">
+    <value>बिक्री</value>
+  </data>
+  <data name="Sales by Dip" xml:space="preserve">
+    <value>डिप से बिक्री</value>
+  </data>
+  <data name="Sales by Meter" xml:space="preserve">
+    <value>मीटर से बिक्री</value>
+  </data>
+  <data name="Sales, purchase, expense and net by pump for date range." xml:space="preserve">
+    <value>चुनी हुई अवधि में पंप-वार बिक्री, ख़रीद, ख़र्च और शुद्ध लाभ।</value>
+  </data>
+  <data name="Save Cash Entry" xml:space="preserve">
+    <value>कैश एंट्री सेव कीजिए</value>
+  </data>
+  <data name="Save Contract" xml:space="preserve">
+    <value>कॉन्ट्रैक्ट सेव कीजिए</value>
+  </data>
+  <data name="Save Coupon Book" xml:space="preserve">
+    <value>कूपन बुक सेव कीजिए</value>
+  </data>
+  <data name="Save Coupon Transaction" xml:space="preserve">
+    <value>कूपन एंट्री सेव कीजिए</value>
+  </data>
+  <data name="Save Dip Testing" xml:space="preserve">
+    <value>डिप जाँच सेव कीजिए</value>
+  </data>
+  <data name="Save Expense" xml:space="preserve">
+    <value>ख़र्च सेव कीजिए</value>
+  </data>
+  <data name="Save Ledger Entry" xml:space="preserve">
+    <value>खाते की एंट्री सेव कीजिए</value>
+  </data>
+  <data name="Save Party" xml:space="preserve">
+    <value>पार्टी सेव कीजिए</value>
+  </data>
+  <data name="Save Permissions" xml:space="preserve">
+    <value>अधिकार सेव कीजिए</value>
+  </data>
+  <data name="Save Salary Payment" xml:space="preserve">
+    <value>तनख़्वाह सेव कीजिए</value>
+  </data>
+  <data name="Save Sale and Generate Receipt" xml:space="preserve">
+    <value>बिक्री सेव करके रसीद बनाइए</value>
+  </data>
+  <data name="Save Transaction" xml:space="preserve">
+    <value>एंट्री सेव कीजिए</value>
+  </data>
+  <data name="Search bill, vehicle, customer..." xml:space="preserve">
+    <value>बिल, गाड़ी, ग्राहक खोजिए...</value>
+  </data>
+  <data name="Search entries..." xml:space="preserve">
+    <value>एंट्री खोजिए...</value>
+  </data>
+  <data name="Search party" xml:space="preserve">
+    <value>पार्टी खोजिए</value>
+  </data>
+  <data name="Search ref/narration/head..." xml:space="preserve">
+    <value>संदर्भ / ब्यौरा / मद खोजिए...</value>
+  </data>
+  <data name="Search tank" xml:space="preserve">
+    <value>टैंक खोजिए</value>
+  </data>
+  <data name="Select Plan / Trial" xml:space="preserve">
+    <value>प्लान या ट्रायल चुनिए</value>
+  </data>
+  <data name="Select nozzle" xml:space="preserve">
+    <value>नोज़ल चुनिए</value>
+  </data>
+  <data name="Select pump and open shift, then add one or more sale lines." xml:space="preserve">
+    <value>पंप और खुली शिफ़्ट चुनिए, फिर बिक्री की लाइनें जोड़िए।</value>
+  </data>
+  <data name="Selected Party" xml:space="preserve">
+    <value>चुनी हुई पार्टी</value>
+  </data>
+  <data name="Selected Tank" xml:space="preserve">
+    <value>चुना हुआ टैंक</value>
+  </data>
+  <data name="September (Sep)" xml:space="preserve">
+    <value>सितंबर</value>
+  </data>
+  <data name="Serial" xml:space="preserve">
+    <value>सीरियल</value>
+  </data>
+  <data name="Shift Summary (Meter + Operator)" xml:space="preserve">
+    <value>शिफ़्ट का सार (मीटर + चलाने वाला)</value>
+  </data>
+  <data name="Show/Hide Password" xml:space="preserve">
+    <value>पासवर्ड दिखाइए / छिपाइए</value>
+  </data>
+  <data name="Sign In &amp;rarr;" xml:space="preserve">
+    <value>लॉगिन कीजिए &amp;rarr;</value>
+  </data>
+  <data name="Sign-in details" xml:space="preserve">
+    <value>लॉगिन की जानकारी</value>
+  </data>
+  <data name="Sold Amt" xml:space="preserve">
+    <value>बिकी रक़म</value>
+  </data>
+  <data name="Sold Qty" xml:space="preserve">
+    <value>बिकी मात्रा</value>
+  </data>
+  <data name="Start Serial" xml:space="preserve">
+    <value>पहला सीरियल</value>
+  </data>
+  <data name="Stock" xml:space="preserve">
+    <value>स्टॉक</value>
+  </data>
+  <data name="Stock Transaction" xml:space="preserve">
+    <value>स्टॉक की एंट्री</value>
+  </data>
+  <data name="Submit Request &amp;amp; Start Trial" xml:space="preserve">
+    <value>माँग भेजिए और ट्रायल शुरू कीजिए</value>
+  </data>
+  <data name="Super Admin Direct Support" xml:space="preserve">
+    <value>सुपर एडमिन की सीधी मदद</value>
+  </data>
+  <data name="System Role" xml:space="preserve">
+    <value>सिस्टम का रोल</value>
+  </data>
+  <data name="System calculated stock" xml:space="preserve">
+    <value>सॉफ़्टवेयर का निकाला हुआ स्टॉक</value>
+  </data>
+  <data name="TAX INVOICE / CASH MEMO" xml:space="preserve">
+    <value>कर बिल / कैश मेमो</value>
+  </data>
+  <data name="TOTAL AMOUNT:" xml:space="preserve">
+    <value>कुल रक़म:</value>
+  </data>
+  <data name="Tank Form" xml:space="preserve">
+    <value>टैंक फ़ॉर्म</value>
+  </data>
+  <data name="Tank List" xml:space="preserve">
+    <value>टैंकों की सूची</value>
+  </data>
+  <data name="Tank Name" xml:space="preserve">
+    <value>टैंक का नाम</value>
+  </data>
+  <data name="Tax %" xml:space="preserve">
+    <value>कर %</value>
+  </data>
+  <data name="Test" xml:space="preserve">
+    <value>जाँच</value>
+  </data>
+  <data name="The mobile number registered with us" xml:space="preserve">
+    <value>हमारे यहाँ दर्ज मोबाइल नंबर</value>
+  </data>
+  <data name="Time" xml:space="preserve">
+    <value>समय</value>
+  </data>
+  <data name="Toggle Active" xml:space="preserve">
+    <value>चालू / बंद कीजिए</value>
+  </data>
+  <data name="Total Coupons" xml:space="preserve">
+    <value>कुल कूपन</value>
+  </data>
+  <data name="Total Stock" xml:space="preserve">
+    <value>कुल स्टॉक</value>
+  </data>
+  <data name="Track month-wise salary paid to each employee/operator." xml:space="preserve">
+    <value>हर कर्मचारी को महीने-वार दी गई तनख़्वाह का हिसाब रखिए।</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>प्रकार</value>
+  </data>
+  <data name="Unit" xml:space="preserve">
+    <value>इकाई</value>
+  </data>
+  <data name="Use this page to detail your site's privacy policy." xml:space="preserve">
+    <value>इस पन्ने पर अपनी साइट की निजता नीति लिखिए।</value>
+  </data>
+  <data name="User Form" xml:space="preserve">
+    <value>यूज़र फ़ॉर्म</value>
+  </data>
+  <data name="User Link" xml:space="preserve">
+    <value>यूज़र से जोड़</value>
+  </data>
+  <data name="User List" xml:space="preserve">
+    <value>यूज़र की सूची</value>
+  </data>
+  <data name="Username *" xml:space="preserve">
+    <value>यूज़रनेम *</value>
+  </data>
+  <data name="Valid From" xml:space="preserve">
+    <value>किस तारीख़ से मान्य</value>
+  </data>
+  <data name="Valid To (Optional)" xml:space="preserve">
+    <value>किस तारीख़ तक मान्य (ज़रूरी नहीं)</value>
+  </data>
+  <data name="Validity" xml:space="preserve">
+    <value>मान्यता</value>
+  </data>
+  <data name="Value (&amp;#8377;)" xml:space="preserve">
+    <value>मूल्य (&amp;#8377;)</value>
+  </data>
+  <data name="Value (Rs)" xml:space="preserve">
+    <value>मूल्य (रु.)</value>
+  </data>
+  <data name="Variance" xml:space="preserve">
+    <value>फ़र्क़</value>
+  </data>
+  <data name="Variance (L)" xml:space="preserve">
+    <value>फ़र्क़ (लीटर)</value>
+  </data>
+  <data name="Variance (Ltr)" xml:space="preserve">
+    <value>फ़र्क़ (लीटर)</value>
+  </data>
+  <data name="Variation" xml:space="preserve">
+    <value>फ़र्क़</value>
+  </data>
+  <data name="Variation (Cumul.)" xml:space="preserve">
+    <value>फ़र्क़ (अब तक का)</value>
+  </data>
+  <data name="Variation (Daily)" xml:space="preserve">
+    <value>फ़र्क़ (उस दिन का)</value>
+  </data>
+  <data name="Variation Value" xml:space="preserve">
+    <value>फ़र्क़ का मूल्य</value>
+  </data>
+  <data name="Vehicle" xml:space="preserve">
+    <value>गाड़ी</value>
+  </data>
+  <data name="Vehicle No" xml:space="preserve">
+    <value>गाड़ी नंबर</value>
+  </data>
+  <data name="Vehicle:" xml:space="preserve">
+    <value>गाड़ी:</value>
+  </data>
+  <data name="Vendor" xml:space="preserve">
+    <value>वेंडर</value>
+  </data>
+  <data name="Vendor Form" xml:space="preserve">
+    <value>वेंडर फ़ॉर्म</value>
+  </data>
+  <data name="Vendor List" xml:space="preserve">
+    <value>वेंडरों की सूची</value>
+  </data>
+  <data name="Vendor Name" xml:space="preserve">
+    <value>वेंडर का नाम</value>
+  </data>
+  <data name="View" xml:space="preserve">
+    <value>देखिए</value>
+  </data>
+  <data name="View All Software Features &amp; Modules" xml:space="preserve">
+    <value>सॉफ़्टवेयर की सारी ख़ूबियाँ देखिए</value>
+  </data>
+  <data name="Volume (Ltr)" xml:space="preserve">
+    <value>मात्रा (लीटर)</value>
+  </data>
+  <data name="Walk-in / Generic" xml:space="preserve">
+    <value>आम ग्राहक</value>
+  </data>
+  <data name="We will send an OTP to your registered mobile" xml:space="preserve">
+    <value>हम आपके दर्ज मोबाइल पर OTP भेजेंगे</value>
+  </data>
+  <data name="Year" xml:space="preserve">
+    <value>साल</value>
+  </data>
+  <data name="You can now sign in with your new password." xml:space="preserve">
+    <value>अब आप नए पासवर्ड से लॉगिन कर सकते हैं।</value>
+  </data>
+  <data name="Your Full Name *" xml:space="preserve">
+    <value>आपका पूरा नाम *</value>
+  </data>
+  <data name="by Dip" xml:space="preserve">
+    <value>डिप से</value>
+  </data>
+  <data name="by Meter" xml:space="preserve">
+    <value>मीटर से</value>
+  </data>
+  <data name="e.g. Apex Fuel Station" xml:space="preserve">
+    <value>जैसे — Apex Fuel Station</value>
+  </data>
+  <data name="e.g. BPCL, HPCL, Indian Oil" xml:space="preserve">
+    <value>जैसे — BPCL, HPCL, Indian Oil</value>
+  </data>
+  <data name="e.g. Petrol XP95" xml:space="preserve">
+    <value>जैसे — Petrol XP95</value>
+  </data>
+  <data name="e.g. Rahul Sharma" xml:space="preserve">
+    <value>जैसे — Rahul Sharma</value>
+  </data>
+  <data name="e.g. gupta_pump" xml:space="preserve">
+    <value>जैसे — gupta_pump</value>
+  </data>
+  <data name="Notes" xml:space="preserve">
+    <value>टिप्पणी</value>
+  </data>
+  <data name="Opening Reading" xml:space="preserve">
+    <value>शुरुआती रीडिंग</value>
+  </data>
+  <data name="Open Shift" xml:space="preserve">
+    <value>शिफ़्ट खोलिए</value>
+  </data>
+  <data name="Product" xml:space="preserve">
+    <value>प्रोडक्ट</value>
+  </data>
+  <data name="No pump configured" xml:space="preserve">
+    <value>कोई पंप नहीं बना है</value>
+  </data>
+  <data name="Testing (Ltr)" xml:space="preserve">
+    <value>जाँच (लीटर)</value>
+  </data>
+  <data name="+ Quick Add Party" xml:space="preserve">
+    <value>+ फटाफट पार्टी जोड़िए</value>
+  </data>
+  <data name="7 Days Free Trial Available" xml:space="preserve">
+    <value>7 दिन का मुफ़्त ट्रायल उपलब्ध है</value>
+  </data>
+  <data name="A different man on every nozzle? Track each one separately — so one man&amp;#39;s shortage never hides behind another man&amp;#39;s excess." xml:space="preserve">
+    <value>हर नोज़ल पर अलग आदमी? हर एक का हिसाब अलग रखिए — ताकि एक की कमी दूसरे की बचत के पीछे न छुप जाए।</value>
+  </data>
+  <data name="Built for the person standing at the pump, not for a computer operator." xml:space="preserve">
+    <value>यह पंप पर खड़े आदमी के लिए बना है, कंप्यूटर चलाने वाले के लिए नहीं।</value>
+  </data>
+  <data name="Change number / resend OTP" xml:space="preserve">
+    <value>नंबर बदलिए / OTP दोबारा भेजिए</value>
+  </data>
+  <data name="Change password" xml:space="preserve">
+    <value>पासवर्ड बदलिए</value>
+  </data>
+  <data name="Drive Safely." xml:space="preserve">
+    <value>सँभल कर चलाइए।</value>
+  </data>
+  <data name="Enter the meter reading at the start and end of a shift. Sales, stock and cash are worked out for you." xml:space="preserve">
+    <value>शिफ़्ट के शुरू और आख़िर में मीटर की रीडिंग भर दीजिए। बिक्री, स्टॉक और कैश सॉफ़्टवेयर ख़ुद निकाल देता है।</value>
+  </data>
+  <data name="Every litre accounted for, with the loss shown in rupees — not just litres." xml:space="preserve">
+    <value>हर लीटर का हिसाब, और नुक़सान रुपये में भी दिखता है — सिर्फ़ लीटर में नहीं।</value>
+  </data>
+  <data name="Explore All Software Features" xml:space="preserve">
+    <value>सॉफ़्टवेयर की सारी ख़ूबियाँ देखिए</value>
+  </data>
+  <data name="Forgot password?" xml:space="preserve">
+    <value>पासवर्ड भूल गए?</value>
+  </data>
+  <data name="Get the mobile app" xml:space="preserve">
+    <value>मोबाइल ऐप लीजिए</value>
+  </data>
+  <data name="Go to sign in" xml:space="preserve">
+    <value>लॉगिन पर जाइए</value>
+  </data>
+  <data name="If this number is registered, an OTP has been sent." xml:space="preserve">
+    <value>अगर यह नंबर दर्ज है, तो OTP भेज दिया गया है।</value>
+  </data>
+  <data name="It can result in displaying sensitive information from exceptions to end users." xml:space="preserve">
+    <value>इससे ग़लती की गोपनीय जानकारी उपयोगकर्ता को दिख सकती है।</value>
+  </data>
+  <data name="Know who owes what, and stop a sale before the limit is crossed." xml:space="preserve">
+    <value>किस पर कितना बक़ाया है, यह पता रहे — और सीमा पार होने से पहले ही बिक्री रुक जाए।</value>
+  </data>
+  <data name="No sales yet today." xml:space="preserve">
+    <value>आज अभी तक कोई बिक्री नहीं हुई।</value>
+  </data>
+  <data name="Normal, Premium (XP95), E20, Diesel — each grade keeps its own rate, and each nozzle bills at its own." xml:space="preserve">
+    <value>नॉर्मल, प्रीमियम (XP95), E20, डीज़ल — हर क़िस्म का अपना रेट, और हर नोज़ल उसी रेट पर बिल बनाता है।</value>
+  </data>
+  <data name="OTP not received?" xml:space="preserve">
+    <value>OTP नहीं आया?</value>
+  </data>
+  <data name="Send OTP" xml:space="preserve">
+    <value>OTP भेजिए</value>
+  </data>
+  <data name="Shift Code" xml:space="preserve">
+    <value>शिफ़्ट कोड</value>
+  </data>
+  <data name="Thank you for your interest. The Super Admin has been notified of your request. Our team will contact you shortly to complete your access setup." xml:space="preserve">
+    <value>आपकी रुचि के लिए धन्यवाद। आपकी माँग सुपर एडमिन तक पहुँचा दी गई है। हमारी टीम जल्दी ही आपसे संपर्क करके आपका सेटअप पूरा कर देगी।</value>
+  </data>
+  <data name="The part you only notice when something goes wrong — and then it matters more than anything else." xml:space="preserve">
+    <value>यह हिस्सा तभी याद आता है जब कुछ गड़बड़ हो — और तब यही सबसे ज़्यादा काम आता है।</value>
+  </data>
+  <data name="The registers you actually need — and every one of them exports to Excel." xml:space="preserve">
+    <value>वही रजिस्टर जो सच में चाहिए — और हर एक एक्सेल में डाउनलोड हो जाता है।</value>
+  </data>
+  <data name="This form is for receipt-wise sales entry (credit/customer billing + print). For heavy cash rush, record shift-wise summary and reconciliation by shift close." xml:space="preserve">
+    <value>यह फ़ॉर्म रसीद-वार बिक्री के लिए है (उधार / ग्राहक का बिल और प्रिंट)। ज़्यादा भीड़ हो तो शिफ़्ट-वार हिसाब शिफ़्ट बंद करते समय दर्ज कीजिए।</value>
+  </data>
+  <data name="WhatsApp" xml:space="preserve">
+    <value>व्हाट्सएप</value>
+  </data>
+  <data name="Your people and your day-to-day spending, in the same place as everything else." xml:space="preserve">
+    <value>आपके आदमी और रोज़ का ख़र्च, बाक़ी सब चीज़ों के साथ एक ही जगह।</value>
+  </data>
+  <data name="(auto-loaded)" xml:space="preserve">
+    <value>(अपने आप आया)</value>
+  </data>
+  <data name="Active and closed shifts loaded from API." xml:space="preserve">
+    <value>खुली और बंद, दोनों तरह की शिफ़्टें।</value>
+  </data>
+  <data name="Auto-suggested" xml:space="preserve">
+    <value>अपने आप सुझाया</value>
+  </data>
+  <data name="CLOSED" xml:space="preserve">
+    <value>बंद</value>
+  </data>
+  <data name="Cash Denomination Count" xml:space="preserve">
+    <value>नोट-दर-नोट गिनती</value>
+  </data>
+  <data name="Close Shift" xml:space="preserve">
+    <value>शिफ़्ट बंद कीजिए</value>
+  </data>
+  <data name="Closing Cash" xml:space="preserve">
+    <value>बंद करते समय कैश</value>
+  </data>
+  <data name="Confirm Close Shift" xml:space="preserve">
+    <value>शिफ़्ट बंद करना पक्का कीजिए</value>
+  </data>
+  <data name="Count note by note - the total must match the closing cash." xml:space="preserve">
+    <value>नोट-दर-नोट गिनिए — जोड़ बंद करते समय के कैश से मिलना चाहिए।</value>
+  </data>
+  <data name="Edit Mode — Closed Shift" xml:space="preserve">
+    <value>बदलाव — बंद हो चुकी शिफ़्ट</value>
+  </data>
+  <data name="Enter any discrepancy or shift notes" xml:space="preserve">
+    <value>कोई फ़र्क़ या शिफ़्ट की टिप्पणी लिखिए</value>
+  </data>
+  <data name="No shifts found." xml:space="preserve">
+    <value>कोई शिफ़्ट नहीं मिली।</value>
+  </data>
+  <data name="Nozzle Closing Meter" xml:space="preserve">
+    <value>नोज़ल का आख़िरी मीटर</value>
+  </data>
+  <data name="Nozzle Opening Meter" xml:space="preserve">
+    <value>नोज़ल का शुरुआती मीटर</value>
+  </data>
+  <data name="Opening Cash" xml:space="preserve">
+    <value>शुरुआती कैश</value>
+  </data>
+  <data name="Please enter the closing cash amount and any relevant remarks to reconcile this shift." xml:space="preserve">
+    <value>शिफ़्ट का हिसाब मिलाने के लिए आख़िरी कैश और ज़रूरी टिप्पणी भरिए।</value>
+  </data>
+  <data name="Remarks / Notes" xml:space="preserve">
+    <value>टिप्पणी</value>
+  </data>
+  <data name="Save Count" xml:space="preserve">
+    <value>गिनती सेव कीजिए</value>
+  </data>
+  <data name="Shift Date" xml:space="preserve">
+    <value>शिफ़्ट की तारीख़</value>
+  </data>
+  <data name="Shift List" xml:space="preserve">
+    <value>शिफ़्टों की सूची</value>
+  </data>
+  <data name="Shift is closed" xml:space="preserve">
+    <value>बंद</value>
+  </data>
+  <data name="Shift is open" xml:space="preserve">
+    <value>खुली</value>
+  </data>
+  <data name="Shift remarks" xml:space="preserve">
+    <value>शिफ़्ट की टिप्पणी</value>
+  </data>
+  <data name="Suggested based on today's existing shifts. You can change it manually." xml:space="preserve">
+    <value>आज की मौजूदा शिफ़्टों के हिसाब से सुझाया गया है। चाहें तो ख़ुद बदल दीजिए।</value>
+  </data>
+  <data name="Total Counted" xml:space="preserve">
+    <value>कुल गिना हुआ</value>
+  </data>
+  <data name="e.g. A, B, remark..." xml:space="preserve">
+    <value>जैसे — A, B, टिप्पणी...</value>
+  </data>
+  <data name="(Leave blank to keep current)" xml:space="preserve">
+    <value>(ख़ाली छोड़ेंगे तो पुराना ही रहेगा)</value>
+  </data>
+  <data name="(Required)" xml:space="preserve">
+    <value>(ज़रूरी है)</value>
+  </data>
+  <data name="1 Year Plan" xml:space="preserve">
+    <value>1 साल का प्लान</value>
+  </data>
+  <data name="15-digit GST Code" xml:space="preserve">
+    <value>15 अंकों का GST कोड</value>
+  </data>
+  <data name="6 Month Plan" xml:space="preserve">
+    <value>6 महीने का प्लान</value>
+  </data>
+  <data name="6 Months" xml:space="preserve">
+    <value>6 महीने</value>
+  </data>
+  <data name="7 Days (Trial)" xml:space="preserve">
+    <value>7 दिन (ट्रायल)</value>
+  </data>
+  <data name="Account created!" xml:space="preserve">
+    <value>खाता बन गया!</value>
+  </data>
+  <data name="Activate" xml:space="preserve">
+    <value>चालू कीजिए</value>
+  </data>
+  <data name="Activate tenant" xml:space="preserve">
+    <value>पंप चालू कीजिए</value>
+  </data>
+  <data name="Active Status" xml:space="preserve">
+    <value>चालू है या नहीं</value>
+  </data>
+  <data name="Add New Party" xml:space="preserve">
+    <value>नई पार्टी जोड़िए</value>
+  </data>
+  <data name="Add New Tank" xml:space="preserve">
+    <value>नया टैंक जोड़िए</value>
+  </data>
+  <data name="Add Vendor" xml:space="preserve">
+    <value>वेंडर जोड़िए</value>
+  </data>
+  <data name="Add to stock" xml:space="preserve">
+    <value>स्टॉक में जोड़िए</value>
+  </data>
+  <data name="Admin Password" xml:space="preserve">
+    <value>एडमिन का पासवर्ड</value>
+  </data>
+  <data name="Admin Username" xml:space="preserve">
+    <value>एडमिन का यूज़रनेम</value>
+  </data>
+  <data name="Approve" xml:space="preserve">
+    <value>मंज़ूर कीजिए</value>
+  </data>
+  <data name="Approve recharge" xml:space="preserve">
+    <value>रिचार्ज मंज़ूर कीजिए</value>
+  </data>
+  <data name="Approved" xml:space="preserve">
+    <value>मंज़ूर</value>
+  </data>
+  <data name="B2B (Corporate)" xml:space="preserve">
+    <value>B2B (कंपनी)</value>
+  </data>
+  <data name="Bought" xml:space="preserve">
+    <value>ख़रीदा</value>
+  </data>
+  <data name="Changing..." xml:space="preserve">
+    <value>बदल रहा है...</value>
+  </data>
+  <data name="Could not load users." xml:space="preserve">
+    <value>यूज़र नहीं आ सके।</value>
+  </data>
+  <data name="Create New Tenant" xml:space="preserve">
+    <value>नया पंप बनाइए</value>
+  </data>
+  <data name="Create New Tenant Subscription" xml:space="preserve">
+    <value>नए पंप की सदस्यता बनाइए</value>
+  </data>
+  <data name="Create Party" xml:space="preserve">
+    <value>पार्टी बनाइए</value>
+  </data>
+  <data name="Create Tank" xml:space="preserve">
+    <value>टैंक बनाइए</value>
+  </data>
+  <data name="Create Tenant" xml:space="preserve">
+    <value>पंप बनाइए</value>
+  </data>
+  <data name="Creating account..." xml:space="preserve">
+    <value>खाता बन रहा है...</value>
+  </data>
+  <data name="Credit Customer" xml:space="preserve">
+    <value>उधार वाला ग्राहक</value>
+  </data>
+  <data name="Custom" xml:space="preserve">
+    <value>अपना बनाया</value>
+  </data>
+  <data name="Edit Closed Shift" xml:space="preserve">
+    <value>बंद शिफ़्ट बदलिए</value>
+  </data>
+  <data name="Error loading history" xml:space="preserve">
+    <value>इतिहास नहीं आ सका</value>
+  </data>
+  <data name="Error: One or more nozzle closing readings are less than the opening reading." xml:space="preserve">
+    <value>ग़लती: किसी नोज़ल की आख़िरी रीडिंग शुरुआती रीडिंग से कम है।</value>
+  </data>
+  <data name="Extend Subscription / Trial" xml:space="preserve">
+    <value>सदस्यता या ट्रायल बढ़ाइए</value>
+  </data>
+  <data name="Extend Trial" xml:space="preserve">
+    <value>ट्रायल बढ़ाइए</value>
+  </data>
+  <data name="Failed to load data." xml:space="preserve">
+    <value>डेटा नहीं आ सका।</value>
+  </data>
+  <data name="Fleet Customer" xml:space="preserve">
+    <value>फ़्लीट ग्राहक</value>
+  </data>
+  <data name="For Credit sale, please select a party." xml:space="preserve">
+    <value>उधार बिक्री के लिए पार्टी चुननी ज़रूरी है।</value>
+  </data>
+  <data name="ID" xml:space="preserve">
+    <value>क्रमांक</value>
+  </data>
+  <data name="Initial Admin Account" xml:space="preserve">
+    <value>पहला एडमिन खाता</value>
+  </data>
+  <data name="Initial Stock (Ltrs)" xml:space="preserve">
+    <value>शुरुआती स्टॉक (लीटर)</value>
+  </data>
+  <data name="Invoice / reference" xml:space="preserve">
+    <value>बिल / संदर्भ</value>
+  </data>
+  <data name="Last Entry" xml:space="preserve">
+    <value>पिछली एंट्री</value>
+  </data>
+  <data name="Last Login" xml:space="preserve">
+    <value>पिछला लॉगिन</value>
+  </data>
+  <data name="Leave 0 if entering a new empty tank." xml:space="preserve">
+    <value>नया ख़ाली टैंक हो तो 0 रहने दीजिए।</value>
+  </data>
+  <data name="Left to sell" xml:space="preserve">
+    <value>बेचने को बचा</value>
+  </data>
+  <data name="Loading data..." xml:space="preserve">
+    <value>डेटा आ रहा है...</value>
+  </data>
+  <data name="Mark as done" xml:space="preserve">
+    <value>हो गया, ऐसा लगाइए</value>
+  </data>
+  <data name="Messages bought" xml:space="preserve">
+    <value>ख़रीदे गए संदेश</value>
+  </data>
+  <data name="Name shown on UPI" xml:space="preserve">
+    <value>UPI पर दिखने वाला नाम</value>
+  </data>
+  <data name="Never" xml:space="preserve">
+    <value>कभी नहीं</value>
+  </data>
+  <data name="New Valid Upto Date" xml:space="preserve">
+    <value>नई अंतिम तारीख़</value>
+  </data>
+  <data name="No entries" xml:space="preserve">
+    <value>कोई एंट्री नहीं</value>
+  </data>
+  <data name="No history available" xml:space="preserve">
+    <value>कोई इतिहास नहीं है</value>
+  </data>
+  <data name="No parties found." xml:space="preserve">
+    <value>कोई पार्टी नहीं मिली।</value>
+  </data>
+  <data name="No recharge requests yet." xml:space="preserve">
+    <value>अभी तक कोई रिचार्ज की माँग नहीं आई।</value>
+  </data>
+  <data name="No tanks found." xml:space="preserve">
+    <value>कोई टैंक नहीं मिला।</value>
+  </data>
+  <data name="No tenants found." xml:space="preserve">
+    <value>कोई पंप नहीं मिला।</value>
+  </data>
+  <data name="Owner" xml:space="preserve">
+    <value>मालिक</value>
+  </data>
+  <data name="Paid" xml:space="preserve">
+    <value>चुका दिया</value>
+  </data>
+  <data name="Party Details" xml:space="preserve">
+    <value>पार्टी की जानकारी</value>
+  </data>
+  <data name="Payment &amp;amp; pricing" xml:space="preserve">
+    <value>भुगतान और दाम</value>
+  </data>
+  <data name="Pending" xml:space="preserve">
+    <value>बाक़ी</value>
+  </data>
+  <data name="Provider" xml:space="preserve">
+    <value>सेवा देने वाला</value>
+  </data>
+  <data name="Quick Select Subscription" xml:space="preserve">
+    <value>सदस्यता फटाफट चुनिए</value>
+  </data>
+  <data name="Recharge requests" xml:space="preserve">
+    <value>रिचार्ज की माँगें</value>
+  </data>
+  <data name="Record a purchase" xml:space="preserve">
+    <value>ख़रीद दर्ज कीजिए</value>
+  </data>
+  <data name="Reject" xml:space="preserve">
+    <value>मना कीजिए</value>
+  </data>
+  <data name="Reject recharge" xml:space="preserve">
+    <value>रिचार्ज पर मना कीजिए</value>
+  </data>
+  <data name="Requested On" xml:space="preserve">
+    <value>किस दिन माँगा</value>
+  </data>
+  <data name="Sales (This Month)" xml:space="preserve">
+    <value>बिक्री (इस महीने)</value>
+  </data>
+  <data name="Save Purchase" xml:space="preserve">
+    <value>ख़रीद सेव कीजिए</value>
+  </data>
+  <data name="Saving..." xml:space="preserve">
+    <value>सेव हो रहा है...</value>
+  </data>
+  <data name="Search by name or mobile..." xml:space="preserve">
+    <value>नाम या मोबाइल से खोजिए...</value>
+  </data>
+  <data name="Select Product..." xml:space="preserve">
+    <value>प्रोडक्ट चुनिए...</value>
+  </data>
+  <data name="Select Type..." xml:space="preserve">
+    <value>प्रकार चुनिए...</value>
+  </data>
+  <data name="Sending request..." xml:space="preserve">
+    <value>माँग भेजी जा रही है...</value>
+  </data>
+  <data name="Sending..." xml:space="preserve">
+    <value>भेजा जा रहा है...</value>
+  </data>
+  <data name="Server error - please try again." xml:space="preserve">
+    <value>सर्वर में दिक़्क़त — दोबारा कोशिश कीजिए।</value>
+  </data>
+  <data name="Server error while loading data." xml:space="preserve">
+    <value>डेटा लाते समय सर्वर में दिक़्क़त हुई।</value>
+  </data>
+  <data name="Showing Page 1" xml:space="preserve">
+    <value>पन्ना 1 दिख रहा है</value>
+  </data>
+  <data name="Signing In..." xml:space="preserve">
+    <value>लॉगिन हो रहा है...</value>
+  </data>
+  <data name="So the owner can check it matches" xml:space="preserve">
+    <value>ताकि मालिक मिलान कर सके</value>
+  </data>
+  <data name="Sold to pumps" xml:space="preserve">
+    <value>पंपों को बेचा</value>
+  </data>
+  <data name="Suspend" xml:space="preserve">
+    <value>रोक दीजिए</value>
+  </data>
+  <data name="Suspend tenant" xml:space="preserve">
+    <value>पंप रोक दीजिए</value>
+  </data>
+  <data name="System" xml:space="preserve">
+    <value>सिस्टम का</value>
+  </data>
+  <data name="Tank Details" xml:space="preserve">
+    <value>टैंक की जानकारी</value>
+  </data>
+  <data name="Tenant / Business Name" xml:space="preserve">
+    <value>पंप / कारोबार का नाम</value>
+  </data>
+  <data name="Tenant Name" xml:space="preserve">
+    <value>पंप का नाम</value>
+  </data>
+  <data name="Tenant Subscriptions (Super Admin)" xml:space="preserve">
+    <value>पंपों की सदस्यता (सुपर एडमिन)</value>
+  </data>
+  <data name="This user will be created as the Admin for this tenant." xml:space="preserve">
+    <value>यह यूज़र इस पंप का एडमिन बनेगा।</value>
+  </data>
+  <data name="UPI ref" xml:space="preserve">
+    <value>UPI संदर्भ</value>
+  </data>
+  <data name="Update Party" xml:space="preserve">
+    <value>पार्टी बदलिए</value>
+  </data>
+  <data name="Update Purchase" xml:space="preserve">
+    <value>ख़रीद बदलिए</value>
+  </data>
+  <data name="Update Tank" xml:space="preserve">
+    <value>टैंक बदलिए</value>
+  </data>
+  <data name="Update Vendor" xml:space="preserve">
+    <value>वेंडर बदलिए</value>
+  </data>
+  <data name="Used by pumps" xml:space="preserve">
+    <value>पंपों ने इस्तेमाल किया</value>
+  </data>
+  <data name="Users / Password" xml:space="preserve">
+    <value>यूज़र / पासवर्ड</value>
+  </data>
+  <data name="Valid Upto" xml:space="preserve">
+    <value>कब तक मान्य</value>
+  </data>
+  <data name="Valid Upto (Trial)" xml:space="preserve">
+    <value>कब तक मान्य (ट्रायल)</value>
+  </data>
+  <data name="e.g. Acme Fleet Transports" xml:space="preserve">
+    <value>जैसे — Acme Fleet Transports</value>
+  </data>
+  <data name="Rate (Rs/L)" xml:space="preserve">
+    <value>रेट (₹/ली.)</value>
+  </data>
+  <data name="Operations Dashboard" xml:space="preserve">
+    <value>डैशबोर्ड</value>
+  </data>
+  <data name="Today" xml:space="preserve">
+    <value>आज</value>
+  </data>
+  <data name="active parties" xml:space="preserve">
+    <value>चालू पार्टियाँ</value>
+  </data>
+  <data name="Active Shifts" xml:space="preserve">
+    <value>खुली शिफ़्टें</value>
+  </data>
+  <data name="No open shift right now." xml:space="preserve">
+    <value>अभी कोई शिफ़्ट खुली नहीं है।</value>
+  </data>
+  <data name="All Sales" xml:space="preserve">
+    <value>सारी बिक्री</value>
+  </data>
+  <data name="Top Outstanding" xml:space="preserve">
+    <value>सबसे ज़्यादा बक़ाया</value>
+  </data>
+  <data name="View All" xml:space="preserve">
+    <value>सब देखिए</value>
+  </data>
+  <data name="Tank Stock Status" xml:space="preserve">
+    <value>टैंक का स्टॉक</value>
+  </data>
+  <data name="All tanks above safe level." xml:space="preserve">
+    <value>सभी टैंक सुरक्षित स्तर से ऊपर हैं।</value>
+  </data>
+  <data name="filled" xml:space="preserve">
+    <value>भरा है</value>
+  </data>
+  <data name="Buy Stock" xml:space="preserve">
+    <value>स्टॉक ख़रीदिए</value>
+  </data>
+  <data name="No tanks added yet." xml:space="preserve">
+    <value>अभी कोई टैंक नहीं जुड़ा है।</value>
+  </data>
+  <data name="of" xml:space="preserve">
+    <value>में से</value>
+  </data>
+  <data name="Page" xml:space="preserve">
+    <value>पन्ना</value>
+  </data>
+  <data name="per page" xml:space="preserve">
+    <value>प्रति पन्ना</value>
+  </data>
+  <data name="Rows per page" xml:space="preserve">
+    <value>एक पन्ने में कितनी पंक्तियाँ</value>
+  </data>
+  <data name="Reading date" xml:space="preserve">
+    <value>नाप की तारीख़</value>
+  </data>
+  <data name="Forgot a day? Just pick that date - the book stock of that day is used." xml:space="preserve">
+    <value>कोई दिन छूट गया? बस वही तारीख़ चुन लीजिए — उसी दिन का किताबी स्टॉक लिया जाएगा।</value>
+  </data>
+  <data name="No reading has changed, so this shift will be saved with zero sale. Fill the closing readings, or press the button again to close it anyway." xml:space="preserve">
+    <value>किसी भी नोज़ल की रीडिंग नहीं बदली, इसलिए यह शिफ़्ट शून्य बिक्री पर बंद होगी। आख़िरी रीडिंग भरिए, या बटन दोबारा दबाकर फिर भी बंद कीजिए।</value>
+  </data>
+  <data name="Close anyway - nothing was sold" xml:space="preserve">
+    <value>फिर भी बंद कीजिए — कुछ नहीं बिका</value>
+  </data>
+  <data name="(closed)" xml:space="preserve">
+    <value>(बंद)</value>
+  </data>
+  <data name="No shift found yet. Open a shift first if you want to link this entry." xml:space="preserve">
+    <value>अभी कोई शिफ़्ट नहीं मिली। जोड़ना हो तो पहले शिफ़्ट खोलिए।</value>
+  </data>
+  <data name="Pick the shift of the day this belongs to - closed days are listed too. Only linked entries count towards that shift's cash." xml:space="preserve">
+    <value>जिस दिन की यह एंट्री है, उसी दिन की शिफ़्ट चुनिए — बंद हो चुके दिन भी सूची में हैं। जुड़ी हुई एंट्री ही उस शिफ़्ट के कैश में गिनी जाती है।</value>
+  </data>
+  <data name="No shift found yet. The reading will still be saved, just not linked to any shift." xml:space="preserve">
+    <value>अभी कोई शिफ़्ट नहीं मिली। रीडिंग फिर भी सेव हो जाएगी, बस किसी शिफ़्ट से जुड़ेगी नहीं।</value>
+  </data>
+  <data name="No shift found yet." xml:space="preserve">
+    <value>अभी कोई शिफ़्ट नहीं मिली।</value>
+  </data>
+  <data name="Support Console" xml:space="preserve">
+    <value>सपोर्ट कंसोल</value>
+  </data>
+  <data name="Fix an owner's shift without going into the database." xml:space="preserve">
+    <value>किसी भी पंप की शिफ़्ट यहीं से ठीक कीजिए — डेटाबेस में जाने की ज़रूरत नहीं।</value>
+  </data>
+  <data name="Back to tenants" xml:space="preserve">
+    <value>पंपों की सूची पर वापस</value>
+  </data>
+  <data name="Pump owner" xml:space="preserve">
+    <value>पंप का मालिक</value>
+  </data>
+  <data name="-- Select an owner --" xml:space="preserve">
+    <value>-- मालिक चुनिए --</value>
+  </data>
+  <data name="Show last" xml:space="preserve">
+    <value>पिछले कितने दिन</value>
+  </data>
+  <data name="Pick an owner to begin" xml:space="preserve">
+    <value>शुरू करने के लिए मालिक चुनिए</value>
+  </data>
+  <data name="You will see that owner's shifts, what is attached to each one, and what can safely be fixed." xml:space="preserve">
+    <value>उस मालिक की शिफ़्टें दिखेंगी — हर एक से क्या-क्या जुड़ा है, और किसे सुरक्षित रूप से ठीक किया जा सकता है।</value>
+  </data>
+  <data name="No shifts in this period" xml:space="preserve">
+    <value>इस अवधि में कोई शिफ़्ट नहीं</value>
+  </data>
+  <data name="Try a longer period from the dropdown above." xml:space="preserve">
+    <value>ऊपर से बड़ी अवधि चुन कर देखिए।</value>
+  </data>
+  <data name="Reopen" xml:space="preserve">
+    <value>दोबारा खोलिए</value>
+  </data>
+  <data name="clears the closing readings and puts the shift back to open, so the owner can enter the right readings. Blocked once the shift has moved tank stock." xml:space="preserve">
+    <value>आख़िरी रीडिंग हटा कर शिफ़्ट वापस खोल देता है, ताकि मालिक सही रीडिंग भर सके। जिस शिफ़्ट से स्टॉक हिल चुका है, उस पर यह नहीं चलेगा।</value>
+  </data>
+  <data name="only for a shift that is truly empty. Anything attached to it - a sale, cash, expense, dip or stock - blocks the delete." xml:space="preserve">
+    <value>सिर्फ़ उस शिफ़्ट के लिए जिसमें सच में कुछ नहीं है। कोई बिक्री, कैश, ख़र्च, डिप या स्टॉक जुड़ा हो तो हटाना रुक जाता है।</value>
+  </data>
+  <data name="Sale" xml:space="preserve">
+    <value>बिक्री</value>
+  </data>
+  <data name="Readings" xml:space="preserve">
+    <value>रीडिंग</value>
+  </data>
+  <data name="Attached" xml:space="preserve">
+    <value>क्या जुड़ा है</value>
+  </data>
+  <data name="closed with no sale" xml:space="preserve">
+    <value>बिना बिक्री के बंद</value>
+  </data>
+  <data name="bills" xml:space="preserve">
+    <value>बिल</value>
+  </data>
+  <data name="expenses" xml:space="preserve">
+    <value>ख़र्च</value>
+  </data>
+  <data name="dips" xml:space="preserve">
+    <value>डिप</value>
+  </data>
+  <data name="stock rows" xml:space="preserve">
+    <value>स्टॉक लाइनें</value>
+  </data>
+  <data name="nothing" xml:space="preserve">
+    <value>कुछ नहीं</value>
+  </data>
+  <data name="nothing to fix" xml:space="preserve">
+    <value>कुछ ठीक करने को नहीं</value>
+  </data>
+  <data name="Reopen this shift? The closing readings will be cleared." xml:space="preserve">
+    <value>यह शिफ़्ट दोबारा खोलें? आख़िरी रीडिंग हट जाएगी।</value>
+  </data>
+  <data name="Delete this empty shift? This cannot be undone." xml:space="preserve">
+    <value>यह ख़ाली शिफ़्ट हटा दें? यह वापस नहीं आएगी।</value>
+  </data>
+  <data name="Meter chain" xml:space="preserve">
+    <value>मीटर की कड़ी</value>
+  </data>
+  <data name="Each shift's opening reading should match the previous shift's closing reading." xml:space="preserve">
+    <value>हर शिफ़्ट की शुरुआती रीडिंग पिछली शिफ़्ट की आख़िरी रीडिंग से मिलनी चाहिए।</value>
+  </data>
+  <data name="Every nozzle joins up. Nothing broken." xml:space="preserve">
+    <value>हर नोज़ल की कड़ी जुड़ी हुई है। कहीं कुछ टूटा नहीं।</value>
+  </data>
+  <data name="break(s) found. The fuel in between is not recorded anywhere." xml:space="preserve">
+    <value>जगह कड़ी टूटी है। बीच का तेल कहीं दर्ज ही नहीं है।</value>
+  </data>
+  <data name="Gap" xml:space="preserve">
+    <value>फ़र्क़</value>
+  </data>
+  <data name="Party balances" xml:space="preserve">
+    <value>पार्टियों का बक़ाया</value>
+  </data>
+  <data name="Each party's outstanding is a running total. If it ever drifts from the ledger, this recounts every party from their own entries." xml:space="preserve">
+    <value>हर पार्टी का बक़ाया एक चलता हुआ जोड़ है। कभी वह खाते से अलग हो जाए, तो यह हर पार्टी का हिसाब उसके अपने खाते से दोबारा गिन देता है।</value>
+  </data>
+  <data name="Recount from ledger" xml:space="preserve">
+    <value>खाते से दोबारा गिनिए</value>
+  </data>
+  <data name="Recount every party's outstanding from their ledger?" xml:space="preserve">
+    <value>हर पार्टी का बक़ाया उसके खाते से दोबारा गिनें?</value>
+  </data>
+  <data name="Recount" xml:space="preserve">
+    <value>दोबारा गिनिए</value>
+  </data>
+  <data name="Safe to run any time - it only reads the ledger and writes the total back." xml:space="preserve">
+    <value>कभी भी चला सकते हैं — यह सिर्फ़ खाता पढ़ता है और जोड़ वापस लिख देता है।</value>
+  </data>
+  <data name="Stock Checked" xml:space="preserve">
+    <value>स्टॉक कब-कब नापा</value>
+  </data>
+  <data name="Tank dip (at closing)" xml:space="preserve">
+    <value>टैंक की डिप (शिफ़्ट बंद होने पर)</value>
+  </data>
+  <data name="Measure each tank after this shift and write the litres from the dip chart. The difference shows as you type - the same number the DSR will show." xml:space="preserve">
+    <value>इस शिफ़्ट के बाद हर टैंक नापिए और डिप चार्ट से लीटर लिखिए। लिखते ही फ़र्क़ दिख जाएगा — वही जो DSR में आएगा।</value>
+  </data>
+  <data name="This is a very big difference. Check the litres - is it the previous day's number?" xml:space="preserve">
+    <value>यह बहुत बड़ा फ़र्क़ है। लीटर दोबारा देखिए — कहीं पिछले दिन का नंबर तो नहीं लिख दिया?</value>
+  </data>
+  <data name="Shift closed successfully." xml:space="preserve">
+    <value>शिफ़्ट बंद हो गई।</value>
+  </data>
+  <data name="Dip saved" xml:space="preserve">
+    <value>डिप सेव हो गई</value>
+  </data>
+  <data name="But the dip was not saved" xml:space="preserve">
+    <value>पर डिप सेव नहीं हुई</value>
+  </data>
+  <data name="Daily dip can now be entered in the Close Shift form itself. Use this page for a missed day or a correction." xml:space="preserve">
+    <value>रोज़ की डिप अब शिफ़्ट बंद करने वाले फ़ॉर्म में ही डाल सकते हैं। यह पेज छूटे हुए दिन या सुधार के लिए है।</value>
+  </data>
+  <data name="This day's shift is still open, so its sale is not in the book stock yet. Close the shift first - or enter the dip in the Close Shift form." xml:space="preserve">
+    <value>इस दिन की शिफ़्ट अभी खुली है, इसलिए उसकी बिक्री बुक स्टॉक में नहीं घटी है। पहले शिफ़्ट बंद कीजिए — या डिप शिफ़्ट बंद करने वाले फ़ॉर्म में ही डालिए।</value>
+  </data>
+  <data name="Your plan has expired. Please contact support to renew." xml:space="preserve">
+    <value>आपका प्लान ख़त्म हो गया है। रिन्यू कराने के लिए सपोर्ट से बात कीजिए।</value>
+  </data>
+  <data name="This account has been suspended. Please contact support." xml:space="preserve">
+    <value>यह खाता बंद कर दिया गया है। सपोर्ट से बात कीजिए।</value>
+  </data>
+  <data name="Too many failed login attempts. Try again after {0} minutes." xml:space="preserve">
+    <value>बहुत बार ग़लत पासवर्ड डाला गया। {0} मिनट बाद फिर कोशिश कीजिए।</value>
+  </data>
+  <data name="Too many failed login attempts. Please try again later." xml:space="preserve">
+    <value>बहुत बार ग़लत पासवर्ड डाला गया। थोड़ी देर बाद फिर कोशिश कीजिए।</value>
+  </data>
+  <data name="Invalid username or password." xml:space="preserve">
+    <value>यूज़रनेम या पासवर्ड ग़लत है।</value>
+  </data>
+  <data name="Username and password are required." xml:space="preserve">
+    <value>यूज़रनेम और पासवर्ड दोनों भरिए।</value>
+  </data>
+  <data name="Unable to login." xml:space="preserve">
+    <value>लॉगिन नहीं हो पाया।</value>
+  </data>
+  <data name="API unreachable. Check API server is running." xml:space="preserve">
+    <value>सर्वर से संपर्क नहीं हो पा रहा। थोड़ी देर बाद कोशिश कीजिए।</value>
+  </data>
+  <data name="Login request timed out." xml:space="preserve">
+    <value>सर्वर ने जवाब देने में बहुत देर लगाई। दोबारा कोशिश कीजिए।</value>
+  </data>
+  <data name="Tank dip is not filled. If this is the last shift of the day, fill the dip below - or press the button again to close without a dip." xml:space="preserve">
+    <value>टैंक की डिप नहीं भरी। अगर यह दिन की आख़िरी शिफ़्ट है तो नीचे डिप भरिए — या बटन दोबारा दबाकर बिना डिप बंद कीजिए।</value>
+  </data>
+  <data name="Close without dip" xml:space="preserve">
+    <value>बिना डिप बंद कीजिए</value>
+  </data>
+  <data name="No shift on these days:" xml:space="preserve">
+    <value>इन दिनों की शिफ़्ट नहीं बनी:</value>
+  </data>
+  <data name="Fill those days first, oldest first - otherwise their sale gets added to this day. If the pump was closed on those days, it is fine." xml:space="preserve">
+    <value>पहले वो दिन भरिए, सबसे पुराना पहले — वरना उन दिनों की बिक्री भी इसी दिन में जुड़ जाएगी। अगर उन दिनों पंप बंद था तो कोई बात नहीं।</value>
+  </data>
+  <data name="A later day already has a shift:" xml:space="preserve">
+    <value>आगे के दिन की शिफ़्ट पहले से बनी है:</value>
+  </data>
+  <data name="Adding a day in between makes that later day's opening reading wrong, and its sale gets counted twice. Do not continue - call support." xml:space="preserve">
+    <value>बीच में दिन डालने से आगे वाले दिन की शुरुआती रीडिंग ग़लत हो जाएगी और बिक्री दो बार गिनी जाएगी। आगे मत बढ़िए — सपोर्ट को फ़ोन कीजिए।</value>
+  </data>
+  <data name="This date is in the future. Please check the date." xml:space="preserve">
+    <value>यह तारीख़ आगे की है। तारीख़ दोबारा देखिए।</value>
+  </data>
+  <data name="How to enter a missed (earlier) day" xml:space="preserve">
+    <value>छूटा हुआ (पुराना) दिन कैसे भरें</value>
+  </data>
+  <data name="Start from the OLDEST missed day and go one day at a time. Open today's shift only at the end." xml:space="preserve">
+    <value>सबसे पुराने छूटे दिन से शुरू कीजिए और एक-एक दिन आगे बढ़िए। आज की शिफ़्ट सबसे आख़िर में खोलिए।</value>
+  </data>
+  <data name="For each day: open the shift → enter that day's sales, credit and expenses → close the shift with that day's closing readings and the tank dip." xml:space="preserve">
+    <value>हर दिन: शिफ़्ट खोलिए → उस दिन की बिक्री, उधार और ख़र्च डालिए → उस दिन की आख़िरी रीडिंग और टैंक की डिप के साथ शिफ़्ट बंद कीजिए।</value>
+  </data>
+  <data name="If a tanker was unloaded that day, save the Purchase first, then close the shift." xml:space="preserve">
+    <value>उस दिन टैंकर उतरा था तो पहले ख़रीद (Purchase) सेव कीजिए, फिर शिफ़्ट बंद कीजिए।</value>
+  </data>
+  <data name="In your register, the dip written at the top of the NEXT day's page is this day's closing dip." xml:space="preserve">
+    <value>आपके रजिस्टर में अगले दिन के पन्ने पर सबसे ऊपर लिखी डिप ही इस दिन की आख़िरी (closing) डिप है।</value>
+  </data>
+  <data name="If a later day's shift already exists, do not add a day in between - call support." xml:space="preserve">
+    <value>आगे के दिन की शिफ़्ट पहले से बनी हो तो बीच में दिन मत डालिए — सपोर्ट को फ़ोन कीजिए।</value>
+  </data>
+  <data name="Tanker unloaded today? Save the Purchase first - otherwise the difference here will look very large." xml:space="preserve">
+    <value>आज टैंकर उतरा? पहले ख़रीद (Purchase) सेव कीजिए — वरना यहाँ फ़र्क़ बहुत बड़ा दिखेगा।</value>
+  </data>
+  <data name="Tank stock is added on this date. Save it before closing that day's shift. If the tanker was unloaded on a different day than the bill, the DSR shows + on one day and - on the other (the total stays correct)." xml:space="preserve">
+    <value>टैंक में स्टॉक इसी तारीख़ पर जुड़ता है। उस दिन की शिफ़्ट बंद करने से पहले यह एंट्री कर लीजिए। अगर टैंकर बिल की तारीख़ से अलग दिन उतरा हो, तो DSR में एक दिन + और दूसरे दिन − दिखेगा (दोनों का जोड़ सही रहेगा)।</value>
+  </data>
+  <data name="Sale / Purchase Register" xml:space="preserve">
+    <value>बिक्री–ख़रीद रजिस्टर</value>
+  </data>
+  <data name="Print / PDF" xml:space="preserve">
+    <value>प्रिंट / PDF</value>
+  </data>
+  <data name="No data for this month." xml:space="preserve">
+    <value>इस महीने का कोई डेटा नहीं।</value>
+  </data>
+  <data name="Delete this purchase? The tanker's quantity will be removed from the tank stock as well." xml:space="preserve">
+    <value>यह ख़रीद हटा दें? टैंकर की मात्रा टैंक के स्टॉक से भी घट जाएगी।</value>
+  </data>
+  <data name="Tip: in the print window, untick &quot;Headers and footers&quot; so the web address and date do not print." xml:space="preserve">
+    <value>सुझाव: प्रिंट विंडो में "Headers and footers" का टिक हटा दीजिए, तब पते (URL) और तारीख़ नहीं छपेंगे।</value>
+  </data>
+  <data name="This bill date is in the future. Please check the date." xml:space="preserve">
+    <value>यह बिल की तारीख़ आगे की है। तारीख़ दोबारा देखिए।</value>
+  </data>
+  <data name="This bill date is more than a month old. Check the month - the stock will be added on that old date." xml:space="preserve">
+    <value>यह बिल की तारीख़ एक महीने से ज़्यादा पुरानी है। महीना देख लीजिए — स्टॉक उसी पुरानी तारीख़ पर जुड़ेगा।</value>
+  </data>
+  <data name="Bill amount (Rs)" xml:space="preserve">
+    <value>बिल की रकम (₹)</value>
+  </data>
+  <data name="Write the amount for each product exactly as on the bill, including VAT and recovery. The rate per litre is worked out for you." xml:space="preserve">
+    <value>हर प्रोडक्ट की वही रकम लिखिए जो बिल पर है — VAT और रिकवरी मिलाकर। प्रति लीटर रेट अपने आप निकल आएगा।</value>
+  </data>
+  <data name="Bill total" xml:space="preserve">
+    <value>बिल का कुल</value>
+  </data>
+  <data name="This should match the Total Value printed on the bill." xml:space="preserve">
+    <value>यह बिल पर छपे Total Value से मिलना चाहिए।</value>
+  </data>
+  <data name="Add up base + VAT + recovery" xml:space="preserve">
+    <value>मूल + VAT + रिकवरी जोड़ कर निकालें</value>
+  </data>
+  <data name="Recovery / other" xml:space="preserve">
+    <value>रिकवरी / अन्य</value>
+  </data>
+  <data name="per litre" xml:space="preserve">
+    <value>प्रति लीटर</value>
+  </data>
+  <data name="Selling rate" xml:space="preserve">
+    <value>बिक्री का रेट</value>
+  </data>
+  <data name="This rate is very different from the selling rate. Check the quantity and the amount." xml:space="preserve">
+    <value>यह रेट बिक्री के रेट से बहुत अलग है। मात्रा और रकम दोबारा देख लीजिए।</value>
+  </data>
+  <data name="Opening balance" xml:space="preserve">
+    <value>पुराना बाक़ी</value>
+  </data>
+  <data name="Credit given" xml:space="preserve">
+    <value>उधार दिया</value>
+  </data>
+  <data name="Payment received" xml:space="preserve">
+    <value>जमा आया</value>
+  </data>
+  <data name="Balance now" xml:space="preserve">
+    <value>अभी का बाक़ी</value>
+  </data>
+  <data name="Adjustment (+)" xml:space="preserve">
+    <value>सुधार (+)</value>
+  </data>
+  <data name="Adjustment (-)" xml:space="preserve">
+    <value>सुधार (−)</value>
+  </data>
+  <data name="Bill cancelled" xml:space="preserve">
+    <value>बिल रद्द</value>
+  </data>
+  <data name="Dues from before the software" xml:space="preserve">
+    <value>सॉफ़्टवेयर से पहले का बाक़ी</value>
+  </data>
+  <data name="No entries match your search." xml:space="preserve">
+    <value>आपकी खोज से कोई एंट्री नहीं मिली।</value>
+  </data>
+  <data name="Opening balance is what the party already owed when it was added to the software. It is not a line in the ledger, so it is shown separately." xml:space="preserve">
+    <value>पुराना बाक़ी वह रकम है जो पार्टी को सॉफ़्टवेयर में जोड़ते समय पहले से बाक़ी थी। यह खाते की लाइन नहीं है, इसलिए यहाँ अलग दिखाया गया है।</value>
+  </data>
+  <data name="The saved balance ({0}) does not match opening balance + ledger ({1}). Ask support to run &quot;Recount&quot; for your account." xml:space="preserve">
+    <value>सेव किया हुआ बाक़ी ({0}) पुराना बाक़ी + खाते ({1}) से नहीं मिल रहा। सपोर्ट से कहिए कि आपके खाते के लिए &quot;Recount&quot; चला दें।</value>
+  </data>
+  <data name="Opening balance (old dues)" xml:space="preserve">
+    <value>पुराना बाक़ी (पहले का उधार)</value>
+  </data>
+  <data name="If this party already owes you money, enter it here. It is saved as the party&apos;s opening balance." xml:space="preserve">
+    <value>अगर इस पार्टी पर पहले से उधार है तो यहाँ भरिए। यह पार्टी का पुराना बाक़ी बनकर सेव होगा।</value>
+  </data>
+  <data name="Change the balance only to correct a mistake. Enter payments and credit in Party Ledger, not here." xml:space="preserve">
+    <value>बाक़ी तभी बदलिए जब उसमें ग़लती हो। जमा और उधार यहाँ नहीं, पार्टी खाता (Party Ledger) में भरिए।</value>
+  </data>
+  <data name="Each party&apos;s outstanding is a running total. If it ever drifts, this recounts it as: opening balance + the party&apos;s ledger entries." xml:space="preserve">
+    <value>हर पार्टी का बक़ाया एक चलता हुआ जोड़ है। कभी गड़बड़ हो जाए तो यह उसे दोबारा गिनता है: पुराना बाक़ी + पार्टी के खाते की एंट्री।</value>
+  </data>
+  <data name="Recount every party&apos;s outstanding (opening balance + ledger)?" xml:space="preserve">
+    <value>हर पार्टी का बक़ाया दोबारा गिनें (पुराना बाक़ी + खाता)?</value>
+  </data>
+  <data name="Opening balances are kept. Only parties whose saved balance does not match are changed - the message tells you how many." xml:space="preserve">
+    <value>पुराना बाक़ी सुरक्षित रहता है। सिर्फ़ उन्हीं पार्टियों का बक़ाया बदलता है जिनका सेव किया हुआ बक़ाया मेल नहीं खाता — संदेश में गिनती आ जाती है।</value>
+  </data>
+  <data name="Type to search..." xml:space="preserve">
+    <value>नाम लिखकर खोजिए…</value>
+  </data>
+  <data name="No match found" xml:space="preserve">
+    <value>कुछ नहीं मिला</value>
+  </data>
+  <data name="Showing {0}-{1} of {2}" xml:space="preserve">
+    <value>{2} में से {0}–{1}</value>
+  </data>
+  <data name="Opening balance is the dues you entered for this party on {0}. Everything entered after that is listed below." xml:space="preserve">
+    <value>पुराना बाक़ी वह रकम है जो आपने इस पार्टी के लिए {0} को भरी थी। उसके बाद की हर एंट्री नीचे है।</value>
+  </data>
+  <data name="Entered on {0}" xml:space="preserve">
+    <value>{0} को भरा हुआ</value>
+  </data>
+  <data name="{0} older entries are already included in this figure - they are not added again." xml:space="preserve">
+    <value>इससे पहले की {0} एंट्री इसी रकम में शामिल हैं — दोबारा नहीं जुड़तीं।</value>
+  </data>
+  <data name="Changing an existing entry:" xml:space="preserve">
+    <value>पुरानी एंट्री बदल रहे हैं:</value>
+  </data>
+  <data name="Why are you changing it?" xml:space="preserve">
+    <value>क्यों बदल रहे हैं?</value>
+  </data>
+  <data name="Update Entry" xml:space="preserve">
+    <value>एंट्री बदलिए</value>
+  </data>
+  <data name="Why are you deleting this entry? The old details stay in the record." xml:space="preserve">
+    <value>यह एंट्री क्यों हटा रहे हैं? पुरानी जानकारी रिकॉर्ड में रहेगी।</value>
+  </data>
+  <data name="Delete entry" xml:space="preserve">
+    <value>एंट्री हटाएँ</value>
+  </data>
+  <data name="Please write the reason." xml:space="preserve">
+    <value>वजह लिखिए।</value>
+  </data>
+  <data name="Entries from a day collection (COLL-...) or a sale bill change from there - they cannot be edited here." xml:space="preserve">
+    <value>दिन के कलेक्शन (COLL-…) या बिल से बनी एंट्री वहीं से बदलती है — यहाँ से नहीं बदल सकती।</value>
+  </data>
+  <data name="(removed vendor)" xml:space="preserve">
+    <value>(हटाया हुआ वेंडर)</value>
+  </data>
+  <data name="(removed tank)" xml:space="preserve">
+    <value>(हटाया हुआ टैंक)</value>
+  </data>
+  <data name="(removed)" xml:space="preserve">
+    <value>(हटाया हुआ)</value>
+  </data>
+</root>

@@ -1,0 +1,852 @@
+@{
+    ViewData["Title"] = "User Manual";
+}
+
+@section Styles {
+<style>
+    /* Do bhasha ek hi page par. Sirf chuni hui bhasha dikhti hai —
+       isse print/PDF me bhi wahi jaati hai jo user ne chuni. */
+    body.man-hi .man-en { display: none; }
+    body.man-en .man-hi { display: none; }
+
+    .man-wrap { max-width: 880px; }
+
+    .man-step {
+        border-left: 3px solid #0d6efd;
+        padding-left: 0.9rem;
+        margin-bottom: 1.1rem;
+    }
+
+    .man-num {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 26px; height: 26px; border-radius: 50%;
+        background: #0d6efd; color: #fff; font-weight: 700; font-size: 0.8rem;
+        margin-right: 0.4rem;
+    }
+
+    .man-tip {
+        background: #fff8e1; border-left: 3px solid #f59e0b;
+        padding: 0.6rem 0.8rem; border-radius: 4px; margin: 0.6rem 0;
+        font-size: 0.92rem;
+    }
+
+    .man-warn {
+        background: #fdecea; border-left: 3px solid #dc2626;
+        padding: 0.6rem 0.8rem; border-radius: 4px; margin: 0.6rem 0;
+        font-size: 0.92rem;
+    }
+
+    .man-wrap h2 {
+        font-size: 1.25rem; margin-top: 2rem; padding-top: 0.8rem;
+        border-top: 2px solid #e9ecef;
+    }
+
+    .man-wrap h3 { font-size: 1.02rem; margin-top: 1.2rem; font-weight: 700; }
+    .man-wrap p, .man-wrap li { line-height: 1.75; }
+    .man-wrap table { font-size: 0.92rem; }
+
+    /* Print / PDF: sirf manual chhape, app ka dhancha nahi. */
+    @@media print {
+        .side-nav, .side-nav-overlay, .top-strip, .hamburger-btn, .d-print-none {
+            display: none !important;
+        }
+        .app-shell, .main-pane { display: block !important; width: 100% !important; }
+        .content-pane { padding: 0 !important; overflow: visible !important; }
+        .card { border: none !important; box-shadow: none !important; }
+        .man-wrap { max-width: 100%; }
+        h2 { page-break-after: avoid; }
+        .man-step, .man-tip, .man-warn, table { page-break-inside: avoid; }
+        @@page { size: A4; margin: 14mm 12mm; }
+        body { font-size: 11pt; }
+    }
+</style>
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 d-print-none">
+    <div>
+        <h4 class="mb-0">User Manual</h4>
+        <div class="text-muted small">
+            <span class="man-en">Everything you need to run the pump, step by step.</span>
+            <span class="man-hi">पंप चलाने का पूरा तरीक़ा, क़दम दर क़दम।</span>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-primary" id="btnEn" onclick="setManualLang('en')">English</button>
+            <button type="button" class="btn btn-outline-primary" id="btnHi" onclick="setManualLang('hi')">हिंदी</button>
+        </div>
+        <button type="button" class="btn btn-sm btn-dark" onclick="window.print()">
+            <i class="bi bi-download"></i>
+            <span class="man-en">Download / Print</span>
+            <span class="man-hi">डाउनलोड / प्रिंट</span>
+        </button>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body man-wrap">
+
+        <div class="man-en">
+            <h1 style="font-size:1.6rem;">Petrol Pump Management — User Manual</h1>
+            <p class="text-muted">
+                Read this once and you will be able to run the whole pump on this software.
+                Nothing here needs a computer background.
+            </p>
+
+            <div class="man-tip">
+                <strong>The one rule that matters:</strong> enter the meter reading at the start
+                of every shift and at the end of every shift. Everything else — sales, stock,
+                cash, reports — is built from those two numbers.
+            </div>
+
+            <h2>Your day, in one glance</h2>
+            <p>
+                Six things. Four of them take less than a minute. Do these and the books
+                stay right on their own.
+            </p>
+            <table class="table table-sm table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:36px">#</th>
+                        <th>What to do</th>
+                        <th style="width:26%">Screen</th>
+                        <th style="width:22%">When</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td data-label="Step">1</td>
+                        <td data-label="What to do">Put in today's rate <span class="text-muted">(only if it changed)</span></td>
+                        <td data-label="Screen">Today's Rates</td>
+                        <td data-label="When">Morning</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Step">2</td>
+                        <td data-label="What to do">Open the shift &mdash; opening meter reading and cash in the drawer</td>
+                        <td data-label="Screen">Shifts</td>
+                        <td data-label="When">Shift start</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Step">3</td>
+                        <td data-label="What to do">Make a bill only for credit, card, or a customer who asks for one</td>
+                        <td data-label="Screen">Sales</td>
+                        <td data-label="When">During the shift</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Step">4</td>
+                        <td data-label="What to do">Close the shift &mdash; closing meter reading and cash counted</td>
+                        <td data-label="Screen">Shifts</td>
+                        <td data-label="When">Shift end</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Step">5</td>
+                        <td data-label="What to do"><strong>Record online and credit</strong> &mdash; without this the cash will never match</td>
+                        <td data-label="Screen">Day Collection</td>
+                        <td data-label="When">Right after closing</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Step">6</td>
+                        <td data-label="What to do">Measure the tank and enter the dip</td>
+                        <td data-label="Screen">Dip &amp; Testing</td>
+                        <td data-label="When">End of day</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="text-muted small">
+                Not every day: <strong>Purchase</strong> only when a tanker arrives, and
+                <strong>Cashbook</strong> only when money leaves the drawer. Both are
+                explained further down.
+            </p>
+
+            <h2>1. First-time setup (do this once)</h2>
+            <p>
+                When you log in for the first time, the dashboard shows a
+                <strong>“Set up your pump”</strong> checklist. Do the six steps in the order
+                shown. The checklist disappears on its own once everything is done.
+            </p>
+
+            <div class="man-step">
+                <p><span class="man-num">1</span><strong>Add your fuels</strong> — Products</p>
+                <p>
+                    Add every fuel you sell as a separate product: Petrol, Diesel, and any
+                    premium grade (XP95, E20, and so on). Each one gets its own rate later,
+                    so keep them separate even if they look similar.
+                </p>
+            </div>
+
+            <div class="man-step">
+                <p><span class="man-num">2</span><strong>Set today's rates</strong> — Today's Rates</p>
+                <p>
+                    All your fuels appear on one screen. Type today's rate for each and press
+                    Save. You will come back to this screen every morning.
+                </p>
+            </div>
+
+            <div class="man-step">
+                <p><span class="man-num">3</span><strong>Add your tanks</strong> — Tanks</p>
+                <p>
+                    One tank per fuel. Enter its capacity, and the level at which you want a
+                    refill warning (for example 3,000 litres in a 20,000 litre tank).
+                </p>
+            </div>
+
+            <div class="man-step">
+                <p><span class="man-num">4</span><strong>Add your nozzles</strong> — Nozzles</p>
+                <p>
+                    Every nozzle must be linked to its fuel <em>and</em> its tank. This is how
+                    the software knows which tank to take stock from when that nozzle sells.
+                </p>
+                <div class="man-warn">
+                    Get this right. If a nozzle points at the wrong tank, your stock figures
+                    will be wrong every single day and it is hard to trace later.
+                </div>
+            </div>
+
+            <div class="man-step">
+                <p><span class="man-num">5</span><strong>Enter opening stock</strong> — Tank Stock</p>
+                <p>
+                    How much fuel is in each tank right now. Choose entry type
+                    <strong>OPENING</strong>, enter the quantity, and save. Do this once per tank.
+                </p>
+            </div>
+
+            <div class="man-step">
+                <p><span class="man-num">6</span><strong>Open your first shift</strong> — Shifts</p>
+                <p>You are ready. See the daily routine below.</p>
+            </div>
+
+            <h2>2. Every day</h2>
+
+            <h3>Morning — update the rates</h3>
+            <p>
+                Open <strong>Today's Rates</strong>, type the new rate for each fuel, press Save.
+                Only the rates you actually changed are saved, and the screen shows you how much
+                each one moved up or down before you save.
+            </p>
+
+            <h3>Starting a shift — Shifts</h3>
+            <ol>
+                <li>Pick the date (leave it as today unless you are filling in a past day).</li>
+                <li>
+                    Enter each nozzle's <strong>opening meter reading</strong>. If the previous
+                    shift was closed on this software, this fills in by itself.
+                </li>
+                <li>
+                    Optionally choose who is on each nozzle and how much float (change) you gave
+                    them. Leave blank if you do not track cash nozzle by nozzle.
+                </li>
+                <li>Enter the opening cash in the drawer and press <strong>Open Shift</strong>.</li>
+            </ol>
+            <div class="man-tip">
+                <strong>Shift In-charge is optional.</strong> If you leave it blank, whoever is
+                logged in is recorded as responsible for that shift.
+            </div>
+
+            <div class="man-warn">
+                <strong>&ldquo;Meter was changed&rdquo; &mdash; leave this box unticked.</strong>
+                If an opening reading does not match the last closing reading, the software
+                stops and tells you which nozzle and how big the difference is. Nine times out
+                of ten the reading was simply typed wrong &mdash; correct it. Tick the box only
+                when the meter was really replaced or rolled past zero, because ticking it makes
+                the software forget that difference for good, and the fuel will later show up
+                as a stock loss with no explanation.
+            </div>
+
+            <h3>During the shift — Sales</h3>
+            <p>
+                You do <em>not</em> need to enter every cash sale. The meter takes care of those.
+                Use the <strong>Sales</strong> screen only when you need a bill:
+            </p>
+            <ul>
+                <li>Credit (udhaar) sales to a regular customer</li>
+                <li>UPI / card sales you want a receipt for</li>
+                <li>Any customer who asks for a printed bill</li>
+            </ul>
+
+            <h3>Closing a shift — Shifts</h3>
+            <ol>
+                <li>Enter each nozzle's <strong>closing meter reading</strong>.</li>
+                <li>
+                    Enter <strong>pump test</strong> quantity if you drew fuel for testing. That
+                    fuel is treated as going back into the tank, so it is not counted as sold.
+                </li>
+                <li>Enter the closing cash and press <strong>Close Shift</strong>.</li>
+            </ol>
+            <p>
+                The software then works out the sale, deducts stock from the right tank, and
+                tells you whether the cash is short or excess.
+            </p>
+
+            <h3>Right after closing &mdash; Day Collection</h3>
+            <p>
+                The meter already knows how much fuel was sold. What it cannot know is
+                <em>how</em> that money came in. Some of it came as cash, some through PhonePe
+                or GPay, and some went on credit.
+            </p>
+            <p>Open <strong>Day Collection</strong> and fill in three things:</p>
+            <ul>
+                <li><strong>Online</strong> &mdash; PhonePe, GPay, Paytm, all added together</li>
+                <li><strong>Card</strong> &mdash; the swipe machine total</li>
+                <li><strong>Credit</strong> &mdash; the customer's name and amount, one line each</li>
+            </ul>
+            <p>
+                The panel on the right does the arithmetic while you type and tells you straight
+                away whether the cash adds up. Each credit line also goes into that customer's
+                account by itself, so it appears in the Outstanding report without any extra work.
+            </p>
+            <div class="man-warn">
+                <strong>Skip this step and every shift will look short by a large amount</strong>
+                &mdash; and a real shortage will hide inside that number. This is the step people
+                forget most often.
+            </div>
+
+            <h3>Money leaving the drawer &mdash; Cashbook</h3>
+            <p>
+                Anything taken out of the drawer has to be written down, otherwise the cash will
+                not match at close:
+            </p>
+            <ul>
+                <li><strong>OUT</strong> &mdash; an advance given to a worker, a small payment made</li>
+                <li><strong>IN</strong> &mdash; money put into the drawer from outside</li>
+                <li><strong>BANK DEPOSIT</strong> &mdash; cash sent to the bank</li>
+            </ul>
+            <p>
+                Regular running costs &mdash; electricity, salary, repairs &mdash; belong on the
+                <strong>Expenses</strong> screen instead, so that they show correctly in the
+                profit report.
+            </p>
+            <div class="man-tip">
+                An advance to a worker is not an expense &mdash; that money is coming back. Record
+                it in <strong>Cashbook as OUT</strong> and write the person's name in the note.
+            </div>
+
+            <h3>End of day &mdash; measure the tank</h3>
+            <p>
+                Open <strong>Dip &amp; Testing</strong> and enter the dip reading for each tank.
+                The screen shows what the books say the stock should be, what you actually
+                measured, and the difference between the two.
+            </p>
+            <p>
+                This does not change your stock &mdash; it only records the measurement. Stock
+                moves on its own, from shifts and from purchases.
+            </p>
+
+            <h2>3. Cash from each attendant (optional)</h2>
+            <p>
+                Use <strong>Nozzle Cash</strong> only if a different person mans each nozzle and
+                you hand out float separately. If you only track cash at shift level, skip this
+                screen entirely — nothing here is required.
+            </p>
+            <p>For each nozzle the software works out:</p>
+            <table class="table table-sm table-bordered">
+                <tr>
+                    <td><strong>Should receive</strong></td>
+                    <td>Float given + that nozzle's meter sale − his credit/UPI slips</td>
+                </tr>
+                <tr>
+                    <td><strong>Short / Excess</strong></td>
+                    <td>What he actually handed over − what he should have</td>
+                </tr>
+            </table>
+            <div class="man-tip">
+                <strong>Collecting later is fine.</strong> If you take the whole day's cash at
+                night after all shifts are closed, the “Cash still to collect” panel at the top
+                of the screen lists everyone who is still pending, with their phone number.
+            </div>
+            <div class="man-warn">
+                Once you record the cash for a nozzle, you cannot change the attendant or the
+                float for it. If you made a mistake, press <strong>Undo</strong> first — that is
+                recorded in the audit log.
+            </div>
+
+            <h2>4. When a tanker arrives — Purchase</h2>
+            <ol>
+                <li>Choose the vendor and enter the invoice number and date.</li>
+                <li>Choose the fuel. The tank list then shows only the tanks that hold that fuel.</li>
+                <li>Enter quantity and purchase rate, then save.</li>
+            </ol>
+            <p>
+                Stock is added to that tank straight away and appears in the Daily Stock Register
+                as a receipt on the invoice date.
+            </p>
+
+            <h2>5. Stock checking</h2>
+
+            <h3>Dip Testing</h3>
+            <p>
+                Record the dip rod reading. This is a <em>measurement only</em> — it does not
+                change your stock. The difference against book stock is shown in litres and in
+                rupees.
+            </p>
+
+            <h3>Stock Reconciliation</h3>
+            <p>
+                This one <em>does</em> change your stock — it sets the tank to the physical
+                quantity you counted. Use it when you are sure the book figure is wrong.
+                Always write the reason: it is recorded permanently with your name.
+            </p>
+
+            <h2>6. Credit customers</h2>
+            <ul>
+                <li><strong>Parties</strong> — add the customer and their credit limit.</li>
+                <li><strong>Sales</strong> — choose payment mode Credit and pick the customer.</li>
+                <li><strong>Party Ledger</strong> — record payments when they settle up.</li>
+                <li><strong>Outstanding</strong> — who owes how much, right now.</li>
+            </ul>
+
+            <h2>7. Reports</h2>
+            <table class="table table-sm table-bordered">
+                <tr>
+                    <td style="width:32%"><strong>Daily Stock Register</strong></td>
+                    <td>The statutory stock register: opening, receipts, sales, closing, and variance for each day of the month.</td>
+                </tr>
+                <tr>
+                    <td><strong>Day Book</strong></td>
+                    <td>Every money movement of the day in one list.</td>
+                </tr>
+                <tr>
+                    <td><strong>Outstanding</strong></td>
+                    <td>Credit customers and their balances.</td>
+                </tr>
+                <tr>
+                    <td><strong>Attendant Cash</strong></td>
+                    <td>Per person: how much short or excess over the period you choose.</td>
+                </tr>
+            </table>
+            <p>Each report has an <strong>Export to CSV</strong> button — that file opens in Excel and is what your accountant will want.</p>
+
+            <h2>8. If you forget a day</h2>
+            <p>
+                The dashboard lists every day of the month with no shift and no sale. Click any
+                date and the shift form opens on that date, with a yellow warning so you know you
+                are filling in a past day. Change the month at the top to check older months.
+            </p>
+
+            <h2>9. Forgot your password</h2>
+            <p>
+                Press <strong>Forgot password?</strong> on the login screen and enter your
+                registered mobile number. An OTP arrives, valid for 10 minutes.
+            </p>
+            <p>
+                If the OTP does not arrive, call support on <strong>6394389973</strong> — your
+                password can be reset for you.
+            </p>
+
+            <h2>10. Things that commonly confuse people</h2>
+            <table class="table table-sm table-bordered">
+                <tr>
+                    <td style="width:38%">“Cash is short but I counted it twice”</td>
+                    <td>Check credit and UPI sales for that shift. That money never reached the drawer, so it is not missing.</td>
+                </tr>
+                <tr>
+                    <td>“Stock does not match”</td>
+                    <td>Check whether a tanker delivery was entered, and whether every nozzle points at the right tank.</td>
+                </tr>
+                <tr>
+                    <td>“The rate is wrong on an old bill”</td>
+                    <td>That is correct behaviour. Bills use the rate that applied on that date, not today's rate.</td>
+                </tr>
+                <tr>
+                    <td>“I cannot open a shift”</td>
+                    <td>One shift stays open at a time. Close the running one first.</td>
+                </tr>
+            </table>
+
+            <p class="text-muted mt-4" style="font-size:0.85rem;">
+                Support: 6394389973
+            </p>
+        </div>
+
+        <div class="man-hi">
+            <h1 style="font-size:1.6rem;">पेट्रोल पंप प्रबंधन — यूज़र मैनुअल</h1>
+            <p class="text-muted">
+                इसे एक बार पढ़ लीजिए, फिर आप पूरा पंप इसी सॉफ़्टवेयर पर चला लेंगे।
+                कंप्यूटर की कोई जानकारी ज़रूरी नहीं है।
+            </p>
+
+            <div class="man-tip">
+                <strong>सबसे ज़रूरी बात:</strong> हर शिफ़्ट शुरू होते वक़्त और ख़त्म होते वक़्त
+                मीटर की रीडिंग भर दीजिए। बाक़ी सब — बिक्री, स्टॉक, कैश, रिपोर्ट — इन्हीं दो
+                नंबरों से बनता है।
+            </div>
+
+            <h2>रोज़ का काम — एक नज़र में</h2>
+            <p>
+                छह काम। इनमें से चार में एक मिनट भी नहीं लगता। इतना कर लीजिए, हिसाब अपने आप
+                सही बैठता रहेगा।
+            </p>
+            <table class="table table-sm table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:36px">#</th>
+                        <th>क्या करना है</th>
+                        <th style="width:26%">कौन सी स्क्रीन</th>
+                        <th style="width:22%">कब</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td data-label="क़दम">1</td>
+                        <td data-label="क्या करना है">आज का रेट भरिए <span class="text-muted">(सिर्फ़ तब, जब बदला हो)</span></td>
+                        <td data-label="कौन सी स्क्रीन">Today's Rates</td>
+                        <td data-label="कब">सुबह</td>
+                    </tr>
+                    <tr>
+                        <td data-label="क़दम">2</td>
+                        <td data-label="क्या करना है">शिफ़्ट खोलिए — शुरुआती मीटर रीडिंग और गल्ले का कैश</td>
+                        <td data-label="कौन सी स्क्रीन">Shifts</td>
+                        <td data-label="कब">शिफ़्ट शुरू होने पर</td>
+                    </tr>
+                    <tr>
+                        <td data-label="क़दम">3</td>
+                        <td data-label="क्या करना है">बिल सिर्फ़ उधार, कार्ड, या माँगने वाले ग्राहक के लिए</td>
+                        <td data-label="कौन सी स्क्रीन">Sales</td>
+                        <td data-label="कब">शिफ़्ट के दौरान</td>
+                    </tr>
+                    <tr>
+                        <td data-label="क़दम">4</td>
+                        <td data-label="क्या करना है">शिफ़्ट बंद कीजिए — आख़िरी मीटर रीडिंग और गिना हुआ कैश</td>
+                        <td data-label="कौन सी स्क्रीन">Shifts</td>
+                        <td data-label="कब">शिफ़्ट ख़त्म होने पर</td>
+                    </tr>
+                    <tr>
+                        <td data-label="क़दम">5</td>
+                        <td data-label="क्या करना है"><strong>ऑनलाइन और उधार दर्ज कीजिए</strong> — इसके बिना कैश कभी नहीं मिलेगा</td>
+                        <td data-label="कौन सी स्क्रीन">Day Collection</td>
+                        <td data-label="कब">शिफ़्ट बंद करते ही</td>
+                    </tr>
+                    <tr>
+                        <td data-label="क़दम">6</td>
+                        <td data-label="क्या करना है">टैंक नापिए और डिप भरिए</td>
+                        <td data-label="कौन सी स्क्रीन">Dip &amp; Testing</td>
+                        <td data-label="कब">दिन के आख़िर में</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="text-muted small">
+                रोज़ नहीं: <strong>Purchase</strong> सिर्फ़ टैंकर आने पर, और <strong>Cashbook</strong>
+                सिर्फ़ तब जब गल्ले से पैसा निकले। दोनों नीचे समझाए गए हैं।
+            </p>
+
+            <h2>1. पहली बार का सेटअप (एक ही बार करना है)</h2>
+            <p>
+                पहली बार लॉगिन करने पर डैशबोर्ड पर <strong>“Set up your pump”</strong> की सूची
+                दिखेगी। छह क़दम उसी क्रम में कीजिए। सब हो जाने पर सूची अपने आप ग़ायब हो जाएगी।
+            </p>
+
+            <div class="man-step">
+                <p><span class="man-num">1</span><strong>अपने फ़्यूल डालिए</strong> — Products</p>
+                <p>
+                    जो भी बेचते हैं, हर एक अलग product बनाइए: पेट्रोल, डीज़ल, और कोई प्रीमियम
+                    ग्रेड (XP95, E20 वग़ैरह)। हर एक का अपना रेट चलेगा, इसलिए अलग-अलग ही रखिए।
+                </p>
+            </div>
+
+            <div class="man-step">
+                <p><span class="man-num">2</span><strong>आज के रेट लगाइए</strong> — Today's Rates</p>
+                <p>
+                    सारे फ़्यूल एक ही स्क्रीन पर आते हैं। हर एक का आज का रेट भरकर Save दबाइए।
+                    इसी स्क्रीन पर आपको हर सुबह आना है।
+                </p>
+            </div>
+
+            <div class="man-step">
+                <p><span class="man-num">3</span><strong>टैंक डालिए</strong> — Tanks</p>
+                <p>
+                    हर फ़्यूल का एक टैंक। उसकी क्षमता डालिए, और वो स्तर जिस पर आपको भरवाने की
+                    चेतावनी चाहिए (जैसे 20,000 लीटर के टैंक में 3,000 लीटर)।
+                </p>
+            </div>
+
+            <div class="man-step">
+                <p><span class="man-num">4</span><strong>नोज़ल डालिए</strong> — Nozzles</p>
+                <p>
+                    हर नोज़ल को उसके फ़्यूल <em>और</em> उसके टैंक से जोड़ना ज़रूरी है। इसी से
+                    सॉफ़्टवेयर को पता चलता है कि उस नोज़ल से बिकने पर किस टैंक से स्टॉक घटाना है।
+                </p>
+                <div class="man-warn">
+                    यह ध्यान से कीजिए। नोज़ल ग़लत टैंक से जुड़ा तो आपका स्टॉक रोज़ ग़लत रहेगा,
+                    और बाद में पकड़ना मुश्किल हो जाता है।
+                </div>
+            </div>
+
+            <div class="man-step">
+                <p><span class="man-num">5</span><strong>शुरुआती स्टॉक डालिए</strong> — Tank Stock</p>
+                <p>
+                    अभी हर टैंक में कितना तेल है। Entry type में <strong>OPENING</strong> चुनिए,
+                    मात्रा भरिए, सेव कीजिए। हर टैंक के लिए एक बार।
+                </p>
+            </div>
+
+            <div class="man-step">
+                <p><span class="man-num">6</span><strong>पहली शिफ़्ट खोलिए</strong> — Shifts</p>
+                <p>बस, तैयार। नीचे रोज़ का तरीक़ा दिया है।</p>
+            </div>
+
+            <h2>2. रोज़ का काम</h2>
+
+            <h3>सुबह — रेट बदलिए</h3>
+            <p>
+                <strong>Today's Rates</strong> खोलिए, हर फ़्यूल का नया रेट भरिए, Save दबाइए।
+                सिर्फ़ वही रेट सेव होते हैं जो आपने सच में बदले, और सेव करने से पहले स्क्रीन
+                दिखा देती है कि कौन सा कितना ऊपर या नीचे गया।
+            </p>
+
+            <h3>शिफ़्ट शुरू करना — Shifts</h3>
+            <ol>
+                <li>तारीख़ चुनिए (आज की ही रहने दीजिए, जब तक कोई पुराना दिन न भर रहे हों)।</li>
+                <li>
+                    हर नोज़ल की <strong>शुरुआती मीटर रीडिंग</strong> भरिए। अगर पिछली शिफ़्ट इसी
+                    सॉफ़्टवेयर पर बंद हुई थी, तो यह अपने आप भर जाती है।
+                </li>
+                <li>
+                    चाहें तो हर नोज़ल पर आदमी और उसे दिया गया छुट्टा भी भर दीजिए। अगर आप
+                    नोज़ल-वार कैश का हिसाब नहीं रखते तो ख़ाली छोड़ दीजिए।
+                </li>
+                <li>गल्ले का शुरुआती कैश भरकर <strong>Open Shift</strong> दबाइए।</li>
+            </ol>
+            <div class="man-tip">
+                <strong>Shift In-charge ज़रूरी नहीं है।</strong> ख़ाली छोड़ेंगे तो जो लॉगिन किया
+                हुआ है वही उस शिफ़्ट का ज़िम्मेदार दर्ज हो जाएगा।
+            </div>
+
+            <div class="man-warn">
+                <strong>&ldquo;Meter was changed&rdquo; — इस डिब्बी पर निशान मत लगाइए।</strong>
+                अगर कोई शुरुआती रीडिंग पिछली आख़िरी रीडिंग से नहीं मिलती, तो सॉफ़्टवेयर रोक देता है
+                और नाम लेकर बताता है कि किस नोज़ल पर कितने का फ़र्क़ है। दस में से नौ बार रीडिंग ही
+                ग़लत टाइप हुई होती है — उसे सुधार दीजिए। निशान सिर्फ़ तब लगाइए जब मीटर सच में बदला
+                गया हो या घूमकर शून्य पर आ गया हो, क्योंकि निशान लगाते ही सॉफ़्टवेयर वह फ़र्क़ हमेशा
+                के लिए भूल जाता है — और वह तेल बाद में स्टॉक के नुक़सान में दिखेगा, बिना किसी वजह के।
+            </div>
+
+            <h3>शिफ़्ट के दौरान — Sales</h3>
+            <p>
+                हर नक़द बिक्री भरने की <em>ज़रूरत नहीं</em> है — वो मीटर से अपने आप गिनी जाती है।
+                <strong>Sales</strong> स्क्रीन सिर्फ़ तब खोलिए जब बिल बनाना हो:
+            </p>
+            <ul>
+                <li>किसी नियमित ग्राहक को उधार बिक्री</li>
+                <li>UPI / कार्ड की बिक्री जिसकी रसीद चाहिए</li>
+                <li>कोई ग्राहक छपा हुआ बिल माँगे</li>
+            </ul>
+
+            <h3>शिफ़्ट बंद करना — Shifts</h3>
+            <ol>
+                <li>हर नोज़ल की <strong>आख़िरी मीटर रीडिंग</strong> भरिए।</li>
+                <li>
+                    जाँच के लिए तेल निकाला हो तो <strong>pump test</strong> की मात्रा भरिए। वो तेल
+                    वापस टैंक में गया माना जाता है, इसलिए बिका हुआ नहीं गिना जाता।
+                </li>
+                <li>आख़िरी कैश भरकर <strong>Close Shift</strong> दबाइए।</li>
+            </ol>
+            <p>
+                इसके बाद सॉफ़्टवेयर बिक्री निकालता है, सही टैंक से स्टॉक घटाता है, और बताता है
+                कि कैश कम पड़ा या ज़्यादा निकला।
+            </p>
+
+            <h3>शिफ़्ट बंद करते ही — Day Collection</h3>
+            <p>
+                कितना तेल बिका, यह मीटर से पता चल जाता है। लेकिन मीटर यह नहीं बता सकता कि वह पैसा
+                <em>किस तरीक़े से</em> आया। कुछ नक़द आया, कुछ फ़ोन पे या जी-पे से, और कुछ उधार चला गया।
+            </p>
+            <p><strong>Day Collection</strong> खोलिए और तीन चीज़ें भरिए:</p>
+            <ul>
+                <li><strong>Online</strong> — फ़ोन पे, जी-पे, पेटीएम, सब जोड़कर</li>
+                <li><strong>Card</strong> — स्वाइप मशीन का कुल</li>
+                <li><strong>Credit</strong> — ग्राहक का नाम और रक़म, हर एक की अलग लाइन</li>
+            </ul>
+            <p>
+                दाहिनी तरफ़ का पैनल आपके भरते-भरते हिसाब लगाता रहता है और तुरंत बता देता है कि कैश
+                मिल रहा है या नहीं। हर उधार वाली लाइन उस ग्राहक के खाते में अपने आप चढ़ जाती है,
+                इसलिए वह बक़ाया रिपोर्ट में बिना कुछ और किए दिख जाती है।
+            </p>
+            <div class="man-warn">
+                <strong>यह क़दम छोड़ दिया तो हर शिफ़्ट में बहुत बड़ी कमी दिखेगी</strong> — और असली कमी
+                उसी बड़े आँकड़े में छुप जाएगी। यही वह क़दम है जो लोग सबसे ज़्यादा भूलते हैं।
+            </div>
+
+            <h3>गल्ले से निकलने वाला पैसा — Cashbook</h3>
+            <p>
+                गल्ले से जो भी निकले, उसे लिखना ज़रूरी है, वरना शिफ़्ट बंद करते समय कैश नहीं मिलेगा:
+            </p>
+            <ul>
+                <li><strong>OUT</strong> — किसी आदमी को दिया गया एडवांस, कोई छोटा भुगतान</li>
+                <li><strong>IN</strong> — बाहर से गल्ले में डाला गया पैसा</li>
+                <li><strong>BANK DEPOSIT</strong> — बैंक में जमा किया गया कैश</li>
+            </ul>
+            <p>
+                रोज़मर्रा के ख़र्च — बिजली, तनख़्वाह, मरम्मत — <strong>Expenses</strong> स्क्रीन पर
+                लिखिए, ताकि वे मुनाफ़े की रिपोर्ट में सही जगह दिखें।
+            </p>
+            <div class="man-tip">
+                किसी आदमी को दिया गया एडवांस ख़र्च नहीं है — वह पैसा वापस आना है। उसे
+                <strong>Cashbook में OUT</strong> की तरह लिखिए और नोट में उसका नाम डाल दीजिए।
+            </div>
+
+            <h3>दिन के आख़िर में — टैंक नापिए</h3>
+            <p>
+                <strong>Dip &amp; Testing</strong> खोलिए और हर टैंक की डिप रीडिंग भरिए। स्क्रीन
+                दिखाती है कि किताब के हिसाब से स्टॉक कितना होना चाहिए, आपने असल में कितना नापा,
+                और दोनों में कितना फ़र्क़ है।
+            </p>
+            <p>
+                इससे स्टॉक बदलता नहीं है — यह सिर्फ़ नाप दर्ज करता है। स्टॉक अपने आप चलता है,
+                शिफ़्ट और ख़रीद से।
+            </p>
+
+            <h2>3. हर आदमी का कैश (ज़रूरी नहीं)</h2>
+            <p>
+                <strong>Nozzle Cash</strong> तभी इस्तेमाल कीजिए जब हर नोज़ल पर अलग आदमी हो और आप
+                अलग-अलग छुट्टा देते हों। अगर आप सिर्फ़ शिफ़्ट के स्तर पर कैश रखते हैं तो यह
+                स्क्रीन पूरी तरह छोड़ सकते हैं — यहाँ कुछ भरना ज़रूरी नहीं।
+            </p>
+            <p>हर नोज़ल के लिए सॉफ़्टवेयर यह निकालता है:</p>
+            <table class="table table-sm table-bordered">
+                <tr>
+                    <td><strong>मिलना चाहिए</strong></td>
+                    <td>दिया गया छुट्टा + उस नोज़ल की मीटर बिक्री − उसकी उधार/UPI की पर्ची</td>
+                </tr>
+                <tr>
+                    <td><strong>कम / ज़्यादा</strong></td>
+                    <td>जो उसने सच में दिया − जो मिलना चाहिए था</td>
+                </tr>
+            </table>
+            <div class="man-tip">
+                <strong>बाद में लेना भी ठीक है।</strong> अगर आप पूरे दिन का कैश रात में सारी
+                शिफ़्ट बंद होने के बाद लेते हैं, तो स्क्रीन के ऊपर “Cash still to collect” का
+                पैनल हर बाक़ी आदमी को उसके फ़ोन नंबर के साथ दिखा देता है।
+            </div>
+            <div class="man-warn">
+                किसी नोज़ल का कैश दर्ज कर देने के बाद उसका आदमी या छुट्टा नहीं बदल सकते। ग़लती हो
+                जाए तो पहले <strong>Undo</strong> दबाइए — वो भी रिकॉर्ड में दर्ज होता है।
+            </div>
+
+            <h2>4. टैंकर आने पर — Purchase</h2>
+            <ol>
+                <li>वेंडर चुनिए, इनवॉइस नंबर और तारीख़ भरिए।</li>
+                <li>फ़्यूल चुनिए। इसके बाद टैंक की सूची में सिर्फ़ उसी फ़्यूल के टैंक दिखेंगे।</li>
+                <li>मात्रा और ख़रीद का रेट भरकर सेव कीजिए।</li>
+            </ol>
+            <p>
+                स्टॉक उसी वक़्त उस टैंक में जुड़ जाता है और Daily Stock Register में इनवॉइस की
+                तारीख़ पर receipt बनकर दिखता है।
+            </p>
+
+            <h2>5. स्टॉक की जाँच</h2>
+
+            <h3>Dip Testing</h3>
+            <p>
+                डिप रॉड की रीडिंग दर्ज कीजिए। यह <em>सिर्फ़ नाप</em> है — इससे स्टॉक नहीं बदलता।
+                किताबी स्टॉक से अंतर लीटर में भी दिखता है और रुपयों में भी।
+            </p>
+
+            <h3>Stock Reconciliation</h3>
+            <p>
+                यह स्टॉक <em>बदल देता है</em> — टैंक को उतना कर देता है जितना आपने गिना। तभी
+                इस्तेमाल कीजिए जब पक्का हो कि किताबी आँकड़ा ग़लत है। वजह ज़रूर लिखिए: वो आपके
+                नाम के साथ हमेशा के लिए दर्ज होती है।
+            </p>
+
+            <h2>6. उधार वाले ग्राहक</h2>
+            <ul>
+                <li><strong>Parties</strong> — ग्राहक और उसकी उधार सीमा डालिए।</li>
+                <li><strong>Sales</strong> — payment mode में Credit चुनकर ग्राहक चुनिए।</li>
+                <li><strong>Party Ledger</strong> — पैसा आने पर वहाँ दर्ज कीजिए।</li>
+                <li><strong>Outstanding</strong> — किस पर कितना बाक़ी है, अभी।</li>
+            </ul>
+
+            <h2>7. रिपोर्ट</h2>
+            <table class="table table-sm table-bordered">
+                <tr>
+                    <td style="width:32%"><strong>Daily Stock Register</strong></td>
+                    <td>सरकारी स्टॉक रजिस्टर: महीने के हर दिन का शुरुआती स्टॉक, आवक, बिक्री, बचा स्टॉक और अंतर।</td>
+                </tr>
+                <tr>
+                    <td><strong>Day Book</strong></td>
+                    <td>दिन भर का सारा लेन-देन एक ही सूची में।</td>
+                </tr>
+                <tr>
+                    <td><strong>Outstanding</strong></td>
+                    <td>उधार वाले ग्राहक और उनका बकाया।</td>
+                </tr>
+                <tr>
+                    <td><strong>Attendant Cash</strong></td>
+                    <td>आदमी-वार: चुनी हुई अवधि में किसका कितना कम पड़ा या ज़्यादा निकला।</td>
+                </tr>
+            </table>
+            <p>हर रिपोर्ट पर <strong>Export to CSV</strong> का बटन है — वो फ़ाइल Excel में खुलती है और आपके CA को यही चाहिए होती है।</p>
+
+            <h2>8. कोई दिन छूट जाए तो</h2>
+            <p>
+                डैशबोर्ड महीने के वो सारे दिन दिखाता है जिनमें न शिफ़्ट है न बिक्री। किसी भी
+                तारीख़ पर क्लिक कीजिए, शिफ़्ट का फ़ॉर्म उसी दिन पर खुल जाएगा — पीली चेतावनी के
+                साथ, ताकि पता रहे कि पुराना दिन भर रहे हैं। पुराने महीने देखने के लिए ऊपर से
+                महीना बदल लीजिए।
+            </p>
+
+            <h2>9. पासवर्ड भूल जाएँ तो</h2>
+            <p>
+                लॉगिन स्क्रीन पर <strong>Forgot password?</strong> दबाइए और अपना रजिस्टर्ड मोबाइल
+                नंबर डालिए। OTP आएगा, जो 10 मिनट तक चलेगा।
+            </p>
+            <p>
+                OTP न आए तो <strong>6394389973</strong> पर कॉल कीजिए — आपका पासवर्ड वहाँ से रीसेट
+                कर दिया जाएगा।
+            </p>
+
+            <h2>10. जो बातें अक्सर उलझाती हैं</h2>
+            <table class="table table-sm table-bordered">
+                <tr>
+                    <td style="width:38%">“कैश कम है जबकि दो बार गिना”</td>
+                    <td>उस शिफ़्ट की उधार और UPI बिक्री देखिए। वो पैसा गल्ले में आया ही नहीं, इसलिए वो कम नहीं है।</td>
+                </tr>
+                <tr>
+                    <td>“स्टॉक नहीं मिल रहा”</td>
+                    <td>देखिए कि टैंकर की एंट्री हुई या नहीं, और हर नोज़ल सही टैंक से जुड़ा है या नहीं।</td>
+                </tr>
+                <tr>
+                    <td>“पुराने बिल पर रेट ग़लत दिख रहा है”</td>
+                    <td>यह सही है। बिल पर उसी दिन का रेट लगता है, आज का नहीं।</td>
+                </tr>
+                <tr>
+                    <td>“शिफ़्ट नहीं खुल रही”</td>
+                    <td>एक बार में एक ही शिफ़्ट खुली रह सकती है। पहले चालू वाली बंद कीजिए।</td>
+                </tr>
+            </table>
+
+            <p class="text-muted mt-4" style="font-size:0.85rem;">
+                सहायता: 6394389973
+            </p>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Bhasha ka chunav yaad rakhte hain, taaki har baar dobara na chunna pade.
+    // localStorage na chale (private window waghairah) to bhi page chalta rahe.
+    function setManualLang(lang) {
+        document.body.classList.remove('man-en', 'man-hi');
+        document.body.classList.add('man-' + lang);
+
+        var en = document.getElementById('btnEn');
+        var hi = document.getElementById('btnHi');
+        if (en) { en.classList.toggle('active', lang === 'en'); }
+        if (hi) { hi.classList.toggle('active', lang === 'hi'); }
+
+        try { localStorage.setItem('ppms_manual_lang', lang); } catch (e) { /* koi baat nahi */ }
+    }
+
+    (function () {
+        var saved = null;
+        try { saved = localStorage.getItem('ppms_manual_lang'); } catch (e) { /* koi baat nahi */ }
+
+        // Pehli baar: app ki apni bhasha ke hisaab se. Hindi chuni ho to Hindi manual.
+        if (!saved) {
+            saved = document.documentElement.lang && document.documentElement.lang.indexOf('hi') === 0 ? 'hi' : 'en';
+        }
+        setManualLang(saved);
+    })();
+</script>
+}

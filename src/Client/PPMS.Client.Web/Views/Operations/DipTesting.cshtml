@@ -1,0 +1,501 @@
+﻿@model PPMS.Client.Web.Models.DipTestingViewModel
+@{
+    ViewData["Title"] = "Dip & Testing";
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-3">
+        <label class="form-label">@L["Pump"]</label>
+        <select class="form-select" onchange="window.location='/Operations/DipTesting?pumpId='+this.value">
+            @if (Model.Pumps.Count == 0)
+            {
+                <option value="0">@L["No pump configured"]</option>
+            }
+            else
+            {
+                @foreach (var p in Model.Pumps)
+                {
+                    if (p.Id == Model.DipReadingForm.PumpId)
+                    {
+                        <option value="@p.Id" selected>@p.Name (@p.City)</option>
+                    }
+                    else
+                    {
+                        <option value="@p.Id">@p.Name (@p.City)</option>
+                    }
+                }
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label">@L["From"]</label>
+        <input type="date" id="fromDate" class="form-control" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label">@L["To"]</label>
+        <input type="date" id="toDate" class="form-control" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <div class="col-12 col-md-3 d-flex align-items-end">
+        <button type="button" class="btn btn-outline-primary w-100" onclick="applyDateFilter()">@L["Apply Filter"]</button>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">
+        @Model.Message
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button>
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-xl-5 col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Dip Reading Entry"]</h5>
+                <p class="text-muted small mb-2">@L["Measure the tank with the dip rod and compare it with the book stock."]</p>
+                @* Section AB: rozana ki dip ab Close Shift form me hi jaati hai. Ye
+                   page purani/chhooti hui dip aur sudhaar ke liye hai. *@
+                <div class="alert alert-info py-1 px-2 small mb-3">💡 @L["Daily dip can now be entered in the Close Shift form itself. Use this page for a missed day or a correction."]</div>
+                <form asp-action="SaveDipReading" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="DipReadingForm.OwnerId" type="hidden" />
+                    <input asp-for="DipReadingForm.PumpId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Tank"] <span class="text-danger">*</span></label>
+                        <select asp-for="DipReadingForm.TankId" class="form-select" id="dipTankSelect" onchange="onDipTankChange(this)">
+                            @foreach (var t in Model.Tanks)
+                            {
+                                <option value="@t.Id" data-stock="@t.CurrentStock.ToString(System.Globalization.CultureInfo.InvariantCulture)">@t.Name - @t.ProductName (Stock: @t.CurrentStock.ToString("0.##") L)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            @* Pehle ye datetime-local tha. Do dikkatein thi:
+                               (1) browser use tab tak khaali maanta hai jab tak
+                                   TAREEKH AUR SAMAY dono na bhare jaayen — calendar
+                                   se sirf din chunne par form chupchap ruk jaata tha,
+                               (2) DipReadings.ReadingDate column DATE hai, samay
+                                   waise bhi phenk diya jaata tha.
+                               Isliye ab saada date box. *@
+                            <label class="form-label">@L["Reading date"]</label>
+                            <input asp-for="DipReadingForm.ReadingDate" type="date"
+                                   asp-format="{0:yyyy-MM-dd}" class="form-control"
+                                   data-open-dates="@string.Join(",", Model.OpenShifts.Select(x => x.ShiftDate.ToString("yyyy-MM-dd")))" />
+                            <div class="form-text">@L["Forgot a day? Just pick that date - the book stock of that day is used."]</div>
+                            @* 09 Sep: dip 20:42 par, shift 20:54 par band - book stock me us din
+                               ki bikri ghati hi nahi thi, farak "-615" aaya. Khuli shift wale din
+                               par dip daalte hi yahi chetavni. *@
+                            <div id="dipOpenShiftWarn" class="alert alert-warning py-1 px-2 small mt-1 mb-0" hidden>⚠ @L["This day's shift is still open, so its sale is not in the book stock yet. Close the shift first - or enter the dip in the Close Shift form."]</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Shift"] <span class="text-muted fw-normal">(@L["optional"])</span></label>
+                            <select asp-for="DipReadingForm.ShiftId" class="form-select">
+                                <option value="">@L["-- Not linked to a shift --"]</option>
+                                @foreach (var s in Model.LinkableShifts)
+                                {
+                                <option value="@s.Id">
+                                    @s.ShiftDate.ToString("dd-MMM-yyyy") &mdash; @s.ShiftCode
+                                    @(s.Status == "OPEN" ? L["(open)"].Value : L["(closed)"].Value)
+                                </option>
+                                }
+                            </select>
+                            @* Pehle yahan koi sandesh nahi tha - koi shift khuli na ho to
+                               dropdown khaali dikhta tha aur user samajh nahi paata tha ki
+                               galti uski hai ya screen ki. Expenses page par ye pehle se tha. *@
+                            <div class="form-text">
+                                @if (Model.LinkableShifts.Count == 0)
+                                {
+                                    <text>@L["No shift found yet. The reading will still be saved, just not linked to any shift."]</text>
+                                }
+                                else
+                                {
+                                    <text>@L["Linking to a shift makes the variance easier to trace later."]</text>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label">@L["Dip"] <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input asp-for="DipReadingForm.DipCm" type="number" step="0.01" min="0" class="form-control" required />
+                                <span class="input-group-text text-muted small">@L["cm"]</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">@L["Water Dip"]</label>
+                            <div class="input-group">
+                                <input asp-for="DipReadingForm.WaterDipCm" type="number" step="0.01" min="0" class="form-control" />
+                                <span class="input-group-text text-muted small">@L["cm"]</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label">@L["Density"]</label>
+                            <div class="input-group">
+                                <input asp-for="DipReadingForm.Density" type="number" step="0.001" min="0" class="form-control" />
+                                <span class="input-group-text text-muted small">@L["kg/m&sup3;"]</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">@L["Temperature"]</label>
+                            <div class="input-group">
+                                <input asp-for="DipReadingForm.Temperature" type="number" step="0.1" class="form-control" />
+                                <span class="input-group-text text-muted small">@L["&deg;C"]</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label d-flex align-items-center gap-1 flex-wrap">
+                                <span>@L["Book Stock"]</span>
+                                <span class="badge bg-secondary-subtle text-secondary" style="font-size:.65rem">@L["Auto"]</span>
+                            </label>
+                            <div class="input-group">
+                                <input asp-for="DipReadingForm.ExpectedStock" id="dipExpectedStock" type="number" step="0.01" min="0" class="form-control bg-light" readonly />
+                                <span class="input-group-text text-muted small">L</span>
+                            </div>
+                            <div class="form-text">@L["From the system - filled in for you"]</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label d-flex align-items-center gap-1 flex-wrap">
+                                <span>@L["Actual Stock"]</span>
+                                <span class="badge bg-primary-subtle text-primary" style="font-size:.65rem">@L["Measure"]</span>
+                            </label>
+                            <div class="input-group">
+                                <input asp-for="DipReadingForm.ActualStock" id="dipActualStock" type="number" step="0.01" min="0" class="form-control" />
+                                <span class="input-group-text text-muted small">L</span>
+                            </div>
+                            <div class="form-text">@L["Measured with the dip rod"]</div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@L["Save Dip Reading"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @* Pehle ye poori chaudai me neeche alag row me thi, aur form ke daayen
+       aadha page khaali pada rehta tha. Ab dono saath dikhte hain. *@
+    <div class="col-xl-7 col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h6 class="mb-3">@L["Recent Dip Readings"]</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Date"]</th>
+                            <th>@L["Tank"]</th>
+                            <th class="text-end">@L["Dip"]</th>
+                            <th class="text-end">@L["Expected"]</th>
+                            <th class="text-end">@L["Actual"]</th>
+                            <th class="text-end">@L["Variance (L)"]</th>
+                            <th class="text-end">@L["Value (&#8377;)"]</th>
+                            <th class="text-end">@L["Actions"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.DipReadings == null || Model.DipReadings.Items.Count == 0)
+                        {
+                            <tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">&#128207;</div><div class="empty-state-title">@L["No dip readings yet"]</div><div class="empty-state-hint">@L["Enter the tank dip (CM) in the form above to save your first reading."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var d in Model.DipReadings.Items)
+                            {
+                                <tr class="@(d.IsActive ? "" : "table-danger")">
+                                    <td data-label="@L["Date"]">
+                                        @if (!d.IsActive)
+                                        {
+                                            <span class="badge bg-danger me-1">@L["Deleted"]</span>
+                                        }
+                                        @d.ReadingDate.ToString("dd-MMM-yyyy hh:mm tt")
+                                    </td>
+                                    <td data-label="@L["Tank"]">@d.TankName</td>
+                                    <td class="text-end" data-label="@L["Dip"]">@d.DipCm.ToString("0.##")</td>
+                                    <td class="text-end" data-label="@L["Expected"]">@d.ExpectedStock.ToString("0.##")</td>
+                                    <td class="text-end" data-label="@L["Actual"]">@d.ActualStock.ToString("0.##")</td>
+                                    <td class="text-end @(d.Variance < 0 ? "text-danger" : d.Variance > 0 ? "text-success" : "text-muted")" data-label="@L["Variance (L)"]">@d.Variance.ToString("0.##")</td>
+                                    @* Nuksaan/faayda rupees me — us din ke rate par. *@
+                                    <td class="text-end fw-semibold @(d.VarianceAmount < 0 ? "text-danger" : d.VarianceAmount > 0 ? "text-success" : "text-muted")" data-label="@L["Value (Rs)"]">
+                                        @(d.VarianceAmount is null ? "—" : (d.VarianceAmount >= 0 ? "+" : "-") + "₹" + Math.Abs(d.VarianceAmount.Value).ToString("N2"))
+                                    </td>
+                                    <td class="text-end" data-label="@L["Actions"]">
+                                        <form asp-action="ToggleDipActive" asp-controller="Operations" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@d.Id" />
+                                            <input type="hidden" name="ownerId" value="@Model.DipReadingForm.OwnerId" />
+                                            <input type="hidden" name="pumpId" value="@Model.DipReadingForm.PumpId" />
+                                            <div class="form-check form-switch d-inline-block me-2 mb-0 align-middle">
+                                                <input class="form-check-input" type="checkbox" role="switch" onchange="this.form.submit()" @(d.IsActive ? "checked" : "") title="@L["Toggle Active"]">
+                                            </div>
+                                        </form>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="editDip('@d.Id', '@d.TankId', '@d.ReadingDate.ToString("yyyy-MM-dd")', '@(d.ShiftId?.ToString() ?? "")', '@d.DipCm.ToString(System.Globalization.CultureInfo.InvariantCulture)', '@(d.WaterDipCm?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")', '@(d.Density?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")', '@(d.Temperature?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")', '@d.ExpectedStock.ToString(System.Globalization.CultureInfo.InvariantCulture)', '@d.ActualStock.ToString(System.Globalization.CultureInfo.InvariantCulture)')">@L["Edit"]</button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @* Pager tabhi chhupta hai jab ek bhi reading na ho. Pehle shart
+                   "TotalPages > 1" thi aur page size 50 — yaani 50 se kam
+                   reading par na ginti dikhti thi, na kitne per page ka chunav. *@
+                @if (Model.DipReadings != null && Model.DipReadings.TotalCount > 0)
+                {
+                    var firstRow = ((Model.DipReadings.PageNumber - 1) * Model.DipReadings.PageSize) + 1;
+                    var lastRow = Math.Min(firstRow + Model.DipReadings.Items.Count - 1, Model.DipReadings.TotalCount);
+                    <div class="mt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <span class="small text-muted">
+                            @firstRow&ndash;@lastRow @L["of"] @Model.DipReadings.TotalCount
+                            &nbsp;&middot;&nbsp;
+                            @L["Page"] @Model.DipReadings.PageNumber / @Model.DipReadings.TotalPages
+                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select form-select-sm" style="width:auto"
+                                    onchange="changePage(1, this.value)" aria-label="@L["Rows per page"]">
+                                @foreach (var size in new[] { 10, 25, 50, 100 })
+                                {
+                                    if (size == Model.DipReadings.PageSize)
+                                    {
+                                        <option value="@size" selected>@size @L["per page"]</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@size">@size @L["per page"]</option>
+                                    }
+                                }
+                            </select>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary" @(Model.DipReadings.HasPreviousPage ? "" : "disabled") onclick="changePage(@(Model.DipReadings.PageNumber - 1))">@L["Previous"]</button>
+                                <button type="button" class="btn btn-outline-secondary" @(Model.DipReadings.HasNextPage ? "" : "disabled") onclick="changePage(@(Model.DipReadings.PageNumber + 1))">@L["Next"]</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editDipModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form asp-action="EditDipReading" asp-controller="Operations" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@L["Edit Dip Reading"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="editDipId" />
+                    <input type="hidden" name="DipReadingForm.OwnerId" value="@Model.DipReadingForm.OwnerId" />
+                    <input type="hidden" name="DipReadingForm.PumpId" value="@Model.DipReadingForm.PumpId" />
+                    <div class="mb-2">
+                        <label class="form-label">@L["Tank"]</label>
+                        <select name="DipReadingForm.TankId" id="editDipTankId" class="form-select">
+                            @foreach (var t in Model.Tanks)
+                            {
+                                <option value="@t.Id">@t.Name - @t.ProductName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Reading date and time"]</label>
+                            <input name="DipReadingForm.ReadingDate" id="editDipDate" type="date" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Shift"] <span class="text-muted fw-normal">(@L["optional"])</span></label>
+                            <select name="DipReadingForm.ShiftId" id="editDipShiftId" class="form-select">
+                                <option value="">@L["-- Not linked to a shift --"]</option>
+                                @foreach (var s in Model.LinkableShifts)
+                                {
+                                <option value="@s.Id">
+                                    @s.ShiftDate.ToString("dd-MMM-yyyy") &mdash; @s.ShiftCode
+                                    @(s.Status == "OPEN" ? L["(open)"].Value : L["(closed)"].Value)
+                                </option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label">@L["Dip"] <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input name="DipReadingForm.DipCm" id="editDipCm" type="number" step="0.01" min="0" class="form-control" required />
+                                <span class="input-group-text text-muted small">@L["cm"]</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">@L["Water Dip"]</label>
+                            <div class="input-group">
+                                <input name="DipReadingForm.WaterDipCm" id="editDipWater" type="number" step="0.01" min="0" class="form-control" />
+                                <span class="input-group-text text-muted small">@L["cm"]</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">@L["Density"]</label>
+                            <div class="input-group">
+                                <input name="DipReadingForm.Density" id="editDipDensity" type="number" step="0.001" min="0" class="form-control" />
+                                <span class="input-group-text text-muted small">@L["kg/m&sup3;"]</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label">@L["Temperature"]</label>
+                            <div class="input-group">
+                                <input name="DipReadingForm.Temperature" id="editDipTemp" type="number" step="0.1" class="form-control" />
+                                <span class="input-group-text text-muted small">@L["&deg;C"]</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@L["Expected"]</label>
+                            <input name="DipReadingForm.ExpectedStock" id="editDipExp" type="number" step="0.01" min="0" class="form-control" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@L["Actual"]</label>
+                            <input name="DipReadingForm.ActualStock" id="editDipAct" type="number" step="0.01" min="0" class="form-control" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@L["Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">@L["Save Changes"]</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function applyDateFilter() {
+        const pumpId = @Model.DipReadingForm.PumpId;
+        const fromDate = document.getElementById('fromDate').value;
+        const toDate = document.getElementById('toDate').value;
+        let url = '/Operations/DipTesting?pumpId=' + pumpId;
+        if (fromDate) {
+            url += '&fromDate=' + encodeURIComponent(fromDate);
+        }
+        if (toDate) {
+            url += '&toDate=' + encodeURIComponent(toDate);
+        }
+        window.location = url;
+    }
+
+    // pageSize bhi saath le jaate hain, warna "50 per page" chun kar agla page
+    // dabate hi wapas 10 par aa jaata.
+    function changePage(page, pageSize) {
+        const pumpId = @Model.DipReadingForm.PumpId;
+        const fromDate = document.getElementById('fromDate').value;
+        const toDate = document.getElementById('toDate').value;
+        const size = pageSize || @(Model.DipReadings?.PageSize ?? 10);
+        let url = '/Operations/DipTesting?pumpId=' + pumpId + '&pageNumber=' + page + '&pageSize=' + size;
+        if (fromDate) {
+            url += '&fromDate=' + encodeURIComponent(fromDate);
+        }
+        if (toDate) {
+            url += '&toDate=' + encodeURIComponent(toDate);
+        }
+        window.location = url;
+    }
+
+    // Book Stock (Expected) — US DIN ka, aaj ka nahi.
+    //
+    // Pehle yahan sirf `data-stock` bharta tha, jo tank ka AAJ ka stock hai.
+    // Aaj ki dip ke liye to theek tha, par purani tareekh ki entry par bilkul
+    // galat: 2 September ki dip bharo aur ye 6 September ka stock bhar deta,
+    // to variance 4,000 litre ka aa jaata jabki asal me 86 ka tha.
+    //
+    // Ab tareekh ke hisaab se server se poochte hain. Endpoint aur controller
+    // dono pehle se the (Stock Reconcile page yahi use karta hai) — Dip page
+    // hi uss se juda nahi tha.
+    let dipStockReq = 0;   // sirf aakhri jawab maane, warna do request ki race lag jaati hai
+
+    async function refreshDipBookStock() {
+        const tankEl = document.getElementById('dipTankSelect');
+        const dateEl = document.querySelector('[name="DipReadingForm.ReadingDate"]');
+        const expField = document.getElementById('dipExpectedStock');
+        if (!tankEl || !expField) { return; }
+
+        const tankId = tankEl.value;
+        if (!tankId || tankId === '0') { return; }
+
+        // datetime-local se sirf tareekh chahiye (yyyy-MM-dd)
+        const dateOnly = dateEl && dateEl.value ? dateEl.value.slice(0, 10) : '';
+
+        // Tareekh na ho to purana vyavhaar — tank ka aaj ka stock
+        if (!dateOnly) {
+            const opt = tankEl.options[tankEl.selectedIndex];
+            const stock = opt ? (parseFloat(opt.getAttribute('data-stock')) || 0) : 0;
+            expField.value = stock.toFixed(2);
+            return;
+        }
+
+        const myReq = ++dipStockReq;
+        try {
+            // Section AB: DSR wala book stock (pichhli dip + aaya tel - band shifton
+            // ki bikri). Pehle tank ka CurrentStock aata tha, jisme 1 tarikh se ka
+            // purana farak juda rehta tha - page "+40" bolta, DSR "+4.7".
+            const resp = await fetch('/Operations/GetDipBookStock?tankId=' + tankId + '&date=' + dateOnly);
+            if (!resp.ok) { return; }
+            const data = await resp.json();
+            if (myReq !== dipStockReq) { return; }      // beech me user ne aur badla
+            expField.value = Number(data.stock).toFixed(2);
+        } catch (e) {
+            // Net gaya to jo pehle se bhara hai wahi rehne do — khaali karna
+            // isse bura hai, user ko lagega stock zero hai.
+            console.error('Book stock nahi mil paaya:', e);
+        }
+    }
+
+    function checkDipOpenShift() {
+        const dateEl = document.querySelector('[name="DipReadingForm.ReadingDate"]');
+        const warn = document.getElementById('dipOpenShiftWarn');
+        if (!dateEl || !warn) { return; }
+        const day = (dateEl.value || '').slice(0, 10);
+        const open = (dateEl.getAttribute('data-open-dates') || '').split(',').filter(Boolean);
+        warn.hidden = !(day && open.includes(day));
+    }
+
+    function onDipTankChange() {
+        refreshDipBookStock();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const dateEl = document.querySelector('[name="DipReadingForm.ReadingDate"]');
+        // Tareekh badalne par bhi dobara poochna hai — asli galti yahi thi ki
+        // tareekh badalne par book stock waisa ka waisa pada rehta tha.
+        if (dateEl) {
+            dateEl.addEventListener('change', refreshDipBookStock);
+            dateEl.addEventListener('change', checkDipOpenShift);
+        }
+        refreshDipBookStock();
+        checkDipOpenShift();
+    });
+
+    function editDip(id, tankId, date, shiftId, dip, water, density, temp, exp, act) {
+        document.getElementById('editDipId').value = id;
+        document.getElementById('editDipTankId').value = tankId;
+        document.getElementById('editDipDate').value = date;
+        document.getElementById('editDipShiftId').value = shiftId || '';
+        document.getElementById('editDipCm').value = dip;
+        document.getElementById('editDipWater').value = water || '';
+        document.getElementById('editDipDensity').value = density || '';
+        document.getElementById('editDipTemp').value = temp || '';
+        document.getElementById('editDipExp').value = exp;
+        document.getElementById('editDipAct').value = act;
+        new bootstrap.Modal(document.getElementById('editDipModal')).show();
+    }
+</script>

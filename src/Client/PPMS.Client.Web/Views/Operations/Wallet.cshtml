@@ -1,0 +1,214 @@
+﻿@model PPMS.Client.Web.Models.WalletViewModel
+@{
+    ViewData["Title"] = "Message Balance";
+    var w = Model.Wallet;
+    var balance = w?.Balance ?? 0;
+    var price = w?.PricePerCredit ?? 0;
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") alert-dismissible fade show py-2 small" role="alert">
+        @Model.Message
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button>
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Message balance"]</h5>
+                <p class="text-muted small mb-3">
+                    @L["Each alert sent to your mobile uses one message from this balance."]
+                </p>
+
+                <div class="d-flex align-items-baseline gap-2 mb-1">
+                    <span class="fs-2 fw-bold @(balance <= 0 ? "text-danger" : balance < 20 ? "text-warning" : "text-success")">@balance</span>
+                    <span class="text-muted">@L["messages left"]</span>
+                </div>
+                <div class="text-muted small mb-3">
+                    @L["Used so far"]: @(w?.LifetimeUsed ?? 0)
+                    @if ((w?.PendingCredits ?? 0) > 0)
+                    {
+                        <span> · @(w!.PendingCredits) @L["waiting for approval"]</span>
+                    }
+                </div>
+
+                @if (balance <= 0)
+                {
+                    @* Ye sabse zaroori sandesh hai — warna owner samajhta rahega ki
+                       alert aa rahe hain, jabki kuch ja hi nahi raha. *@
+                    <div class="alert alert-danger py-2 px-2 small mb-0">
+                        @L["Your balance is empty, so no alerts are being sent right now. Recharge to start them again."]
+                    </div>
+                }
+                else if (balance < 20)
+                {
+                    <div class="alert alert-warning py-2 px-2 small mb-0">
+                        @L["Your balance is running low."]
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title mb-1">@L["Recharge"]</h6>
+
+                @if (!Model.CanRecharge)
+                {
+                    <div class="alert alert-warning py-2 px-2 small mb-0">
+                        @L["Recharge is not available yet. Please contact support."]
+                    </div>
+                }
+                else if (Model.HasPending)
+                {
+                    <div class="alert alert-info py-2 px-2 small mb-0">
+                        @L["Your last recharge is still being checked. You can send another one after it is done."]
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted small mb-2">
+                        @L["Send the money to the UPI ID below, then enter the amount and the UPI reference number here."]
+                    </p>
+
+                    <div class="border rounded p-2 bg-light mb-3 small">
+                        <div><span class="text-muted">@L["UPI ID"]:</span> <strong>@w!.UpiId</strong></div>
+                        @if (!string.IsNullOrWhiteSpace(w.UpiName))
+                        {
+                            <div><span class="text-muted">@L["Name"]:</span> @w.UpiName</div>
+                        }
+                        <div><span class="text-muted">@L["Rate"]:</span> ₹@price.ToString("N2") @L["per message"]</div>
+                    </div>
+
+                    <form method="post" asp-action="RequestRecharge">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-2">
+                            <label class="form-label small mb-1" for="amount">@L["Amount you paid (₹)"]</label>
+                            <input id="amount" name="amount" type="number" min="1" step="1" value="100"
+                                   class="form-control form-control-sm" required
+                                   oninput="document.getElementById('msgCount').textContent = (this.value > 0 && @price > 0) ? Math.floor(this.value / @price) : 0;" />
+                            <div class="form-text">
+                                @L["You will get about"] <strong id="msgCount">@(price > 0 ? (int)(100 / price) : 0)</strong> @L["Messages"]
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small mb-1" for="upiReference">@L["UPI reference number"]</label>
+                            <input id="upiReference" name="upiReference" class="form-control form-control-sm"
+                                   placeholder="@L["From your payment app"]" />
+                            <div class="form-text">@L["This helps us find your payment faster."]</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm px-4">@L["Send recharge request"]</button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title mb-1">@L["Your recharges"]</h6>
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>@L["Date"]</th>
+                                <th class="text-end">@L["Amount"]</th>
+                                <th class="text-end">@L["Messages"]</th>
+                                <th>@L["Status"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Recharges.Count == 0)
+                            {
+                                <tr><td colspan="4" class="text-center text-muted py-3">@L["No recharges yet."]</td></tr>
+                            }
+                            else
+                            {
+                                @foreach (var r in Model.Recharges)
+                                {
+                                    <tr>
+                                        <td data-label="@L["Date"]">@r.RequestedOn.ToString("dd MMM yyyy")</td>
+                                        <td class="text-end" data-label="@L["Amount"]">₹@r.Amount.ToString("N2")</td>
+                                        <td class="text-end" data-label="@L["Messages"]">@r.Credits</td>
+                                        <td data-label="@L["Status"]">
+                                            @if (r.Status == "PENDING")
+                                            {
+                                                <span class="badge bg-warning text-dark">@L["Checking"]</span>
+                                            }
+                                            else if (r.Status == "APPROVED")
+                                            {
+                                                <span class="badge bg-success">@L["Added"]</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">@L["Rejected"]</span>
+                                                @if (!string.IsNullOrWhiteSpace(r.DecisionNote))
+                                                {
+                                                    <div class="text-muted small">@r.DecisionNote</div>
+                                                }
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title mb-1">@L["Recent activity"]</h6>
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>@L["When"]</th>
+                                <th>@L["What"]</th>
+                                <th class="text-end">@L["Change"]</th>
+                                <th class="text-end">@L["Balance"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Ledger.Count == 0)
+                            {
+                                <tr><td colspan="4" class="text-center text-muted py-3">@L["Nothing yet."]</td></tr>
+                            }
+                            else
+                            {
+                                @foreach (var e in Model.Ledger)
+                                {
+                                    <tr>
+                                        <td data-label="@L["When"]">@e.EntryOn.ToString("dd MMM, HH:mm")</td>
+                                        <td data-label="@L["What"]">
+                                            @(e.EntryType switch
+                                            {
+                                                "RECHARGE" => L["Recharge"].Value,
+                                                "USE" => L["Alert sent"].Value,
+                                                "REFUND" => L["Refund (message failed)"].Value,
+                                                _ => e.EntryType
+                                            })
+                                            @if (!string.IsNullOrWhiteSpace(e.AlertKey))
+                                            {
+                                                <span class="text-muted small"> · @e.AlertKey</span>
+                                            }
+                                        </td>
+                                        <td class="text-end @(e.Credits < 0 ? "text-danger" : "text-success")" data-label="@L["Change"]">
+                                            @(e.Credits > 0 ? "+" : "")@e.Credits
+                                        </td>
+                                        <td class="text-end" data-label="@L["Balance"]">@e.BalanceAfter</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

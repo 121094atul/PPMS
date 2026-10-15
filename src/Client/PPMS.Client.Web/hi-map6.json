@@ -1,0 +1,13 @@
+{
+  "Meter chain": "मीटर की कड़ी",
+  "Each shift's opening reading should match the previous shift's closing reading.": "हर शिफ़्ट की शुरुआती रीडिंग पिछली शिफ़्ट की आख़िरी रीडिंग से मिलनी चाहिए।",
+  "Every nozzle joins up. Nothing broken.": "हर नोज़ल की कड़ी जुड़ी हुई है। कहीं कुछ टूटा नहीं।",
+  "break(s) found. The fuel in between is not recorded anywhere.": "जगह कड़ी टूटी है। बीच का तेल कहीं दर्ज ही नहीं है।",
+  "Gap": "फ़र्क़",
+  "Party balances": "पार्टियों का बक़ाया",
+  "Each party's outstanding is a running total. If it ever drifts from the ledger, this recounts every party from their own entries.": "हर पार्टी का बक़ाया एक चलता हुआ जोड़ है। कभी वह खाते से अलग हो जाए, तो यह हर पार्टी का हिसाब उसके अपने खाते से दोबारा गिन देता है।",
+  "Recount from ledger": "खाते से दोबारा गिनिए",
+  "Recount every party's outstanding from their ledger?": "हर पार्टी का बक़ाया उसके खाते से दोबारा गिनें?",
+  "Recount": "दोबारा गिनिए",
+  "Safe to run any time - it only reads the ledger and writes the total back.": "कभी भी चला सकते हैं — यह सिर्फ़ खाता पढ़ता है और जोड़ वापस लिख देता है।"
+}

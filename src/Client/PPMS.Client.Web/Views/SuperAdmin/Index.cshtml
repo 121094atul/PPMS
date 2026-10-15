@@ -1,0 +1,422 @@
+﻿@model IReadOnlyList<PPMS.Client.Web.Services.ApiOwnerDto>
+@using PPMS.Client.Web.Services
+@{
+    ViewData["Title"] = "Tenant Subscriptions";
+    var subRequests = ViewBag.SubscriptionRequests as IReadOnlyList<ApiSubscriptionRequestDto> ?? new List<ApiSubscriptionRequestDto>();
+    var pendingCount = subRequests.Count(r => r.Status == "PENDING");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>@L["Tenant Subscriptions (Super Admin)"]</h2>
+    <a asp-action="CreateTenant" class="btn btn-primary">@L["Create New Tenant"]</a>
+</div>
+
+@if (subRequests.Count > 0)
+{
+    <div class="card shadow-sm mb-4 border-warning">
+        <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center justify-content-between">
+            <div class="fw-bold">
+                &#128276; Plan Requests
+                @if (pendingCount > 0)
+                {
+                    <span class="badge bg-danger ms-2">@pendingCount Pending</span>
+                }
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>@L["Name"]</th>
+                            <th>@L["Mobile"]</th>
+                            <th>@L["Plan"]</th>
+                            <th>@L["Requested On"]</th>
+                            <th>@L["Status"]</th>
+                            <th class="text-end">@L["Action"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var req in subRequests)
+                        {
+                            <tr class="@(req.Status == "PENDING" ? "table-warning" : "")">
+                                <td class="fw-semibold" data-label="@L["Name"]">@req.ContactName</td>
+                                <td data-label="@L["Mobile"]">
+                                    <a href="https://wa.me/91@req.ContactNo" target="_blank" class="text-success fw-bold text-decoration-none">
+                                        &#128222; @req.ContactNo
+                                    </a>
+                                </td>
+                                <td data-label="@L["Plan"]">
+                                    @if (req.PlanType == "6_MONTH")
+                                    {
+                                        <span class="badge bg-primary">@L["6 Month Plan"]</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-purple" style="background:#7c3aed!important;">@L["1 Year Plan"]</span>
+                                    }
+                                </td>
+                                <td class="text-muted" data-label="@L["Requested On"]">@req.RequestedOn.ToString("dd MMM yyyy HH:mm")</td>
+                                <td data-label="@L["Status"]">
+                                    @if (req.Status == "PENDING")
+                                    {
+                                        <span class="badge bg-warning text-dark">@L["Pending"]</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">@L["done"]</span>
+                                    }
+                                </td>
+                                <td class="text-end" data-label="@L["Action"]">
+                                    @if (req.Status == "PENDING")
+                                    {
+                                        <form asp-action="MarkSubscriptionDone" asp-route-id="@req.Id" method="post" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-success" data-confirm="Mark this request as done?"
+                                                    data-confirm-title="@L["Mark as done"]"
+                                                    data-confirm-ok="Mark done">
+                                                &#10003; Done
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table data-pager="25" class="table table-hover table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>@L["ID"]</th>
+                        <th>@L["Tenant Name"]</th>
+                        <th>@L["Contact"]</th>
+                        <th>@L["Valid Upto (Trial)"]</th>
+                        @* Ye teen batate hain ki grahak SACH ME chala raha hai ya nahi.
+                           50 pump ho jayen to sabse zaroori sawaal yahi hai - kise
+                           call karna hai aur kis trial ko badhane ka matlab hai. *@
+                        <th>@L["Last Login"]</th>
+                        <th>@L["Last Entry"]</th>
+                        <th class="text-end">@L["Sales (This Month)"]</th>
+                        <th>@L["Status"]</th>
+                        <th class="text-end">@L["Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Count > 0)
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td data-label="@L["ID"]">@item.Id</td>
+                                <td data-label="@L["Tenant Name"]">
+                                    <div class="fw-semibold">@item.Name</div>
+                                    <div class="small text-muted">
+                                        @(item.City ?? "-")
+                                        @if (item.IsTrial) { <span class="badge bg-warning text-dark ms-1">@L["TRIAL"]</span> }
+                                    </div>
+                                </td>
+                                <td data-label="@L["Contact"]">
+                                    <div>@(item.ContactName ?? "-")</div>
+                                    @if (!string.IsNullOrWhiteSpace(item.ContactNo))
+                                    {
+                                        <a class="small" href="tel:@item.ContactNo">@item.ContactNo</a>
+                                    }
+                                </td>
+                                <td data-label="@L["Valid Upto"]">
+                                    @{
+                                        var isValid = item.ValidUpto.HasValue && item.ValidUpto.Value.Date >= DateTime.Today;
+                                        var validDate = item.ValidUpto?.ToString("dd MMM yyyy") ?? "N/A";
+                                    }
+                                    @if (isValid)
+                                    {
+                                        <span class="text-success fw-bold">@validDate</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger fw-bold">@validDate (Expired)</span>
+                                    }
+                                </td>
+                                @{
+                                    // Entry band ho jana chhodne ki sabse pehli nishani hai.
+                                    var daysSinceEntry = item.LastActivityOn.HasValue
+                                        ? (int?)(DateTime.Today - item.LastActivityOn.Value.Date).TotalDays
+                                        : null;
+                                }
+                                <td data-label="@L["Last Login"]">
+                                    @if (item.LastLoginOn.HasValue)
+                                    {
+                                        <span class="small">@item.LastLoginOn.Value.ToString("dd MMM, HH:mm")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">@L["Never"]</span>
+                                    }
+                                </td>
+                                <td data-label="@L["Last Entry"]">
+                                    @if (daysSinceEntry is null)
+                                    {
+                                        <span class="badge bg-danger">@L["No entries"]</span>
+                                    }
+                                    else if (daysSinceEntry > 7)
+                                    {
+                                        <span class="badge bg-danger">@daysSinceEntry days ago</span>
+                                    }
+                                    else if (daysSinceEntry > 2)
+                                    {
+                                        <span class="badge bg-warning text-dark">@daysSinceEntry days ago</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">@(daysSinceEntry == 0 ? "Today" : daysSinceEntry + " days ago")</span>
+                                    }
+                                </td>
+                                <td class="text-end" data-label="@L["Sales (This Month)"]">
+                                    @(item.SalesThisMonth > 0 ? "\u20B9" + item.SalesThisMonth.ToString("N0") : "-")
+                                </td>
+                                <td data-label="@L["Status"]">
+                                    @if (item.IsActive)
+                                    {
+                                        <span class="badge bg-success">@L["Active"]</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">@L["Inactive"]</span>
+                                    }
+                                </td>
+                                <td class="text-end" data-label="@L["Actions"]">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="openExtendModal('@item.Id', '@item.Name', '@(item.ValidUpto?.ToString("yyyy-MM-dd") ?? "")')">@L["Extend Trial"]</button>
+                                    @* Grahak ka phone aata hai "password bhool gaya" - pehle iske
+                                       liye seedha DB kholni padti thi. *@
+                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-1"
+                                            onclick="openUsersModal('@item.Id', '@item.Name')">@L["Users / Password"]</button>
+                                    
+                                    <form asp-action="ToggleStatus" asp-route-id="@item.Id" method="post" style="display:inline;" class="ms-1">
+                                        @if (item.IsActive)
+                                        {
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Suspend this tenant? Their users will not be able to sign in."
+                                                    data-confirm-title="@L["Suspend tenant"]"
+                                                    data-confirm-ok="Suspend"
+                                                    data-confirm-danger="true">@L["Suspend"]</button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit" class="btn btn-sm btn-outline-success" data-confirm="Activate this tenant?"
+                                                    data-confirm-title="@L["Activate tenant"]"
+                                                    data-confirm-ok="Activate">@L["Activate"]</button>
+                                        }
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">@L["No tenants found."]</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Tenant ke users + password reset -->
+<div class="modal fade" id="usersModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Users &mdash; <span id="usersTenantName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="usersLoading" class="text-muted small">@L["Loading..."]</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle" id="usersTable" style="display:none;">
+                        <thead class="table-light">
+                            <tr>
+                                <th>@L["Name"]</th>
+                                <th>@L["Username"]</th>
+                                <th>@L["Role"]</th>
+                                <th>@L["Mobile"]</th>
+                                <th>@L["Last Login"]</th>
+                                <th class="text-end">@L["Action"]</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersBody"></tbody>
+                    </table>
+                </div>
+                <div id="usersMsg" class="alert py-2 mt-2" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Extend Trial Modal -->
+<div class="modal fade" id="extendTrialModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="ExtendTrial" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title">@L["Extend Subscription / Trial"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="extendTenantId" name="id" />
+                    <div class="mb-3">
+                        <label class="form-label">@L["Tenant Name"]</label>
+                        <input type="text" id="extendTenantName" class="form-control" readonly />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label d-block">@L["Quick Select Subscription"]</label>
+                        <div class="btn-group w-100" role="group">
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="setQuickDate(7, 'days')">@L["7 Days (Trial)"]</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="setQuickDate(6, 'months')">@L["6 Months"]</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="setQuickDate(1, 'years')">@L["1 Year"]</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["New Valid Upto Date"]</label>
+                        <input type="date" id="newValidUpto" name="newValidUpto" class="form-control" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@L["Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">@L["Save Changes"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openExtendModal(id, name, currentValidUpto) {
+            document.getElementById('extendTenantId').value = id;
+            document.getElementById('extendTenantName').value = name;
+            
+            if (currentValidUpto) {
+                document.getElementById('newValidUpto').value = currentValidUpto;
+            } else {
+                setQuickDate(7, 'days');
+            }
+            
+            new bootstrap.Modal(document.getElementById('extendTrialModal')).show();
+        }
+
+        function setQuickDate(amount, unit) {
+            let d = new Date();
+            if (unit === 'days') {
+                d.setDate(d.getDate() + amount);
+            } else if (unit === 'months') {
+                d.setMonth(d.getMonth() + amount);
+            } else if (unit === 'years') {
+                d.setFullYear(d.getFullYear() + amount);
+            }
+            document.getElementById('newValidUpto').value = d.toISOString().split('T')[0];
+        }
+    
+    // ── Tenant ke users + password reset ────────────────────────────────
+    var usersModalOwnerId = null;
+
+    function openUsersModal(ownerId, name) {
+        usersModalOwnerId = ownerId;
+        document.getElementById('usersTenantName').textContent = name;
+        document.getElementById('usersBody').innerHTML = '';
+        document.getElementById('usersTable').style.display = 'none';
+        document.getElementById('usersLoading').style.display = 'block';
+        document.getElementById('usersMsg').style.display = 'none';
+
+        new bootstrap.Modal(document.getElementById('usersModal')).show();
+
+        fetch('/SuperAdmin/TenantUsers?ownerId=' + ownerId)
+            .then(function (r) { return r.json(); })
+            .then(function (users) {
+                var body = document.getElementById('usersBody');
+                body.innerHTML = '';
+
+                users.forEach(function (u) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td>' + esc(u.fullName) + (u.isOwner ? ' <span class="badge bg-primary">@L["Owner"]</span>' : '') + '</td>' +
+                        '<td><code>' + esc(u.username) + '</code></td>' +
+                        '<td>' + esc(u.roleName) + '</td>' +
+                        '<td>' + esc(u.mobile || '-') + '</td>' +
+                        '<td class="small">' + (u.lastLoginOn ? new Date(u.lastLoginOn).toLocaleString() : '@L["Never"]') + '</td>' +
+                        '<td class="text-end"><button class="btn btn-sm btn-outline-warning" ' +
+                        'onclick="resetUserPassword(' + u.id + ', \'' + esc(u.username) + '\')">@L["Reset password"]</button></td>';
+                    body.appendChild(tr);
+                });
+
+                document.getElementById('usersLoading').style.display = 'none';
+                document.getElementById('usersTable').style.display = '';
+            })
+            .catch(function () {
+                document.getElementById('usersLoading').textContent = '@L["Could not load users."]';
+            });
+    }
+
+    // Naam/username page par aata hai - HTML me daalne se pehle saaf karna zaroori.
+    function esc(v) {
+        return String(v == null ? '' : v)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function showUsersMsg(text, isError) {
+        var el = document.getElementById('usersMsg');
+        el.textContent = text;
+        el.className = 'alert py-2 mt-2 ' + (isError ? 'alert-danger' : 'alert-success');
+        el.style.display = 'block';
+    }
+
+    // Pehle yahan browser ka prompt() tha, aur uska sawaal Hinglish me likha tha.
+    // Do aur dikkatein thin: password type karte waqt akshar khule dikhte the,
+    // aur "6 se chhota" wali galti modal band hone ke BAAD batani padti thi —
+    // user ko poora password dobara likhna padta tha.
+    // Ab site.js ka ppmsPrompt hai: password field chhupa hua, aur lambai ki
+    // jaanch usi box me ho jaati hai.
+    function resetUserPassword(userId, username) {
+        window.ppmsPrompt(@Json.Serialize(L["New password for"].Value) + ' "' + username + '"', {
+            title: @Json.Serialize(L["Reset password"].Value),
+            okText: @Json.Serialize(L["Reset password"].Value),
+            password: true,
+            minLength: 6,
+            errorText: @Json.Serialize(L["Password must be at least 6 characters."].Value)
+        }).then(function (pwd) {
+            if (pwd === null) { return; }   // Cancel dabaya
+            sendResetPassword(userId, username, pwd);
+        });
+    }
+
+    function sendResetPassword(userId, username, pwd) {
+        // ppmsFetch = fetch + CSRF token header (site.js me hai)
+        ppmsFetch('/SuperAdmin/ResetUserPassword', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userId, newPassword: pwd })
+        })
+        .then(function (r) {
+            if (r.ok) {
+                // Password screen par dikhate hain kyunki superadmin ko grahak ko
+                // phone par batana hota hai. Kahin store nahi hota.
+                showUsersMsg('Done. New password for "' + username + '": ' + pwd + ' — please pass it on to the customer.', false);
+            } else {
+                showUsersMsg('Could not reset the password.', true);
+            }
+        })
+        .catch(function () { showUsersMsg('Network problem.', true); });
+    }
+</script>
+}

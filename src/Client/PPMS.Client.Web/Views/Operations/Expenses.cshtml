@@ -1,0 +1,194 @@
+@model PPMS.Client.Web.Models.ExpenseViewModel
+@{
+    ViewData["Title"] = "Expense Management";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Expense Entry"]</h5>
+                <p class="text-muted small mb-3">@L["Post daily operational expenses with payment mode tracking."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveExpense" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select" onchange="window.location='/Operations/Expenses?pumpId='+this.value">
+                            @if (Model.Pumps.Count == 0)
+                            {
+                                <option value="0">@L["No pump configured"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var p in Model.Pumps)
+                                {
+                                    <option value="@p.Id">@p.Name (@p.City)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Expense Head"]</label>
+                        <select asp-for="Form.ExpenseHeadId" class="form-select">
+                            @if (Model.Heads.Count == 0)
+                            {
+                                <option value="0">@L["No expense head available"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var h in Model.Heads)
+                                {
+                                    <option value="@h.Id">@h.HeadName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Shift"]</label>
+                        <select asp-for="Form.ShiftId" class="form-select">
+                            <option value="">@L["-- Not linked to a shift --"]</option>
+                            @* Band ho chuki shift bhi dikhti hai, warna purane din ki
+                               entry us din ki shift se jud hi nahi paati thi. *@
+                            @foreach (var s in Model.LinkableShifts)
+                            {
+                                <option value="@s.Id">
+                                    @s.ShiftDate.ToString("dd-MMM-yyyy") &mdash; @s.ShiftCode
+                                    @(s.Status == "OPEN" ? L["(open)"].Value : L["(closed)"].Value)
+                                </option>
+                            }
+                        </select>
+                        <div class="form-text">
+                            @if (Model.LinkableShifts.Count == 0)
+                            {
+                                <text>@L["No shift found yet."]</text>
+                            }
+                            else
+                            {
+                                <text>@L["Linking a cash expense to a shift reduces that shift's expected cash automatically."]</text>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Amount"]</label>
+                            <input asp-for="Form.Amount" class="form-control" type="number" min="0.01" step="0.01" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Payment Mode"]</label>
+                            <select asp-for="Form.PaymentMode" class="form-select">
+                                <option>@L["Cash"]</option>
+                                <option>@L["UPI"]</option>
+                                <option>@L["Card"]</option>
+                                <option>@L["Bank"]</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Reference No"]</label>
+                            <input asp-for="Form.ReferenceNo" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Date"]</label>
+                            <input asp-for="Form.ExpenseDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Narration"]</label>
+                        <textarea asp-for="Form.Narration" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@L["Save Expense"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-2">@L["Expense Register"]</h5>
+                <form method="get" class="row small mb-3 gx-2">
+                    <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                    <div class="col-auto"><input type="date" name="fromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" title="@L["From date"]" /></div>
+                    <div class="col-auto"><input type="date" name="toDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" title="@L["To date"]" /></div>
+                    <div class="col"><input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control form-control-sm" placeholder="@L["Search ref/narration/head..."]" /></div>
+                    <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-secondary">@L["Search"]</button></div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>@L["Date"]</th>
+                                <th>@L["Head"]</th>
+                                <th>@L["Mode"]</th>
+                                <th>@L["Ref"]</th>
+                                <th class="text-end">@L["Amount"]</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Expenses?.Items == null || Model.Expenses.Items.Count == 0)
+                            {
+                                <tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#128184;</div><div class="empty-state-title">@L["No expenses in this range"]</div><div class="empty-state-hint">@L["Record any expense — electricity, salary, maintenance — from the form on the left."]</div></div></td></tr>
+                            }
+                            else
+                            {
+                                @foreach (var e in Model.Expenses.Items)
+                                {
+                                    <tr>
+                                        <td data-label="@L["Date"]">@e.TxnDateTime.ToString("dd-MMM-yyyy hh:mm tt")</td>
+                                        <td data-label="@L["Head"]">@e.ExpenseHeadName</td>
+                                        <td data-label="@L["Mode"]">@e.PaymentMode</td>
+                                        <td data-label="@L["Ref"]">@e.ReferenceNo</td>
+                                        <td class="text-end" data-label="@L["Amount"]">@e.Amount.ToString("0.00")</td>
+                                        <td class="text-end" data-label="@L["Action"]">
+                                            <form asp-action="DeleteExpense" asp-controller="Operations" method="post" style="display:inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@e.Id" />
+                                                <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">@L["Del"]</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Expenses != null && Model.Expenses.TotalPages > 1)
+                {
+                    <div class="d-flex justify-content-between align-items-center mt-2 small">
+                        <div>Showing page @Model.Expenses.PageNumber of @Model.Expenses.TotalPages</div>
+                        <ul class="pagination pagination-sm mb-0">
+                            @if (Model.Expenses.HasPreviousPage)
+                            {
+                                <li class="page-item"><a class="page-link" href="?pumpId=@Model.Form.PumpId&pageNumber=@(Model.Expenses.PageNumber - 1)&searchTerm=@Model.SearchTerm&fromDate=@Model.FromDate?.ToString("yyyy-MM-dd")&toDate=@Model.ToDate?.ToString("yyyy-MM-dd")">@L["Previous"]</a></li>
+                            }
+                            @if (Model.Expenses.HasNextPage)
+                            {
+                                <li class="page-item"><a class="page-link" href="?pumpId=@Model.Form.PumpId&pageNumber=@(Model.Expenses.PageNumber + 1)&searchTerm=@Model.SearchTerm&fromDate=@Model.FromDate?.ToString("yyyy-MM-dd")&toDate=@Model.ToDate?.ToString("yyyy-MM-dd")">@L["Next"]</a></li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+            </div>
+        </div>
+    </div>
+</div>

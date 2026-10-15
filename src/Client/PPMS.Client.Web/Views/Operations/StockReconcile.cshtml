@@ -1,0 +1,281 @@
+@model PPMS.Client.Web.Models.StockReconciliationViewModel
+@{
+    ViewData["Title"] = "Tank Dip Testing";
+    var selectedTank = Model.Tanks.FirstOrDefault(x => x.Id == Model.Form.TankId);
+    var variance = Model.Form.PhysicalStock - Model.Form.BookStock;
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["&#128738; Tank Dip Testing"]</h5>
+                <p class="text-muted small mb-3">@L["Measure the physical stock using the dip rod and compare it with the book stock. The variance helps identify evaporation or leaks."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveStockReconcile" asp-controller="Operations" method="post" id="reconcileForm">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select" onchange="window.location='/Operations/StockReconcile?pumpId='+this.value">
+                            @if (Model.Pumps.Count == 0)
+                            {
+                                <option value="0">@L["No pump configured"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var p in Model.Pumps)
+                                {
+                                    <option value="@p.Id">@p.Name (@p.City)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Tank"]</label>
+                        <select asp-for="Form.TankId" class="form-select" onchange="const dateVal = document.getElementById('Form_ReconciliationDate')?.value; window.location='/Operations/StockReconcile?pumpId=@Model.Form.PumpId&tankId='+this.value + (dateVal ? '&fromDate=' + dateVal : '')">
+                            @if (Model.Tanks.Count == 0)
+                            {
+                                <option value="0">@L["No tank available"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var t in Model.Tanks)
+                                {
+                                    <option value="@t.Id">@t.Name (@t.ProductName)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Dip Testing Date"]</label>
+                        <input asp-for="Form.ReconciliationDate" type="date" class="form-control" />
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                Book Stock <span class="badge bg-secondary-subtle text-secondary">@L["Auto"]</span>
+                            </label>
+                            <div class="input-group">
+                                <input asp-for="Form.BookStock" id="bookStock" type="number" step="0.001" class="form-control bg-light"
+                                       value="@(Model.Form.BookStock > 0 ? Model.Form.BookStock : selectedTank?.CurrentStock ?? 0)" readonly />
+                                <span class="input-group-text text-muted small">@L["Ltr"]</span>
+                            </div>
+                            <div class="form-text">@L["System calculated stock"]</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                Dip Rod Reading <span class="badge bg-primary-subtle text-primary">@L["Measure"]</span>
+                            </label>
+                            <div class="input-group">
+                                <input asp-for="Form.PhysicalStock" id="physicalStock" type="number" step="0.001"
+                                       class="form-control" placeholder="0.000" required />
+                                <span class="input-group-text text-muted small">@L["Ltr"]</span>
+                            </div>
+                            <div class="form-text">@L["Measured dip rod reading in liters"]</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 p-3 rounded border" id="varianceCard" style="transition: all 0.3s;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-muted small mb-1">@L["Variance"]</div>
+                                <div class="fs-4 fw-bold" id="varianceDisplay">—</div>
+                            </div>
+                        </div>
+                        <div class="mt-2 small" id="varianceMsg"><span class="text-muted">@L["Enter Dip Rod Reading"]</span></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["Reason / Note"]</label>
+                        <textarea asp-for="Form.Reason" class="form-control" rows="2"
+                                  placeholder="@L["E.g., Evaporation loss, Tank leak, Short delivery, etc."]"></textarea>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@L["Save Dip Testing"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        @if (selectedTank != null)
+        {
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <div class="row g-2 text-center">
+                    <div class="col-4">
+                        <div class="border rounded p-2 bg-light">
+                            <div class="text-muted small">@L["Tank"]</div>
+                            <div class="fw-semibold">@selectedTank.Name</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border rounded p-2 bg-light">
+                            <div class="text-muted small">@L["Book Stock (Ltr)"]</div>
+                            <div class="fw-bold text-primary fs-5">@selectedTank.CurrentStock.ToString("0.###")</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border rounded p-2 @(selectedTank.CurrentStock < selectedTank.SafeFillLevel ? "bg-danger-subtle" : "bg-light")">
+                            <div class="text-muted small">@L["Safe Level"]</div>
+                            <div class="fw-semibold @(selectedTank.CurrentStock < selectedTank.SafeFillLevel ? "text-danger" : "text-success")">
+                                @selectedTank.SafeFillLevel.ToString("0.###")
+                                @if (selectedTank.CurrentStock < selectedTank.SafeFillLevel)
+                                {
+                                    <span class="badge bg-danger ms-1">@L["Low!"]</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        }
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-2">@L["Dip Testing History"]</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Date"]</th>
+                            <th>@L["Tank"]</th>
+                            <th class="text-end">@L["Book (Ltr)"]</th>
+                            <th class="text-end">@L["Dip (Ltr)"]</th>
+                            <th class="text-end">@L["Variance (Ltr)"]</th>
+                            <th class="text-end">@L["Value (&#8377;)"]</th>
+                            <th>@L["Reason"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Entries == null || Model.Entries.Items.Count == 0)
+                        {
+                            <tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">&#128207;</div><div class="empty-state-title">@L["No dip testing entries"]</div><div class="empty-state-hint">@L["Pick a tank and enter the dip rod reading — the variance against book stock is calculated for you."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var e in Model.Entries.Items)
+                            {
+                                <tr>
+                                    <td data-label="@L["Date"]">@e.ReconciliationDate.ToString("dd-MMM-yyyy")</td>
+                                    <td data-label="@L["Tank"]">@e.TankName</td>
+                                    <td class="text-end" data-label="@L["Book (Ltr)"]">@e.BookStock.ToString("0.###")</td>
+                                    <td class="text-end" data-label="@L["Dip (Ltr)"]">@e.PhysicalStock.ToString("0.###")</td>
+                                    <td class="text-end fw-bold @(e.VarianceQty < 0 ? "text-danger" : e.VarianceQty > 0 ? "text-success" : "text-muted")" data-label="@L["Variance (Ltr)"]">
+                                        @(e.VarianceQty >= 0 ? "+" : "")@e.VarianceQty.ToString("0.###")
+                                    </td>
+                                    @* Kitne litre kam hue se zyada matlab "kitne rupee ka nuksaan" rakhta hai. *@
+                                    <td class="text-end fw-bold @(e.VarianceAmount < 0 ? "text-danger" : e.VarianceAmount > 0 ? "text-success" : "text-muted")" data-label="@L["Value (Rs)"]">
+                                        @(e.VarianceAmount is null ? "—" : (e.VarianceAmount >= 0 ? "+" : "-") + "₹" + Math.Abs(e.VarianceAmount.Value).ToString("N2"))
+                                    </td>
+                                    <td class="text-muted small" data-label="@L["Reason"]">@(string.IsNullOrWhiteSpace(e.Reason) ? "—" : e.Reason)</td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Entries != null && Model.Entries.TotalPages > 1)
+                {
+                    <div class="mt-3 d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Page @Model.Entries.PageNumber of @Model.Entries.TotalPages (Total: @Model.Entries.TotalCount)</span>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary" @(Model.Entries.HasPreviousPage ? "" : "disabled") onclick="changePage(@(Model.Entries.PageNumber - 1))">@L["Previous"]</button>
+                            <button type="button" class="btn btn-outline-secondary" @(Model.Entries.HasNextPage ? "" : "disabled") onclick="changePage(@(Model.Entries.PageNumber + 1))">@L["Next"]</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const book     = document.getElementById("bookStock");
+    const physical = document.getElementById("physicalStock");
+    const dispEl   = document.getElementById("varianceDisplay");
+    const msgEl    = document.getElementById("varianceMsg");
+    const card     = document.getElementById("varianceCard");
+    const dateEl   = document.getElementById("Form_ReconciliationDate");
+    const tankEl   = document.getElementById("Form_TankId");
+
+    const calc = () => {
+        const b = Number(book?.value || 0);
+        const p = Number(physical?.value || 0);
+        if (!p) {
+            if (dispEl) dispEl.textContent = "\u2014";
+            if (msgEl)  msgEl.innerHTML = '<span class="text-muted">@L["Enter Dip Rod Reading"]</span>';
+            card?.classList.remove("border-danger", "border-success", "bg-danger-subtle", "bg-success-subtle");
+            return;
+        }
+        const diff = p - b;
+        if (dispEl) dispEl.textContent = (diff >= 0 ? "+" : "") + diff.toFixed(3) + " Ltr";
+        card?.classList.remove("border-danger", "border-success", "bg-danger-subtle", "bg-success-subtle");
+        if (diff < 0) {
+            card?.classList.add("border-danger", "bg-danger-subtle");
+            if (dispEl) dispEl.style.color = "crimson";
+            if (msgEl)  msgEl.innerHTML = `<span class="text-danger">&#9888; <strong>${Math.abs(diff).toFixed(3)} Ltr</strong> loss — Potential evaporation or leak</span>`;
+        } else if (diff > 0) {
+            card?.classList.add("border-success", "bg-success-subtle");
+            if (dispEl) dispEl.style.color = "green";
+            if (msgEl)  msgEl.innerHTML = `<span class="text-success">&#10003; <strong>${diff.toFixed(3)} Ltr</strong> surplus — Excess delivery or previous discrepancy</span>`;
+        } else {
+            card?.classList.add("border-success");
+            if (dispEl) dispEl.style.color = "green";
+            if (msgEl)  msgEl.innerHTML = '<span class="text-success">&#10003; Book stock and dip reading match exactly!</span>';
+        }
+    };
+
+    const fetchStock = async () => {
+        const tid = tankEl?.value;
+        const dt = dateEl?.value;
+        if (!tid || tid === "0" || !dt) return;
+
+        try {
+            const resp = await fetch(`/Operations/GetTankStockAsOfDate?tankId=${tid}&date=${dt}`);
+            if (resp.ok) {
+                const data = await resp.json();
+                if (book) {
+                    const newStock = Number(data.stock).toFixed(3);
+                    book.value = newStock;
+                    if (physical) physical.value = newStock;
+                    calc();
+                }
+            }
+        } catch (e) {
+            console.error("Failed to fetch historical stock:", e);
+        }
+    };
+
+    book?.addEventListener("input", calc);
+    physical?.addEventListener("input", calc);
+    dateEl?.addEventListener("change", fetchStock);
+    calc();
+})();
+
+function changePage(page) {
+    const pumpId = document.getElementById('Form_PumpId').value;
+    const tankId = document.getElementById('Form_TankId').value;
+    let url = '/Operations/StockReconcile?pumpId=' + pumpId + '&pageNumber=' + page;
+    if (tankId && tankId !== "0") {
+        url += '&tankId=' + tankId;
+    }
+    window.location = url;
+}
+</script>
+}

@@ -1,0 +1,163 @@
+﻿@model IReadOnlyList<PPMS.Client.Web.Services.MenuGroup>
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@{
+    var roleName = HttpContextAccessor.HttpContext?.Session.GetString("role_name") ?? "";
+    var isSuperAdmin = string.Equals(HttpContextAccessor.HttpContext?.Session.GetString("is_super_admin"), "true", StringComparison.OrdinalIgnoreCase);
+    var isAdmin = isSuperAdmin || !string.Equals(roleName, "Operator", StringComparison.OrdinalIgnoreCase);
+    var currentPath = HttpContextAccessor.HttpContext?.Request.Path.Value ?? "/";
+}
+@functions {
+    private static string ResolveHref(string route)
+    {
+        return route.ToLowerInvariant() switch
+        {
+            "/dashboard" => "/",
+            "/pump" => "/Operations/Pumps",
+            "/pumps" => "/Operations/Pumps",
+            "/nozzle" => "/Operations/Nozzles",
+            "/nozzles" => "/Operations/Nozzles",
+            "/tank" => "/Operations/Tanks",
+            "/tanks" => "/Operations/Tanks",
+            "/party" => "/Operations/Parties",
+            "/parties" => "/Operations/Parties",
+            "/product" => "/Operations/Products",
+            "/products" => "/Operations/Products",
+            "/daily-rates" => "/Operations/DailyRates",
+            "/nozzle-cash" => "/Operations/NozzleCash",
+            "/manual" => "/Operations/Manual",
+            "/help" => "/Operations/Manual",
+            "/attendant-cash" => "/Operations/AttendantCash",
+            "/rates" => "/Operations/DailyRates",
+            "/shift" => "/Operations/Shifts",
+            "/shifts" => "/Operations/Shifts",
+            "/sales" => "/Operations/Sales",
+            "/sale" => "/Operations/Sales",
+            "/tank-stock" => "/Operations/TankStock",
+            "/party-ledger" => "/Operations/PartyLedger",
+            "/purchase" => "/Operations/Purchase",
+            "/vendor" => "/Operations/Vendors",
+            "/vendors" => "/Operations/Vendors",
+            "/stock-reconcile" => "/Operations/StockReconcile",
+            "/cashbook" => "/Operations/Cashbook",
+            "/expenses" => "/Operations/Expenses",
+            "/dip-testing" => "/Operations/DipTesting",
+            "/day-book" => "/Operations/DayBook",
+            "/fleet-contracts" => "/Operations/FleetContracts",
+            "/coupon-books" => "/Operations/CouponBooks",
+            "/reports" => "/Operations/Reports",
+            "/users" => "/Operations/Users",
+            "/user" => "/Operations/Users",
+            "/roles" => "/Operations/Roles",
+            "/role" => "/Operations/Roles",
+            "/employees" => "/Operations/Employees",
+            "/employee" => "/Operations/Employees",
+            "/staff" => "/Operations/Staff",
+            "/alerts" => "/Operations/Alerts",
+            "/wallet" => "/Operations/Wallet",
+            "/salary" => "/Operations/Salary",
+            "/salary-register" => "/Operations/Salary",
+            "/outstanding" => "/Operations/Outstanding",
+            "/pump-comparison" => "/Operations/PumpComparison",
+            "/daily-stock-register" => "/Operations/DailyStockRegister",
+            "/sale-purchase-register" => "/Operations/SalePurchaseRegister",
+            _ => "#"
+        };
+    }
+}
+
+<div class="accordion side-accordion" id="appMenu">
+@if (isSuperAdmin)
+{
+    var isSuperAdminActive = string.Equals(currentPath, "/SuperAdmin", StringComparison.OrdinalIgnoreCase);
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button @(isSuperAdminActive ? "" : "collapsed")" type="button" data-bs-toggle="collapse" data-bs-target="#superAdminMenuGroup" aria-expanded="@(isSuperAdminActive ? "true" : "false")">
+                Super Admin
+            </button>
+        </h2>
+        <div id="superAdminMenuGroup" class="accordion-collapse collapse @(isSuperAdminActive ? "show" : "")" data-bs-parent="#appMenu">
+            <div class="accordion-body">
+                <a class="menu-link @(isSuperAdminActive ? "active fw-bold text-primary" : "")" href="/SuperAdmin">Tenant Subscriptions</a>
+                @{
+                    var isCreditsActive = currentPath.StartsWith("/SuperAdmin/Credits", StringComparison.OrdinalIgnoreCase);
+                }
+                <a class="menu-link @(isCreditsActive ? "active fw-bold text-primary" : "")" href="/SuperAdmin/Credits">Message Credits</a>
+                @{
+                    var isSupportActive = currentPath.StartsWith("/SuperAdmin/Support", StringComparison.OrdinalIgnoreCase);
+                }
+                <a class="menu-link @(isSupportActive ? "active fw-bold text-primary" : "")" href="/SuperAdmin/Support">Support Console</a>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.Count == 0 && !isSuperAdmin)
+{
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#emptyMenu" aria-expanded="true">
+                Menu
+            </button>
+        </h2>
+        <div id="emptyMenu" class="accordion-collapse collapse show" data-bs-parent="#appMenu">
+            <div class="accordion-body">
+                <span class="menu-link disabled">No menu available</span>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    @for (var i = 0; i < Model.Count; i++)
+    {
+        var group = Model[i];
+
+        // Hide Management group (Users, Roles) for non-admin (Operator) role
+        if (string.Equals(group.GroupName, "Management", StringComparison.OrdinalIgnoreCase) && !isAdmin)
+        {
+            continue;
+        }
+
+        var collapseId = $"menuGroup{i}";
+
+        // Check if any item in this group matches the current path
+        var isGroupActive = false;
+        foreach (var item in group.Items)
+        {
+            if (string.Equals(ResolveHref(item.Route), currentPath, StringComparison.OrdinalIgnoreCase))
+            {
+                isGroupActive = true;
+                break;
+            }
+        }
+        
+        // If current path is root (dashboard) and this is the first group, or if group is active
+        if (!isGroupActive && currentPath == "/" && i == 0)
+        {
+            isGroupActive = true;
+        }
+
+        var showClass = isGroupActive ? "show" : string.Empty;
+        var isExpanded = isGroupActive ? "true" : "false";
+        var isCollapsed = isGroupActive ? string.Empty : "collapsed";
+
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button @isCollapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="@isExpanded">
+                    @group.GroupName
+                </button>
+            </h2>
+            <div id="@collapseId" class="accordion-collapse collapse @showClass" data-bs-parent="#appMenu">
+                <div class="accordion-body">
+                    @foreach (var item in group.Items)
+                    {
+                        var resolvedHref = ResolveHref(item.Route);
+                        var activeClass = string.Equals(resolvedHref, currentPath, StringComparison.OrdinalIgnoreCase) ? "active fw-bold text-primary" : "";
+                        <a class="menu-link @activeClass" href="@resolvedHref">@item.MenuName</a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+</div>

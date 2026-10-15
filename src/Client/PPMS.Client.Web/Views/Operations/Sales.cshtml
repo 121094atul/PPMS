@@ -1,0 +1,611 @@
+﻿@using System.Text.Json
+@model PPMS.Client.Web.Models.SalesManagementViewModel
+@{
+    ViewData["Title"] = "Sales Management";
+    var productOptions = Model.Products.Select(x => new { x.Id, Label = $"{x.Name} ({x.Category})", x.CurrentRate }).ToList();
+    var nozzleOptions = Model.Nozzles.Select(x => new { x.NozzleCode, Label = $"{x.NozzleCode} - {x.ProductName}", x.ProductId }).ToList();
+    var partyOptions = Model.Parties.Select(x => new { x.Id, x.PartyName, x.PartyType, x.CurrentBalance }).ToList();
+    var pumpShifts = Model.OpenShifts.Where(x => x.PumpId == Model.Form.PumpId).ToList();
+    var visibleShifts = pumpShifts.Count > 0 ? pumpShifts : Model.OpenShifts.ToList();
+}
+
+<style>
+    #saleLinesTable th.qty-col,
+    #saleLinesTable th.rate-col,
+    #saleLinesTable td.qty-col,
+    #saleLinesTable td.rate-col {
+        min-width: 120px;
+        width: 120px;
+    }
+
+    #saleLinesTable .line-number-input {
+        min-width: 100px;
+        text-align: right;
+    }
+</style>
+
+<div class="row g-3">
+    <div class="col-xl-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Create Sale"]</h5>
+                <p class="text-muted small mb-3">@L["Select pump and open shift, then add one or more sale lines."]</p>
+                <div class="alert alert-warning py-2 small">
+                    @L["This form is for receipt-wise sales entry (credit/customer billing + print). For heavy cash rush, record shift-wise summary and reconciliation by shift close."]
+                </div>
+                @if (visibleShifts.Count == 0)
+                {
+                    <div class="alert alert-danger py-2 small mb-2">
+                        <strong>&#9888; @L["No shift is open right now."]</strong> @L["Open a shift before recording a sale."]
+                        <a href="/Operations/Shifts?pumpId=@Model.Form.PumpId" class="alert-link">@L["Open a shift"] &rarr;</a>
+                    </div>
+                }
+                <div class="mb-2">
+                    <a class="btn btn-sm btn-outline-secondary" href="/Operations/Shifts?pumpId=@Model.Form.PumpId">@L["Rush cash flow: Go to Shift Meter Entry"]</a>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveSale" asp-controller="Operations" method="post" id="saleForm">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.OwnerId" type="hidden" />
+                    <div id="saleFormAlert" class="alert alert-danger d-none py-2 small mb-3"></div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Pump"]</label>
+                            <select asp-for="Form.PumpId" class="form-select form-select-sm" required onchange="window.location='/Operations/Sales?pumpId='+this.value">
+                                @if (Model.Pumps.Count == 0)
+                                {
+                                    <option value="0">@L["No pump configured"]</option>
+                                }
+                                else
+                                {
+                                    @foreach (var pump in Model.Pumps)
+                                    {
+                                        <option value="@pump.Id">@pump.Name (@pump.City)</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Open Shift"]</label>
+                            <select asp-for="Form.ShiftId" class="form-select form-select-sm" required>
+                                @if (visibleShifts.Count == 0)
+                                {
+                                    <option value="0">@L["No open shift for selected pump"]</option>
+                                }
+                                else
+                                {
+                                    @foreach (var shift in visibleShifts)
+                                    {
+                                        <option value="@shift.Id">@shift.ShiftCode - @shift.ShiftDate - Id:@shift.Id</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    @* Bill ki tareekh — default aaj. Agar kuch din ki entry chhoot gayi ho
+                       to yahan purani tareekh daal kar hisaab poora kiya ja sakta hai. *@
+                    <div class="mb-2">
+                        <label class="form-label">@L["Bill Date & Time"]</label>
+                        <input asp-for="Form.BillDateTime" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control form-control-sm" id="billDateTime" />
+                        <div class="form-text" id="backdateHint">@L["Leave as today for a normal sale. Change it to record an entry you missed on an earlier day."]</div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-4">
+                            <label class="form-label">@L["Payment Mode"]</label>
+                            <select asp-for="Form.PaymentMode" class="form-select form-select-sm">
+                                <option>@L["Cash"]</option>
+                                <option>@L["Card"]</option>
+                                <option>@L["UPI"]</option>
+                                <option>@L["Credit"]</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@L["Vehicle No"]</label>
+                            <input asp-for="Form.VehicleNo" class="form-control form-control-sm" placeholder="@L["UP41AB1234"]" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@L["Customer Name"]</label>
+                            <input asp-for="Form.CustomerName" class="form-control form-control-sm" placeholder="@L["Customer"]" />
+                        </div>
+                    </div>
+
+                    @* Credit party sirf tab kaam ki hai jab payment mode Credit ho —
+                       baaki modes me ye block chhupa rehta hai taaki form saaf dikhe. *@
+                    <div class="mb-2 d-none" id="creditPartyBlock">
+                        <label class="form-label">Credit Party <span class="text-danger">*</span></label>
+                        <select asp-for="Form.PartyId" id="partySelect" class="form-select form-select-sm">
+                            <option value="">@L["-- Select a party --"]</option>
+                            @foreach (var party in Model.Parties)
+                            {
+                                <option value="@party.Id">@party.PartyName (@party.PartyType) - Bal: @party.CurrentBalance.ToString("0.00")</option>
+                            }
+                        </select>
+                        <div class="small text-muted mt-1" id="partyBalanceInfo">@L["Outstanding: -"]</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["Attendant Name"]</label>
+                        <input asp-for="Form.AttendantName" class="form-control form-control-sm" placeholder="@L["Forecourt staff"]" />
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">@L["Sale Line Items"]</h6>
+                        <button type="button" id="addLineBtn" class="btn btn-sm btn-outline-primary">@L["Add line"]</button>
+                    </div>
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm align-middle" id="saleLinesTable">
+                            <thead>
+                                <tr>
+                                    <th style="min-width: 210px;">@L["Product"]</th>
+                                    <th style="min-width: 180px;">@L["Nozzle"]</th>
+                                    <th class="qty-col">@L["Qty"]</th>
+                                    <th class="rate-col">@L["Rate"]</th>
+                                    <th class="text-end">@L["Action"]</th>
+                                </tr>
+                            </thead>
+                            <tbody id="saleLinesBody">
+                                @for (var i = 0; i < Model.Form.Items.Count; i++)
+                                {
+                                    var line = Model.Form.Items[i];
+                                    <tr>
+                                        <td data-label="@L["Product"]">
+                                            <select class="form-select form-select-sm" name="Form.Items[@i].ProductId" required>
+                                                @foreach (var product in Model.Products)
+                                                {
+                                                    <option value="@product.Id" selected="@(product.Id == line.ProductId)">@product.Name (@product.Category)</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td data-label="@L["Nozzle"]">
+                                            <select class="form-select form-select-sm" name="Form.Items[@i].NozzleNo">
+                                                <option value="">@L["Select nozzle"]</option>
+                                                @foreach (var nozzle in Model.Nozzles)
+                                                {
+                                                    <option value="@nozzle.NozzleCode" selected="@(nozzle.NozzleCode == line.NozzleNo)">@nozzle.NozzleCode - @nozzle.ProductName</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td class="qty-col" data-label="@L["Qty"]">
+                                            <input class="form-control form-control-sm line-number-input" type="number" min="0.01" step="0.01" name="Form.Items[@i].Quantity" value="@line.Quantity.ToString("0.##")" required />
+                                        </td>
+                                        <td class="rate-col" data-label="@L["Rate"]">
+                                            <input class="form-control form-control-sm line-number-input" type="number" min="0.01" step="0.01" name="Form.Items[@i].Rate" value="@line.Rate.ToString("0.##")" required />
+                                        </td>
+                                        <td class="text-end" data-label="@L["Action"]">
+                                            <button type="button" class="btn btn-sm btn-outline-danger remove-line-btn">@L["Remove"]</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-end mb-3">
+                        <div class="border rounded px-3 py-2 bg-light">
+                            <span class="text-muted small me-2">@L["Estimated Total"]</span>
+                            <span class="fw-semibold" id="estimatedTotal">0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@L["Save Sale and Generate Receipt"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-6">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-2">@L["Latest Receipt"]</h5>
+                @if (Model.LatestReceipt is null)
+                {
+                    <p class="text-muted small mb-0">@L["No receipt generated in current session."]</p>
+                }
+                else
+                {
+                    <div class="row g-2 small mb-2">
+                        <div class="col-md-4"><span class="text-muted">@L["Receipt"]</span><div class="fw-semibold">@Model.LatestReceipt.ReceiptNo</div></div>
+                        <div class="col-md-4"><span class="text-muted">@L["Bill"]</span><div class="fw-semibold">@Model.LatestReceipt.BillNo</div></div>
+                        <div class="col-md-4"><span class="text-muted">@L["Amount"]</span><div class="fw-semibold">@Model.LatestReceipt.TotalAmount.ToString("0.00")</div></div>
+                    </div>
+                    <div>
+                        <a href="/Operations/PrintReceipt?saleId=@Model.LatestReceipt.SalesHeaderId" target="_blank" class="btn btn-sm btn-outline-primary d-print-none">Print Thermal Receipt <i class="bi bi-printer"></i></a>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <h5 class="card-title mb-0">@L["Recent Sales"]</h5>
+                    <a href="/Operations/ExportSalesCsv?pumpId=@Model.Form.PumpId&dateFrom=@Model.FromDate?.ToString("yyyy-MM-dd")&dateTo=@Model.ToDate?.ToString("yyyy-MM-dd")&searchTerm=@Model.SearchTerm" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i>@L["Export to CSV"]</a>
+                </div>
+                <p class="text-muted small mb-3">@L["Latest transactions from database."]</p>
+                <form method="get" class="row small mb-2 gx-2">
+                    <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                    <div class="col-auto"><input type="date" name="fromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" title="@L["From date"]" /></div>
+                    <div class="col-auto"><input type="date" name="toDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" title="@L["To date"]" /></div>
+                    <div class="col"><input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control form-control-sm" placeholder="@L["Search bill, vehicle, customer..."]" /></div>
+                    <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-secondary">@L["Search"]</button></div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle sales-list">
+                        <thead>
+                        <tr>
+                            <th>@L["Bill"]</th>
+                            <th>@L["Vehicle"]</th>
+                            <th>@L["Customer"]</th>
+                            <th>@L["Payment"]</th>
+                            <th>@L["Date"]</th>
+                            <th class="text-end">@L["Amount"]</th>
+                            <th class="text-end">@L["Action"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Sales?.Items == null || Model.Sales.Items.Count == 0)
+                        {
+                            <tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">&#128722;</div><div class="empty-state-title">@L["No sales yet"]</div><div class="empty-state-hint">@L["With a shift open, create a sale on the left — the receipt is generated automatically."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var sale in Model.Sales.Items)
+                            {
+                                @* Void kiya hua bill ab mitta nahi — dhundhla dikhta hai
+                                   taaki malik ko pata rahe ki kaun sa bill kaata gaya.
+                                   Kisi total me ye nahi ginta. *@
+                                <tr class="@(sale.IsVoid ? "table-secondary text-muted" : "")">
+                                    <td data-label="@L["Bill"]">
+                                        <span class="@(sale.IsVoid ? "text-decoration-line-through" : "")">@sale.BillNo</span>
+                                        @if (sale.IsVoid)
+                                        {
+                                            <span class="badge bg-danger ms-1" title="@sale.VoidReason">@L["VOID"]</span>
+                                        }
+                                    </td>
+                                    <td data-label="@L["Vehicle"]">@sale.VehicleNo</td>
+                                    <td data-label="@L["Customer"]">
+                                        @sale.CustomerName
+                                        @if (sale.IsVoid && !string.IsNullOrWhiteSpace(sale.VoidReason))
+                                        {
+                                            <div class="small fst-italic">@sale.VoidReason</div>
+                                        }
+                                    </td>
+                                    <td data-label="@L["Payment"]">@sale.PaymentMode</td>
+                                    @* Tareekh beech se na toote (Hindi me "10-अक्तूबर-2026 08:00 अपराह्न" chaar line
+                                       me toot-ti thi aur har row 120px ki ho jaati thi). Waqt chhota, alag line me. *@
+                                    <td data-label="@L["Date"]"><span><span class="text-nowrap">@sale.BillDateTime.ToString("dd-MMM-yyyy")</span> <span class="text-nowrap text-muted small sale-time">@sale.BillDateTime.ToString("hh:mm tt")</span></span></td>
+                                    <td class="text-end" data-label="@L["Amount"]">
+                                        <span class="@(sale.IsVoid ? "text-decoration-line-through" : "")">@sale.TotalAmount.ToString("0.00")</span>
+                                    </td>
+                                    <td class="text-end" data-label="@L["Action"]">
+                                        @* Button ke shabd beech se na tootein ("बिक्री / रद्द / करें" teen line me aata tha) *@
+                                        <div class="d-flex flex-column align-items-end gap-1">
+                                        <a href="/Operations/PrintReceipt?saleId=@sale.Id" target="_blank" class="btn btn-sm btn-outline-secondary text-nowrap" title="@L["Print Receipt"]">
+                                            <i class="bi bi-printer"></i> Print
+                                        </a>
+                                        @if (!sale.IsVoid)
+                                        {
+                                            <form asp-action="VoidSale" asp-controller="Operations" method="post" style="display:inline"
+                                                  onsubmit="return askVoidReason(this);">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@sale.Id" />
+                                                <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                                                <input type="hidden" name="reason" value="" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger text-nowrap">@L["Void sale"]</button>
+                                            </form>
+                                        }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Sales != null && Model.Sales.TotalPages > 1)
+                {
+                    var saleFrom = (Model.Sales.PageNumber - 1) * Model.Sales.PageSize + 1;
+                    var saleTo = Math.Min(Model.Sales.PageNumber * Model.Sales.PageSize, Model.Sales.TotalCount);
+                    // Khoj aur tareekh page badalne par bani rahe. (Naam fromDate / toDate — action ab inhe sunta hai.)
+                    var saleQs = "/Operations/Sales?pumpId=" + Model.Form.PumpId
+                                 + (string.IsNullOrWhiteSpace(Model.SearchTerm) ? "" : "&searchTerm=" + Uri.EscapeDataString(Model.SearchTerm))
+                                 + (Model.FromDate.HasValue ? "&fromDate=" + Model.FromDate.Value.ToString("yyyy-MM-dd") : "")
+                                 + (Model.ToDate.HasValue ? "&toDate=" + Model.ToDate.Value.ToString("yyyy-MM-dd") : "")
+                                 + "&pageNumber=";
+                    <div class="ppms-pager">
+                        <span class="small text-muted">@L["Showing {0}-{1} of {2}", saleFrom, saleTo, Model.Sales.TotalCount]</span>
+                        <div class="btn-group btn-group-sm">
+                            <a class="btn btn-outline-secondary @(Model.Sales.HasPreviousPage ? "" : "disabled")" href="@(saleQs + (Model.Sales.PageNumber - 1))">@L["Previous"]</a>
+                            <a class="btn btn-outline-secondary @(Model.Sales.HasNextPage ? "" : "disabled")" href="@(saleQs + (Model.Sales.PageNumber + 1))">@L["Next"]</a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+<style>
+/* "Pichhli bikri" form ke bagal ke patle dabbe me hai (~480px) aur usme 7 khaane hain.
+   Aam table ki 13.6px ki dono taraf ki jagah 7 khaano me 190px kha jaati thi — list
+   dabbe se bahar nikal kar daayein-baayein scroll maangti thi, aur "Bill" ya "Kaam"
+   wala khaana kat jaata tha. Khaano ke beech ki jagah kam, waqt tareekh ke neeche.
+   Sirf badi screen par: phone par har line apna card hai (site.css), wahan zaroorat nahi. */
+@@media screen and (min-width: 768px) {
+    .sales-list th, .sales-list td { padding-left: 0.3rem !important; padding-right: 0.3rem !important; }
+    .sales-list .sale-time { display: block; }
+    /* English ke naam (CUSTOMER, PAYMENT, VEHICLE) Hindi se lambe hain — akshar ke beech ki
+       0.8px ki jagah hatane se wo bhi isi chaudai me aa jaate hain. */
+    .sales-list thead th { letter-spacing: 0; }
+}
+</style>
+}
+
+@section Scripts {
+<script>
+    // Bill kaatne ki wajah poochte hain - audit me yahi likhi jaati hai. Baad me
+    // hisaab dekhte waqt yaad rehta hai ki kyun kaata tha. Khaali chhodna bhi
+    // theek hai; Cancel dabane par void hota hi nahi.
+    //
+    // Pehle yahan browser ka prompt() tha, aur ye function DO BAAR likha hua tha
+    // (doosra pehle ko dabaa deta tha). Ab site.js ka ppmsPrompt modal hai.
+    // Wo async hai, isliye pehli baar submit rok kar poochte hain aur jawab
+    // milne par form khud submit kar dete hain.
+    function askVoidReason(form) {
+        if (form.dataset.reasonAsked === 'yes') { return true; }
+
+        window.ppmsPrompt(@Json.Serialize(L["Why are you voiding this bill? It is kept in the record."].Value), {
+            title: @Json.Serialize(L["Void bill"].Value),
+            okText: @Json.Serialize(L["Void bill"].Value),
+            @* lowercase "optional" jaanbujh kar — resx me duplicate naam case ke
+               farak se nahi bachta, aur wahi ek entry pehle se translated hai. *@
+            placeholder: @Json.Serialize(L["optional"].Value)
+        }).then(function (reason) {
+            if (reason === null) { return; }          // Cancel dabaya - kuch mat karo
+            form.querySelector('input[name="reason"]').value = reason.trim();
+            form.dataset.reasonAsked = 'yes';
+            form.submit();
+        });
+
+        return false;
+    }
+</script>
+<script>
+    (() => {
+        const products = @Html.Raw(JsonSerializer.Serialize(productOptions));
+        const nozzles = @Html.Raw(JsonSerializer.Serialize(nozzleOptions));
+        const parties = @Html.Raw(JsonSerializer.Serialize(partyOptions));
+        const body = document.getElementById("saleLinesBody");
+        const addBtn = document.getElementById("addLineBtn");
+        const paymentMode = document.getElementById("Form_PaymentMode");
+        const partySelect = document.getElementById("partySelect");
+        const partyBalanceInfo = document.getElementById("partyBalanceInfo");
+        const estimatedTotal = document.getElementById("estimatedTotal");
+
+        const buildProductOptions = () => products
+            .map(p => `<option value="${p.Id}">${p.Label}</option>`)
+            .join("");
+
+        const buildNozzleOptions = (productId) => {
+            const list = ['<option value="">@L["Select nozzle"]</option>'];
+            for (const n of nozzles.filter(x => !productId || x.ProductId === productId)) {
+                list.push(`<option value="${n.NozzleCode}">${n.Label}</option>`);
+            }
+            return list.join("");
+        };
+
+        const getProductRate = (productId) => {
+            const product = products.find(p => p.Id === productId);
+            return product ? Number(product.CurrentRate || 0) : 0;
+        };
+
+        const reindexRows = () => {
+            const rows = body.querySelectorAll("tr");
+            rows.forEach((row, index) => {
+                row.querySelectorAll("input, select").forEach(ctrl => {
+                    const name = ctrl.getAttribute("name");
+                    if (!name) {
+                        return;
+                    }
+
+                    ctrl.setAttribute("name", name.replace(/Form\.Items\[\d+\]/, `Form.Items[${index}]`));
+                });
+            });
+        };
+
+        const calculateEstimatedTotal = () => {
+            if (!estimatedTotal) {
+                return;
+            }
+
+            let total = 0;
+            body.querySelectorAll("tr").forEach(row => {
+                const qtyCtrl = row.querySelector('input[name$=".Quantity"]');
+                const rateCtrl = row.querySelector('input[name$=".Rate"]');
+                const qty = Number(qtyCtrl?.value || 0);
+                const rate = Number(rateCtrl?.value || 0);
+                total += qty * rate;
+            });
+
+            estimatedTotal.textContent = total.toFixed(2);
+        };
+
+        const syncRowControls = (row) => {
+            const productCtrl = row.querySelector('select[name$=".ProductId"]');
+            const nozzleCtrl = row.querySelector('select[name$=".NozzleNo"]');
+            const rateCtrl = row.querySelector('input[name$=".Rate"]');
+            if (!productCtrl || !nozzleCtrl) {
+                return;
+            }
+
+            const refreshNozzles = () => {
+                const selectedProductId = Number(productCtrl.value || "0");
+                const existingNozzle = nozzleCtrl.value || "";
+                nozzleCtrl.innerHTML = buildNozzleOptions(selectedProductId);
+                if (existingNozzle && [...nozzleCtrl.options].some(o => o.value === existingNozzle)) {
+                    nozzleCtrl.value = existingNozzle;
+                }
+            };
+
+            refreshNozzles();
+            productCtrl.addEventListener("change", () => {
+                refreshNozzles();
+                if (rateCtrl) {
+                    rateCtrl.value = getProductRate(Number(productCtrl.value || "0")).toFixed(2);
+                }
+                calculateEstimatedTotal();
+            });
+
+            row.querySelectorAll('input[name$=".Quantity"], input[name$=".Rate"]').forEach(ctrl => {
+                ctrl.addEventListener("input", calculateEstimatedTotal);
+            });
+        };
+
+        const ensureOneRow = () => {
+            if (body.querySelectorAll("tr").length === 0) {
+                addRow();
+            }
+        };
+
+        const addRow = () => {
+            const nextIndex = body.querySelectorAll("tr").length;
+            const defaultProductId = products.length > 0 ? products[0].Id : 0;
+            const defaultRate = products.length > 0 ? products[0].CurrentRate : 0;
+
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td data-label="Product">
+                    <select class="form-select form-select-sm" name="Form.Items[${nextIndex}].ProductId" required>
+                        ${buildProductOptions()}
+                    </select>
+                </td>
+                <td data-label="Nozzle">
+                    <select class="form-select form-select-sm" name="Form.Items[${nextIndex}].NozzleNo">
+                        ${buildNozzleOptions(defaultProductId)}
+                    </select>
+                </td>
+                <td class="qty-col" data-label="Qty">
+                    <input class="form-control form-control-sm line-number-input" type="number" min="0.01" step="0.01" name="Form.Items[${nextIndex}].Quantity" value="1" required />
+                </td>
+                <td class="rate-col" data-label="Rate">
+                    <input class="form-control form-control-sm line-number-input" type="number" min="0.01" step="0.01" name="Form.Items[${nextIndex}].Rate" value="${defaultRate}" required />
+                </td>
+                <td class="text-end" data-label="Action">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-line-btn">@L["Remove"]</button>
+                </td>`;
+
+            body.appendChild(row);
+            syncRowControls(row);
+            reindexRows();
+            calculateEstimatedTotal();
+        };
+
+        addBtn?.addEventListener("click", addRow);
+
+        const updatePartyInfo = () => {
+            if (!partySelect || !partyBalanceInfo) {
+                return;
+            }
+
+            const selectedId = Number(partySelect.value || "0");
+            const p = parties.find(x => x.Id === selectedId);
+            partyBalanceInfo.textContent = p ? `Outstanding: ${Number(p.CurrentBalance).toFixed(2)}` : "Outstanding: -";
+        };
+
+        const validateCreditParty = (event) => {
+            if (!paymentMode || !partySelect) {
+                return;
+            }
+
+            const alertDiv = document.getElementById('saleFormAlert');
+            const isCredit = (paymentMode.value || "").toLowerCase() === "credit";
+            const hasParty = Number(partySelect.value || "0") > 0;
+            if (isCredit && !hasParty) {
+                event.preventDefault();
+                if (alertDiv) {
+                    alertDiv.textContent = "@L["For Credit sale, please select a party."]";
+                    alertDiv.classList.remove('d-none');
+                }
+            } else {
+                if (alertDiv) alertDiv.classList.add('d-none');
+            }
+        };
+
+        // Purani tareekh chuni ho to saaf dikhna chahiye — warna user ko pata hi nahi
+        // chalega ki wo back-date entry kar raha hai.
+        const billDate = document.getElementById("billDateTime");
+        const backdateHint = document.getElementById("backdateHint");
+        const markBackdate = () => {
+            if (!billDate || !backdateHint) return;
+            const picked = new Date(billDate.value);
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const isBack = !isNaN(picked) && picked < today;
+            billDate.classList.toggle("border-warning", isBack);
+            backdateHint.classList.toggle("text-warning", isBack);
+            backdateHint.classList.toggle("fw-semibold", isBack);
+            if (isBack) {
+                // Pehle yahan shuru me ek mangla hua "?" chhap raha tha (file cp1252 me
+                // save thi, Razor use UTF-8 padhta hai). Ab file UTF-8 me hai aur
+                // symbol saaf hai.
+                backdateHint.textContent = "⚠ Back-dated entry — this sale will be recorded on " + picked.toLocaleDateString() + ".";
+            } else {
+                backdateHint.textContent = backdateHint.dataset.original || backdateHint.textContent;
+            }
+        };
+        if (backdateHint) backdateHint.dataset.original = backdateHint.textContent;
+        billDate?.addEventListener("change", markBackdate);
+        markBackdate();
+
+        // Credit mode par hi party ka block dikhao — warna form simple rehta hai.
+        const creditPartyBlock = document.getElementById("creditPartyBlock");
+        const toggleCreditParty = () => {
+            const isCredit = (paymentMode?.value || "").toLowerCase() === "credit";
+            creditPartyBlock?.classList.toggle("d-none", !isCredit);
+            if (!isCredit && partySelect) {
+                partySelect.value = "";
+                updatePartyInfo();
+            }
+        };
+        paymentMode?.addEventListener("change", toggleCreditParty);
+        toggleCreditParty();
+
+        partySelect?.addEventListener("change", updatePartyInfo);
+        document.getElementById("saleForm")?.addEventListener("submit", validateCreditParty);
+
+        body?.addEventListener("click", (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement) || !target.classList.contains("remove-line-btn")) {
+                return;
+            }
+
+            const row = target.closest("tr");
+            if (!row) {
+                return;
+            }
+
+            row.remove();
+            reindexRows();
+            ensureOneRow();
+            calculateEstimatedTotal();
+        });
+
+        body.querySelectorAll("tr").forEach(syncRowControls);
+        ensureOneRow();
+        updatePartyInfo();
+        calculateEstimatedTotal();
+    })();
+</script>
+}

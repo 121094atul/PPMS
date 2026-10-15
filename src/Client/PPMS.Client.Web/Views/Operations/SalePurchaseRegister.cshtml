@@ -1,0 +1,207 @@
+﻿@model PPMS.Client.Web.Models.SalePurchaseRegisterViewModel
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<PPMS.Client.Web.SharedResource> L
+@{
+    ViewData["Title"] = "Sale / Purchase Register";
+    var selectedPumpName = Model.Pumps.FirstOrDefault(p => p.Id == Model.PumpId)?.Name ?? "";
+    var selectedProductName = Model.Products.FirstOrDefault(p => p.Id == Model.ProductId)?.Name ?? "";
+    var selectedMonthName = System.Globalization.CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(Model.Month);
+
+    var totalSaleQty = Model.Items.Sum(x => x.SaleQty);
+    var totalSaleAmt = Model.Items.Sum(x => x.SaleAmount);
+    var totalPurQty = Model.Items.Sum(x => x.PurchaseQty);
+    var totalPurAmt = Model.Items.Sum(x => x.PurchaseAmount);
+}
+
+@section Styles {
+<style>
+/* ══════════════════════════════════════════
+   PRINT — ye rajistar CA ko kaagaz par jaata hai.
+   6 khaane hain, isliye A4 PORTRAIT me aa jaata hai (DSR ke 18 khaane
+   landscape maangte hain).
+   ══════════════════════════════════════════ */
+@@media print {
+    .side-nav, .side-nav-overlay, .top-strip, .d-print-none, .hamburger-btn { display: none !important; }
+    .app-shell { display: block !important; }
+    .main-pane { display: block !important; width: 100% !important; }
+    .content-pane { padding: 0 !important; overflow: visible !important; }
+
+    @@page { size: A4 portrait; margin: 12mm 10mm; }
+
+    body { font-size: 11px !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .card { border: none !important; box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; }
+    .card-body { padding: 0 !important; }
+    .print-header { display: block !important; margin-bottom: 8px; }
+    .table-responsive { overflow: visible !important; }
+
+    .table { width: 100% !important; font-size: 11px !important; page-break-inside: auto; }
+    .table th, .table td { padding: 3px 6px !important; border: 1px solid #999 !important; }
+
+    /* Har page par khaane ke naam dobara (mobile wali CSS thead ko chhupa deti hai) */
+    .table thead { display: table-header-group !important; background-color: #f0f0f0 !important;
+                   -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    /* Jod sirf ek baar, sabse aakhir me */
+    .table tfoot { display: table-row-group !important; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+}
+
+/* ══════════════════════════════════════════
+   MOBILE — is table ko card mat banao (DSR jaisa hi).
+   Chhe khaane hain; card me har din ki 6 line ban jaati, 30 din ka
+   rajistar padhna namumkin ho jaata. Table rakh kar bagal me scroll.
+   ══════════════════════════════════════════ */
+@@media screen and (max-width: 767.98px) {
+    .spr-wrap table.table thead { display: table-header-group !important; }
+
+    .spr-wrap table.table tbody tr,
+    .spr-wrap table.table tfoot tr {
+        display: table-row !important;
+        background: none !important; border: none !important;
+        border-radius: 0 !important; margin-bottom: 0 !important;
+        padding: 0 !important; box-shadow: none !important;
+    }
+
+    .spr-wrap table.table tbody td,
+    .spr-wrap table.table tfoot td {
+        display: table-cell !important;
+        text-align: right !important;
+        padding: 0.4rem 0.35rem !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        font-size: 11.5px !important;
+        white-space: nowrap;
+    }
+
+    /* Khaali khaane chhupane se baaki aankde khisak jaate hain */
+    .spr-wrap table.table tfoot td:empty { display: table-cell !important; }
+
+    .spr-wrap table.table tbody td::before,
+    .spr-wrap table.table tfoot td::before { display: none !important; }
+
+    .spr-wrap table.table th { font-size: 10px !important; padding: 0.35rem 0.3rem !important; white-space: nowrap; }
+}
+</style>
+}
+
+<!-- Print par hi dikhta hai -->
+<div class="print-header" style="display:none;">
+    <div style="text-align:center; border-bottom: 2px solid #333; padding-bottom: 6px;">
+        <strong style="font-size:15px;">@selectedPumpName</strong><br />
+        <span style="font-size:12px;">@L["Sale / Purchase Register"] &mdash; @selectedProductName &mdash; @selectedMonthName @Model.Year</span>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3 d-print-none">
+    <div class="card-body">
+        <form method="get" asp-action="SalePurchaseRegister" asp-controller="Operations" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">@L["Pump"]</label>
+                <select class="form-select" name="pumpId">
+                    @foreach (var pump in Model.Pumps)
+                    {
+                        <option value="@pump.Id" selected="@(pump.Id == Model.PumpId)">@pump.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">@L["Product"]</label>
+                <select class="form-select" name="productId">
+                    @foreach (var product in Model.Products)
+                    {
+                        <option value="@product.Id" selected="@(product.Id == Model.ProductId)">@product.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">@L["Month"]</label>
+                <select class="form-select" name="month">
+                    @for (var m = 1; m <= 12; m++)
+                    {
+                        <option value="@m" selected="@(m == Model.Month)">@System.Globalization.CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(m)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">@L["Year"]</label>
+                <select class="form-select" name="year">
+                    @for (var y = DateTime.Today.Year - 3; y <= DateTime.Today.Year + 1; y++)
+                    {
+                        <option value="@y" selected="@(y == Model.Year)">@y</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 d-grid">
+                <button type="submit" class="btn btn-primary">@L["Load Report"]</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-warning-subtle">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <h6 class="mb-0 fw-bold text-uppercase">@L["Sale / Purchase Register"]</h6>
+            <div class="d-flex align-items-center gap-3 fw-bold flex-wrap">
+                <div>@L["Product"]: <span class="text-primary">@selectedProductName</span></div>
+                <div>@L["Month"]: <span class="text-primary">@selectedMonthName, @Model.Year</span></div>
+                <a class="btn btn-sm btn-outline-success d-print-none"
+                   href="/Operations/ExportSalePurchaseRegisterCsv?pumpId=@Model.PumpId&productId=@Model.ProductId&month=@Model.Month&year=@Model.Year">
+                    <i class="bi bi-file-earmark-excel me-1"></i>@L["Export to CSV"]
+                </a>
+                <button type="button" class="btn btn-sm btn-dark d-print-none" onclick="window.print()">
+                    <i class="bi bi-printer"></i> @L["Print / PDF"]
+                </button>
+                <div class="form-text d-print-none mt-1 w-100 text-end">@L["Tip: in the print window, untick \"Headers and footers\" so the web address and date do not print."]</div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive spr-wrap">
+            <table class="table table-sm table-bordered align-middle mb-0" style="background-color:#fffdf5;">
+                <thead class="table-light">
+                    <tr class="text-center">
+                        <th>@L["Date"]</th>
+                        <th>@L["Sale"] (L)</th>
+                        <th>@L["Rate"]</th>
+                        <th>@L["Total"] (₹)</th>
+                        <th>@L["Purchase"] (L)</th>
+                        <th>@L["Purchase"] (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-4">@L["No data for this month."]</td></tr>
+                }
+                else
+                {
+                    @foreach (var r in Model.Items)
+                    {
+                        <tr>
+                            <td class="text-center" data-label="@L["Date"]">@r.Date.ToString("dd-MM-yyyy")</td>
+                            @* Rajistar me khaali din khaali hi rehta hai — 0 likhne se page bhar jaata hai *@
+                            <td class="text-end" data-label="@L["Sale"]">@(r.SaleQty > 0 ? r.SaleQty.ToString("0.##") : "")</td>
+                            <td class="text-end" data-label="@L["Rate"]">@(r.SaleQty > 0 && r.Rate > 0 ? r.Rate.ToString("0.##") : "")</td>
+                            <td class="text-end" data-label="@L["Total"]">@(r.SaleAmount > 0 ? r.SaleAmount.ToString("N0") : "")</td>
+                            <td class="text-end" data-label="@L["Purchase"]">@(r.PurchaseQty > 0 ? r.PurchaseQty.ToString("0.##") : "")</td>
+                            <td class="text-end" data-label="@L["Purchase"] (₹)">@(r.PurchaseAmount > 0 ? r.PurchaseAmount.ToString("N2") : "")</td>
+                        </tr>
+                    }
+                }
+                </tbody>
+                @if (Model.Items.Count > 0)
+                {
+                    <tfoot class="fw-bold table-group-divider bg-light">
+                        <tr>
+                            <td class="text-center">@L["Total"]</td>
+                            <td class="text-end" data-label="@L["Sale"] (L)">@totalSaleQty.ToString("0.##")</td>
+                            @* Rate ka jod nahi hota — har din ka apna rate hai *@
+                            <td></td>
+                            <td class="text-end" data-label="@L["Total"] (₹)">@totalSaleAmt.ToString("N0")</td>
+                            <td class="text-end" data-label="@L["Purchase"] (L)">@(totalPurQty > 0 ? totalPurQty.ToString("0.##") : "")</td>
+                            <td class="text-end" data-label="@L["Purchase"] (₹)">@(totalPurAmt > 0 ? totalPurAmt.ToString("N2") : "")</td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,1269 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* Premium Dark Blue/Slate Sidebar */
+  --bg-sidebar: #0b1329;
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --sidebar-text: #94a3b8;
+  --sidebar-text-active: #ffffff;
+  
+  /* Background & Surface */
+  --bg-main: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --border-focus: #4f46e5;
+  
+  /* Brand Accents - Indigo, Cyan, Emerald, Rose */
+  --accent-primary: #4f46e5;
+  --accent-primary-hover: #4338ca;
+  --accent-secondary: #0ea5e9;
+  --accent-success: #10b981;
+  --accent-danger: #f43f5e;
+  --accent-warning: #f59e0b;
+  --accent-info: #06b6d4;
+  
+  /* Text colors */
+  --text-main: #0f172a;
+  --text-soft: #64748b;
+  --text-light: #94a3b8;
+  
+  /* Sizing & Spacing */
+  --base-font-size: 13.5px;
+  --base-spacing: 1rem;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--base-font-size);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.app-shell {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+}
+
+/* Sidebar Navigation */
+.side-nav {
+  background: var(--bg-sidebar);
+  color: var(--sidebar-text);
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1050;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+.brand-block {
+  padding: 1.5rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-title {
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  margin: 0;
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-subtitle {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.75rem;
+  color: var(--accent-secondary);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Sidebar Accordion Overrides */
+.side-accordion {
+  padding: 1.25rem 0.75rem;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.side-accordion .accordion-item {
+  background: transparent;
+  border: none;
+  margin-bottom: 6px;
+}
+
+.side-accordion .accordion-button {
+  background: transparent;
+  color: var(--sidebar-text);
+  border: none;
+  border-radius: 8px !important;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  box-shadow: none !important;
+  transition: all 0.2s ease;
+}
+
+.side-accordion .accordion-button::after {
+  filter: invert(1) brightness(0.7);
+  background-size: 11px;
+}
+
+.side-accordion .accordion-button:not(.collapsed) {
+  background: var(--bg-sidebar-hover);
+  color: var(--sidebar-text-active);
+}
+
+.side-accordion .accordion-button:not(.collapsed)::after {
+  filter: invert(1) brightness(1);
+}
+
+.side-accordion .accordion-button:hover {
+  background: var(--bg-sidebar-hover);
+  color: var(--sidebar-text-active);
+}
+
+.side-accordion .accordion-body {
+  padding: 0.4rem 0.5rem 0.5rem 1.5rem;
+}
+
+.menu-link {
+  display: block;
+  text-decoration: none;
+  color: var(--sidebar-text);
+  font-size: 13px;
+  padding: 0.5rem 0.85rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.menu-link:hover {
+  background: var(--bg-sidebar-hover);
+  color: var(--sidebar-text-active);
+  transform: translateX(4px);
+}
+
+.menu-link.active {
+  background: rgba(79, 70, 229, 0.15) !important;
+  color: #a5b4fc !important;
+  font-weight: 700 !important;
+  border-left: 3px solid var(--accent-secondary);
+  padding-left: calc(0.85rem - 3px);
+}
+
+/* Main Content Area */
+.main-pane {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Top Header Strip */
+.top-strip {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0.85rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.01);
+  height: 70px;
+  position: sticky;
+  top: 0;
+  z-index: 900;
+}
+
+.page-title {
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.page-subtitle {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.operator-box-wrap {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.operator-box {
+  background: rgba(79, 70, 229, 0.06);
+  border: 1px solid rgba(79, 70, 229, 0.15);
+  color: var(--accent-primary);
+  border-radius: 8px;
+  padding: 0.4rem 0.85rem;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.3px;
+}
+
+/* Content Container */
+.content-pane {
+  padding: 1.75rem 2rem;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+/* Premium Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01) !important;
+  margin-bottom: 1.5rem;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.01) !important;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.card-title {
+  color: var(--text-main);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 0.65rem;
+}
+
+/* Forms & Controls */
+.form-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-control, .form-select {
+  font-size: 13.5px !important;
+  padding: 0.45rem 0.85rem !important;
+  border-color: #cbd5e1;
+  border-radius: 8px !important;
+  min-height: 38px;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12) !important;
+}
+
+/* ── Placeholder ───────────────────────────────────────────────────────────
+   Iske liye pehle koi rule tha hi nahi, to Bootstrap ka default #6c757d chal
+   raha tha. Hamara asli text #0f172a (lagbhag kaala) hai, aur uske saamne
+   #6c757d itna gehra lagta tha ki placeholder BHARA HUA VALUE jaisa dikhta —
+   log samajhte the khaana bhar chuka hai aur khaali chhod dete the.
+
+   Ab --text-light (#94a3b8) use karte hain, wahi jo baaki halke text me lagta
+   hai. Farq saaf dikhta hai par padha bhi ja sakta hai (contrast ~2.6:1, aur
+   placeholder WCAG ke hisaab se zaroori jaankari nahi hoti — asli label upar
+   alag se hai).
+
+   opacity: 1 zaroori hai — Firefox placeholder ko apne aap halka kar deta hai,
+   jisse wo dobara halka hokar padhne layak hi nahi bachta. */
+.form-control::placeholder,
+.form-select::placeholder,
+textarea::placeholder,
+input::placeholder {
+  color: var(--text-light) !important;
+  opacity: 1 !important;
+  font-weight: 400 !important;
+}
+
+/* Focus par aur halka — taaki type karte waqt dhyaan na bantayein. */
+.form-control:focus::placeholder,
+textarea:focus::placeholder {
+  color: #cbd5e1 !important;
+}
+
+/* Select me jab tak "-- Select --" wala khaali option chuna hai, tab tak use
+   bhi placeholder jaisa halka rakho. Chunte hi apne aap normal ho jaata hai. */
+.form-select:has(option[value=""]:checked) {
+  color: var(--text-light);
+}
+.form-select option {
+  color: var(--text-main);
+}
+
+/* Khaali date/time input — browser "dd-mm-yyyy" dikhata hai, wo bhi placeholder
+   hi hai par ::placeholder se nahi pakda jaata. */
+input[type="date"]:not(:focus):invalid,
+input[type="date"]:not(:focus)[value=""],
+input[type="datetime-local"]:not(:focus)[value=""],
+input[type="time"]:not(:focus)[value=""] {
+  color: var(--text-light);
+}
+
+/* Buttons */
+.btn {
+  font-size: 13.5px !important;
+  font-weight: 600;
+  padding: 0.45rem 1.1rem;
+  border-radius: 8px !important;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 6px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, #6366f1 100%);
+  border: none !important;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25);
+  color: #fff !important;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--accent-primary-hover) 0%, var(--accent-primary) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(79, 70, 229, 0.35);
+}
+
+.btn-outline-danger {
+  color: var(--accent-danger);
+  border-color: var(--accent-danger);
+}
+
+.btn-outline-danger:hover {
+  background-color: var(--accent-danger);
+  color: #fff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(244, 63, 94, 0.2);
+}
+
+.btn-sm {
+  font-size: 12px !important;
+  padding: 0.3rem 0.75rem;
+  min-height: 28px;
+  border-radius: 6px !important;
+}
+
+/* Badges with Glassy aesthetics */
+.badge {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 0.35em 0.7em;
+  border-radius: 6px;
+  text-transform: uppercase;
+  font-size: 10px !important;
+}
+
+.text-bg-success {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.text-bg-danger {
+  background-color: #ffe4e6 !important;
+  color: #9f1239 !important;
+  border: 1px solid rgba(244, 63, 94, 0.2);
+}
+
+.text-bg-info {
+  background-color: #ecfeff !important;
+  color: #155e75 !important;
+  border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+.text-bg-warning {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+/* Tables */
+.table {
+  font-size: 13px;
+  margin-bottom: 0;
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.75rem 0.85rem;
+  border-bottom-color: #f1f5f9;
+}
+
+.table th {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  background-color: #f8fafc;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Language switcher (header) */
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.lang-option {
+  padding: 0.3rem 0.6rem;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-soft);
+  text-decoration: none;
+  line-height: 1.4;
+  transition: all 0.15s ease;
+}
+
+.lang-option + .lang-option {
+  border-left: 1px solid var(--border);
+}
+
+.lang-option:hover {
+  background: #f1f5f9;
+  color: var(--text-main);
+}
+
+.lang-option.active {
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+/* ═══════════════════════════════════════════
+   EMPTY STATE — jab list khaali ho
+   Sirf "No data found" likhne se user ko samajh
+   nahi aata ki ab kya kare. Ye block batata hai.
+   ═══════════════════════════════════════════ */
+.empty-state {
+  text-align: center;
+  padding: 2.25rem 1rem;
+}
+
+.empty-state-icon {
+  font-size: 2.25rem;
+  line-height: 1;
+  opacity: 0.45;
+  margin-bottom: 0.6rem;
+}
+
+.empty-state-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  margin-bottom: 0.2rem;
+}
+
+.empty-state-hint {
+  font-size: 12.5px;
+  color: var(--text-soft);
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+/* Login Page Specific */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--bg-sidebar) 0%, #1e1b4b 100%);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.login-card .brand-title {
+  color: var(--text-main);
+  text-align: center;
+  font-size: 1.8rem;
+  margin-bottom: 0.25rem;
+}
+
+.login-card .brand-subtitle {
+  text-align: center;
+  display: block;
+  margin-bottom: 2rem;
+}
+
+/* Hamburger Toggle Button */
+.hamburger-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1.3rem;
+  padding: 0.35rem 0.65rem;
+  cursor: pointer;
+  color: var(--text-main);
+  line-height: 1;
+  display: none;
+  transition: all 0.2s ease;
+}
+
+.hamburger-btn:hover {
+  background-color: #f1f5f9;
+}
+
+/* Sidebar overlay for mobile */
+.side-nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1040;
+}
+
+.side-nav-overlay.active {
+  display: block;
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE DESIGN (MOBILE & TABLET)
+   ═══════════════════════════════════════════ */
+
+/* `screen and` jaanbujh kar: chhapte waqt browser ka viewport KAAGAZ ki
+   chaudai ban jaata hai (A4 portrait ~718px), jo 768 se kam hai — isliye ye
+   saara mobile wala roop PRINT me bhi lag jaata tha: table card ban jaati,
+   har line ooonchi ho jaati, aur report do page me chali jaati. Print ko
+   hamesha desktop wala roop chahiye. */
+@media screen and (max-width: 991.98px) {
+  .hamburger-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .side-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    transform: translateX(-100%);
+    width: 280px;
+    height: 100vh;
+    z-index: 1100;
+    overflow-y: auto;
+    border-top-right-radius: 16px;
+    border-bottom-right-radius: 16px;
+  }
+
+  .side-nav.open {
+    transform: translateX(0);
+  }
+
+  .brand-block {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .brand-block .hamburger-btn {
+    color: #fff;
+    border-color: rgba(255,255,255,0.15);
+  }
+  
+  .top-strip {
+    height: auto;
+    padding: 0.85rem 1.25rem;
+    gap: 0.75rem;
+  }
+
+  .content-pane {
+    padding: 1rem 1.25rem;
+  }
+
+  .operator-box-wrap {
+    gap: 0.5rem;
+  }
+
+  .operator-box {
+    padding: 0.3rem 0.6rem;
+    font-size: 11px;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE FIRST — Under 768px
+   Complete UX overhaul for small screens
+   ═══════════════════════════════════════════ */
+@media screen and (max-width: 767.98px) {
+
+  /* ── Typography Scale ── */
+  body {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .page-title {
+    font-size: 1.1rem;
+  }
+
+  .card-title {
+    font-size: 1rem;
+  }
+
+  /* ── Top Strip ── */
+  .top-strip {
+    flex-direction: column;
+    align-items: flex-start;
+    height: auto;
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+
+  .operator-box-wrap {
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  /* ── Content Pane ── */
+  .content-pane {
+    padding: 0.85rem 0.85rem 5rem 0.85rem; /* bottom padding for mobile browser chrome */
+  }
+
+  /* ── Cards ── */
+  .card {
+    border-radius: 10px !important;
+    margin-bottom: 1rem;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
+  /* ── Forms: Bigger touch targets ── */
+  .form-control,
+  .form-select {
+    font-size: 15px !important;      /* prevents iOS auto-zoom on focus */
+    min-height: 44px !important;     /* Apple HIG touch target */
+    padding: 0.6rem 0.9rem !important;
+    border-radius: 10px !important;
+  }
+
+  .form-label {
+    font-size: 12px;
+    margin-bottom: 0.4rem;
+  }
+
+  .form-text {
+    font-size: 11.5px;
+  }
+
+  /* ── Buttons: Full-width & tall on mobile ── */
+  .btn {
+    min-height: 44px !important;
+    font-size: 14px !important;
+    padding: 0.6rem 1.2rem;
+    border-radius: 10px !important;
+  }
+
+  .btn-sm {
+    min-height: 36px !important;
+    font-size: 12.5px !important;
+    padding: 0.4rem 0.9rem;
+  }
+
+  /* d-grid buttons go full width automatically */
+  .col-12 .btn,
+  .d-grid .btn {
+    width: 100%;
+  }
+
+  /* ── Row gutters tighter ── */
+  .g-2 > * {
+    padding: 0.25rem;
+  }
+
+  /* ── Badges ── */
+  .badge {
+    font-size: 11px !important;
+    padding: 0.4em 0.8em;
+  }
+
+  /* ── Tables: Card transformation ── */
+  table.table {
+    border: 0;
+  }
+
+  table.table thead {
+    display: none !important;
+  }
+
+  table.table tbody tr {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    padding: 0.85rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  }
+
+  table.table tbody tr:hover {
+    background-color: var(--surface);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.04);
+  }
+
+  table.table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 0.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+    font-size: 14px;
+  }
+
+  table.table tbody td:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  table.table tbody td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 10.5px;
+    color: var(--text-soft);
+    letter-spacing: 0.6px;
+    text-align: left;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+
+  table.table tbody tr td:only-child {
+    display: block;
+    text-align: center !important;
+    border: none;
+    padding: 1.5rem;
+    color: var(--text-soft);
+  }
+
+  table.table tbody tr td:only-child::before {
+    display: none !important;
+  }
+
+  table.table tbody td > * {
+    text-align: right;
+    margin-left: auto;
+  }
+
+
+  /* ── Table footers ──────────────────────────────────────────────────────
+     tbody to card ban jaata tha par tfoot waisa ka waisa reh jaata tha —
+     ek chaudi row jo card ke bahar nikal jaati thi (Attendant Cash report
+     par saaf dikhta tha). Ab total ko bhi apna card bana dete hain. */
+  table.table tfoot tr {
+    display: block;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    padding: 0.85rem;
+  }
+
+  table.table tfoot td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.25rem;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    font-size: 14px;
+  }
+
+  table.table tfoot td:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  table.table tfoot td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 10.5px;
+    color: var(--text-soft);
+    letter-spacing: 0.6px;
+    text-align: left;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+
+  /* "Total" wala colspan cell ka apna koi aankda nahi hota - wo sirf
+     card ka sirnaam hai. */
+  table.table tfoot td[colspan] {
+    display: block;
+    text-align: left;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.6px;
+    color: var(--text-soft);
+    padding: 0 0 0.35rem 0;
+    border-bottom: 0;
+  }
+
+  table.table tfoot td[colspan]::before {
+    display: none !important;
+  }
+
+  /* Wahi sirnaam wala roop un cell ke liye bhi jinke paas colspan nahi hai
+     (DSR ke footer ka "Total"). */
+  table.table tfoot td.tfoot-title {
+    display: block;
+    text-align: left;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.6px;
+    color: var(--text-soft);
+    padding: 0 0 0.35rem 0;
+    border-bottom: 0;
+  }
+
+  table.table tfoot td.tfoot-title::before {
+    display: none !important;
+  }
+
+  /* Poori chaudai ka note block — DSR ke footer me "Objective / Last Year"
+     wala hissa. Upar wala colspan waala niyam ise sirnaam bana deta tha
+     (chhota, uppercase, dhundhla) — ye usse bachata hai. Baad me likha hai,
+     isliye specificity barabar hone par yahi chalta hai. */
+  table.table tfoot td.tfoot-note {
+    display: block;
+    text-align: left;
+    text-transform: none;
+    font-weight: 400;
+    font-size: 0.8rem;
+    letter-spacing: normal;
+    color: inherit;
+    padding: 0.5rem 0.25rem;
+    border-bottom: 0;
+  }
+
+  table.table tfoot td.tfoot-note::before {
+    display: none !important;
+  }
+
+  /* Khaali cell ka mobile par koi matlab nahi - sirf ek lakeer dikhati hai. */
+  table.table tfoot td:empty {
+    display: none;
+  }
+
+  /* ── Pagination ── */
+  .btn-group {
+    width: 100%;
+  }
+
+  .btn-group .btn {
+    flex-grow: 1;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE — font aur jagah kasna (2026-09-06)
+   ──────────────────────────────────────────────────────────────────────
+   Shikayat: "computer pe theek hai, mobile pe font bade lagte hai."
+
+   Wajah upar wale @media block me thi: desktop par base font 13.5px hai,
+   par mobile par use BADHA kar 14px + line-height 1.6 kar diya gaya tha.
+   Chhoti screen par ulta hona chahiye tha. Uske upar har khaane ka label,
+   padding aur card ka gap bhi bada tha — nateeja ye ki ek form dekhne me
+   teen-chaar screen scroll karni padti thi.
+
+   Yahan sirf naap kasa hai. Rang, border, shadow, layout — kuch nahi badla,
+   isliye page pehle jaisa hi dikhta hai, bas saleeqe se.
+
+   Ek cheez jaanbujh kar nahi ghataayi: input/select ka font. Wo 15px hi
+   rakha hai — usme number type hota hai, aur pump par log dhoop me, gande
+   haath se, jaldi me bharte hain. Usko chhota karna galti hoti.
+   ══════════════════════════════════════════════════════════════════════ */
+@media screen and (max-width: 767.98px) {
+
+  /* Mobile ka font desktop se CHHOTA rahega, barabar nahi.
+     Screen chhoti hai to har cheez bhi thodi chhoti honi chahiye — tabhi ek
+     nazar me zyada dikhta hai aur baar-baar scroll nahi karna padta.
+     (Pehle ulta tha: desktop 13.5px, mobile 14px.) */
+  body {
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+
+  .page-title { font-size: 0.95rem; }
+  .page-subtitle { font-size: 0.68rem; }
+  .card-title { font-size: 0.9rem; }
+  h4 { font-size: 0.95rem; }
+  h5 { font-size: 0.9rem; }
+  h6 { font-size: 0.85rem; }
+
+  /* Label: chhota aur input ke paas. Pehle har khaana bewajah lamba
+     ho jaata tha kyunki label ke neeche poora gap tha. */
+  .form-label {
+    font-size: 0.7rem;
+    margin-bottom: 0.15rem;
+    letter-spacing: 0.01em;
+  }
+
+  /* Input ka font jaanbujh kar itna hi. Isme number type hota hai aur pump par
+     log dhoop me, jaldi me bharte hain — ise chhota karna galti hoti. */
+  .form-control,
+  .form-select {
+    font-size: 14px;
+    padding: 0.35rem 0.6rem;
+  }
+
+  .form-control-sm,
+  .form-select-sm {
+    padding: 0.25rem 0.5rem;
+  }
+
+  /* Madad wali chhoti line har khaane ke neeche hoti hai — ye sabse zyada
+     jagah khaati thi. */
+  .form-text {
+    font-size: 0.7rem;
+    margin-top: 0.1rem;
+  }
+
+  .btn { padding: 0.4rem 0.75rem; }
+  .btn-sm { padding: 0.28rem 0.6rem; font-size: 0.78rem; }
+
+  /* Card ke andar ka gap — 1rem se thoda kam, taaki ek screen me zyada aaye. */
+  .card-body { padding: 0.85rem; }
+  .card { margin-bottom: 0.75rem; }
+
+  /* Do khaane ek line me (col-6) ho to beech ka gap kam rakhein, warna
+     dono box patle ho jaate hain. */
+  .row.g-2 { --bs-gutter-x: 0.5rem; }
+
+  .table { font-size: 0.8rem; }
+  .table > :not(caption) > * > * { padding: 0.4rem 0.45rem; }
+
+  .alert { padding: 0.6rem 0.75rem; }
+  .badge { font-size: 0.65rem; }
+
+  /* Upar ka header do line le leta tha — naam aur logout ek hi line me
+     aa jaayen to poora ek block ki bachat hoti hai. */
+  .top-strip { padding: 0.5rem 0.85rem; gap: 0.35rem; }
+  .operator-box-wrap { padding-top: 0.35rem; margin-top: 0.15rem; }
+}
+
+/* Bahut chhote phone (360px se neeche) — wahan do-do khaane bhi tang lagte
+   hain, isliye unhe poori chaudai de dete hain. */
+@media screen and (max-width: 359.98px) {
+  .row > .col-6 { flex: 0 0 100%; max-width: 100%; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   PRINT / PDF — poori report chhapni chahiye, sirf pehla page nahi
+   ──────────────────────────────────────────────────────────────────────
+   Shikayat: DSR ka PDF banao to sirf 18 line aati thi, baaki gayab.
+
+   Wajah screen ka layout tha:
+
+       .app-shell    { height: 100vh; overflow: hidden; }
+       .content-pane { overflow-y: auto; }
+
+   Yaani poori app ek screen me band hai aur andar scroll hota hai. Ye screen
+   par to theek hai, par chhapte waqt browser ko sirf utna hi dikhta hai jitna
+   ek screen me samata hai — baaki kata hua chala jaata hai. Isiliye theek 18
+   line (ek A4 page jitni) aati thin.
+
+   DSR ke apne print CSS me `.content-pane { overflow: visible }` to tha, par
+   uske UPAR `.app-shell` ki `height: 100vh` aur `overflow: hidden` waisi ki
+   waisi thi — asli rok wahi thi.
+
+   Ye niyam yahan (site.css me) rakhe hain, kisi ek page me nahi — taaki har
+   report ka print theek rahe: Day Book, Outstanding, Attendant Cash, sab.
+   ══════════════════════════════════════════════════════════════════════ */
+@media print {
+    html,
+    body,
+    .app-shell,
+    .main-pane,
+    .content-pane {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .app-shell { display: block !important; }
+    .main-pane { display: block !important; width: 100% !important; }
+
+    /* Andar ke scroll wale dabbe bhi khol do, warna table wahin kat jaata hai. */
+    .table-responsive,
+    .stock-table-wrap {
+        overflow: visible !important;
+        max-height: none !important;
+        /* Table kaagaz ke bilkul kinare par na baithe. Chaudai theek page jitni
+           ho to aakhri khadi lakeer printer/PDF ke rounding me kat jaati hai —
+           owner ne yahi pakda ("right side wali line chip rahi hai"). */
+        padding-right: 2px !important;
+    }
+
+    /* Row beech se na toote, par table ko page badalne ki chhoot ho. */
+    table { page-break-inside: auto !important; }
+    tr    { page-break-inside: avoid !important; }
+    thead { display: table-header-group !important; }   /* har page par heading */
+    tfoot { display: table-footer-group !important; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE — tareekh ke khaane pehchane jayein (2026-09-13)
+   ──────────────────────────────────────────────────────────────────────
+   Shikayat: "date wale text box mobile pe blank dikhte hai, jab uspe click
+   karo tab pata chalta hai isme calendar bhi hai."
+
+   Sahi hai. Phone par khaali <input type="date"> me kuch dikhta hi nahi —
+   iOS me to "dd-mm-yyyy" bhi nahi aata — aur browser ka apna calendar wala
+   nishaan itna chhota/halka hota hai ki dhoop me dikhta hi nahi. Upar ka
+   niyam (khaali date ka rang halka) ise aur dhundhla kar deta tha.
+
+   Ab: har tareekh/samay ke khaane par apna saaf calendar ka nishaan, aur
+   poore khaane par ungli rakhne se picker khulta hai — sirf nishaan par nahi.
+   Sirf mobile par; desktop par browser ka apna nishaan pehle jaisa rahega.
+   ══════════════════════════════════════════════════════════════════════ */
+@media screen and (max-width: 767.98px) {
+
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="time"] {
+    position: relative;
+    /* !important zaroori hai: upar mobile block me .form-control par
+       `padding: 0.6rem 0.9rem !important` pada hai, jo warna jeet jaata
+       hai aur likhi hui tareekh icon ke neeche chali jaati hai.
+       (min-height wahin se 44px mil raha hai, isliye yahan nahi likha.) */
+    padding-right: 2.5rem !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2364748b' stroke-width='1.4' stroke-linecap='round'%3E%3Crect x='2' y='3.2' width='12' height='11' rx='2'/%3E%3Cpath d='M2 6.6h12M5.4 1.6v3M10.6 1.6v3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 17px 17px;
+  }
+
+  /* Browser ka apna nishaan chhupa dete hain (apna dikha rahe hain), par use
+     PHAILA kar poore khaane par bichha dete hain — isse kahin bhi dabao,
+     calendar khul jaata hai. Pehle sirf us ek chhote nishaan par dabane se
+     khulta tha, jo kisi ko pata hi nahi chalta tha. */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  /* Khaali hone par rang itna halka mat karo ki dikhe hi na. Upar wala niyam
+     desktop ke liye theek hai, phone ki dhoop ke liye nahi. */
+  input[type="date"]:not(:focus):invalid,
+  input[type="date"]:not(:focus)[value=""],
+  input[type="datetime-local"]:not(:focus)[value=""],
+  input[type="time"]:not(:focus)[value=""] {
+    color: var(--text-soft);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   KHOJNE WALA DROPDOWN  (js/ppms-ui.js)
+   <select> jaisa hai waisa rehta hai; us par click / tap hone par ye panel
+   khulta hai — upar khoj, neeche chhanti hui list.
+   ══════════════════════════════════════════════════════════════════════ */
+.ss-backdrop {
+  display: none;
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 2040;
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.ss-panel {
+  display: none;
+  position: fixed;
+  z-index: 2050;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.2);
+}
+
+.ss-panel.ss-open { display: flex; }
+
+.ss-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ss-head .ss-input { flex: 1 1 auto; min-width: 0; }
+.ss-head .ss-close { display: none; flex: 0 0 auto; }
+
+.ss-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.25rem 0;
+}
+
+.ss-item {
+  padding: 0.45rem 0.8rem;
+  line-height: 1.35;
+  color: var(--text-main);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.ss-item.ss-active { background: #eef2ff; }
+.ss-item.ss-selected { font-weight: 700; color: var(--accent-primary); }
+.ss-item.ss-disabled { color: var(--text-light); cursor: default; }
+
+.ss-group {
+  padding: 0.5rem 0.8rem 0.15rem;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.ss-empty {
+  padding: 1rem 0.8rem;
+  text-align: center;
+  color: var(--text-soft);
+}
+
+.ss-item[hidden], .ss-group[hidden], .ss-list[hidden], .ss-empty[hidden] { display: none; }
+
+@media screen and (max-width: 767.98px) {
+  /* Phone: poori chaudai, upar chipka hua (keyboard neeche se aata hai). */
+  .ss-backdrop.ss-open { display: block; }
+
+  .ss-panel.ss-sheet {
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+
+  .ss-panel.ss-sheet .ss-close { display: block; }
+
+  /* 16px se chhota ho to iPhone khaane par zoom kar deta hai */
+  .ss-head .ss-input { font-size: 16px !important; }
+
+  .ss-item { padding: 0.75rem 0.9rem; font-size: 15px; border-bottom: 1px solid #f1f5f9; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LAMBI LIST ME PAGE  (table[data-pager], js/ppms-ui.js)
+   Selector jaanbujh kar bhaari hai: mobile ka "table.table tbody tr
+   { display: block }" isse halka padna chahiye, warna phone par chhupi hui
+   row dikhti rehti.
+   ══════════════════════════════════════════════════════════════════════ */
+table[data-pager] tbody tr.pager-hidden { display: none !important; }
+
+.ppms-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+@media print {
+  .ss-panel, .ss-backdrop { display: none !important; }
+  /* Kaagaz par poori list — sirf dikh raha page nahi */
+  table[data-pager] tbody tr.pager-hidden { display: table-row !important; }
+}

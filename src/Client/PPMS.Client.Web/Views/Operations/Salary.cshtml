@@ -1,0 +1,161 @@
+@model PPMS.Client.Web.Models.SalaryManagementViewModel
+@{
+    ViewData["Title"] = "Salary Register";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">@L["Monthly Salary Payment"]</h5>
+                <p class="text-muted small mb-3">@L["Track month-wise salary paid to each employee/operator."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveSalary" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.Id" type="hidden" />
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select" onchange="window.location='/Operations/Salary?pumpId='+this.value+'&salaryYear=@Model.SalaryYear&salaryMonth=@Model.SalaryMonth'">
+                            @foreach (var p in Model.Pumps)
+                            {
+                                <option value="@p.Id">@p.Name (@p.City)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">@L["Employee"]</label>
+                        <select asp-for="Form.EmployeeId" class="form-select">
+                            @if (Model.Employees.Count == 0)
+                            {
+                                <option value="0">@L["No employee found"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var e in Model.Employees)
+                                {
+                                    <option value="@e.Id">@e.FullName (@e.EmployeeCode)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Salary Year"]</label>
+                            <input asp-for="Form.SalaryYear" type="number" min="2020" max="2100" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Salary Month"]</label>
+                            <select asp-for="Form.SalaryMonth" class="form-select">
+                                <option value="1">@L["January (Jan)"]</option>
+                                <option value="2">@L["February (Feb)"]</option>
+                                <option value="3">@L["March (Mar)"]</option>
+                                <option value="4">@L["April (Apr)"]</option>
+                                <option value="5">@L["May (May)"]</option>
+                                <option value="6">@L["June (Jun)"]</option>
+                                <option value="7">@L["July (Jul)"]</option>
+                                <option value="8">@L["August (Aug)"]</option>
+                                <option value="9">@L["September (Sep)"]</option>
+                                <option value="10">@L["October (Oct)"]</option>
+                                <option value="11">@L["November (Nov)"]</option>
+                                <option value="12">@L["December (Dec)"]</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Amount"]</label>
+                            <input asp-for="Form.Amount" type="number" min="0.01" step="0.01" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Paid On"]</label>
+                            <input asp-for="Form.PaidOn" type="date" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Payment Mode"]</label>
+                            <select asp-for="Form.PaymentMode" class="form-select">
+                                <option>@L["Cash"]</option>
+                                <option>@L["UPI"]</option>
+                                <option>@L["Bank"]</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Reference No"]</label>
+                            <input asp-for="Form.ReferenceNo" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Notes"]</label>
+                        <textarea asp-for="Form.Notes" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@L["Save Salary Payment"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-2">@L["Salary Payments"]</h5>
+                <form method="get" class="row g-2 mb-3">
+                    <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                    <div class="col-md-3">
+                        <input type="number" min="2020" max="2100" name="salaryYear" value="@Model.SalaryYear" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" min="1" max="12" name="salaryMonth" value="@Model.SalaryMonth" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">@L["Filter"]</button>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Employee"]</th>
+                            <th>@L["Month"]</th>
+                            <th>@L["Paid On"]</th>
+                            <th>@L["Mode"]</th>
+                            <th>@L["Ref"]</th>
+                            <th class="text-end">@L["Amount"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Payments.Count == 0)
+                        {
+                            <tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#128181;</div><div class="empty-state-title">@L["No salary entries this month"]</div><div class="empty-state-hint">@L["Record a salary by picking the employee, month and amount on the left."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var p in Model.Payments)
+                            {
+                                <tr>
+                                    <td data-label="@L["Employee"]">@p.EmployeeName (@p.EmployeeCode)</td>
+                                    <td data-label="@L["Month"]">@($"{p.SalaryMonth:D2}/{p.SalaryYear}")</td>
+                                    <td data-label="@L["Paid On"]">@p.PaidOn</td>
+                                    <td data-label="@L["Mode"]">@p.PaymentMode</td>
+                                    <td data-label="@L["Ref"]">@p.ReferenceNo</td>
+                                    <td class="text-end" data-label="@L["Amount"]">@p.Amount.ToString("0.00")</td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

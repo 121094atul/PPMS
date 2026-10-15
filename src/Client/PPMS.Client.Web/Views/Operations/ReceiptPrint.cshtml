@@ -1,0 +1,190 @@
+@model PPMS.Client.Web.Services.ApiReceiptDto
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Receipt_@(Model.ReceiptNo)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #000;
+        }
+
+        .receipt-container {
+            width: 58mm; /* Standard 58mm thermal paper */
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 5mm;
+            box-sizing: border-box;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .text-center { text-align: center; }
+        .text-end { text-align: right; }
+        .fw-bold { font-weight: bold; }
+        .fw-semibold { font-weight: 600; }
+        .mb-1 { margin-bottom: 4px; }
+        .mb-2 { margin-bottom: 8px; }
+        .mt-2 { margin-top: 8px; }
+        .py-1 { padding-top: 4px; padding-bottom: 4px; }
+        
+        .divider {
+            border-top: 1px dashed #000;
+            margin: 6px 0;
+        }
+
+        .store-name {
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .store-details {
+            font-size: 10px;
+            margin-bottom: 8px;
+        }
+
+        .receipt-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 8px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        table th {
+            text-align: left;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 3px;
+        }
+        table td {
+            padding: 3px 0;
+        }
+
+        .total-row {
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .footer-text {
+            font-size: 10px;
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        /* Print Specific CSS */
+        @@media print {
+            body {
+                background-color: #fff;
+                margin: 0;
+            }
+            .receipt-container {
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+            }
+            @@page {
+                margin: 0;
+                size: 58mm auto;
+            }
+        }
+    </style>
+</head>
+<body onload="window.print();">
+    <div class="receipt-container">
+        <div class="text-center">
+            <div class="store-name">@Model.PumpAddress?.Split(',')[0]</div>
+            <div class="store-details">
+                @(Model.PumpAddress)<br />
+                GSTIN: @(Model.PumpGSTIN ?? "--")
+            </div>
+            <div class="divider"></div>
+            <div class="receipt-title">@L["TAX INVOICE / CASH MEMO"]</div>
+        </div>
+
+        <table style="margin-bottom: 8px;">
+            <tr>
+                <td>@L["Receipt:"]</td>
+                <td class="text-end fw-semibold">@Model.ReceiptNo</td>
+            </tr>
+            <tr>
+                <td>@L["Date:"]</td>
+                <td class="text-end">@Model.ReceiptDateTime.ToString("dd-MM-yyyy HH:mm")</td>
+            </tr>
+            <tr>
+                <td>@L["Vehicle:"]</td>
+                <td class="text-end">@(string.IsNullOrWhiteSpace(Model.VehicleNo) ? "--" : Model.VehicleNo)</td>
+            </tr>
+            <tr>
+                <td>@L["Customer:"]</td>
+                <td class="text-end">@(string.IsNullOrWhiteSpace(Model.CustomerName) ? "Cash Customer" : Model.CustomerName)</td>
+            </tr>
+        </table>
+
+        <!-- Detailed Tax Breakdown -->
+        <div class="divider"></div>
+        <table>
+            <tbody>
+                @if(Model.TotalQuantity > 0) {
+                <tr>
+                    <td>@L["Volume (Ltr)"]</td>
+                    <td class="text-end">@Model.TotalQuantity.ToString("0.000")</td>
+                </tr>
+                }
+                <tr>
+                    <td>@L["Base Amount"]</td>
+                    <td class="text-end">@Model.BaseAmount.ToString("0.00")</td>
+                </tr>
+                @if(Model.TotalCGST > 0) {
+                <tr>
+                    <td>@L["CGST"]</td>
+                    <td class="text-end">@Model.TotalCGST.ToString("0.00")</td>
+                </tr>
+                <tr>
+                    <td>@L["SGST"]</td>
+                    <td class="text-end">@Model.TotalSGST.ToString("0.00")</td>
+                </tr>
+                }
+            </tbody>
+        </table>
+        <div class="divider"></div>
+
+        <table>
+            <tr class="total-row">
+                <td>@L["TOTAL AMOUNT:"]</td>
+                <td class="text-end">₹@Model.TotalAmount.ToString("0.00")</td>
+            </tr>
+        </table>
+        <div class="divider"></div>
+
+        <table style="margin-top: 8px;">
+            <tr>
+                <td>@L["Payment Mode:"]</td>
+                <td class="text-end fw-semibold">@Model.PaymentMode</td>
+            </tr>
+            <tr>
+                <td>@L["Attendant:"]</td>
+                <td class="text-end">@(string.IsNullOrWhiteSpace(Model.AttendantName) ? "--" : Model.AttendantName)</td>
+            </tr>
+        </table>
+
+        <div class="footer-text">
+            Thank you for your visit!<br />
+            @L["Drive Safely."]
+        </div>
+    </div>
+</body>
+</html>

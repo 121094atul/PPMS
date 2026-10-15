@@ -1,0 +1,151 @@
+@model PPMS.Client.Web.Models.AttendantCashReportViewModel
+@{
+    ViewData["Title"] = "Attendant Cash Report";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h4 class="mb-0">@L["Attendant Cash Report"]</h4>
+        <div class="text-muted small">@L["Who came up short and who came up over, per attendant."]</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-outline-success"
+           href="/Operations/ExportAttendantCashCsv?pumpId=@Model.PumpId&fromDate=@Model.FromDate.ToString("yyyy-MM-dd")&toDate=@Model.ToDate.ToString("yyyy-MM-dd")">
+            <i class="bi bi-file-earmark-excel me-1"></i>@L["Export to CSV"]
+        </a>
+        <a asp-action="NozzleCash" asp-route-pumpId="@Model.PumpId" class="btn btn-sm btn-outline-secondary">@L["Nozzle Cash"]</a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" asp-action="AttendantCash" class="row g-2 align-items-end">
+            <div class="col-sm-6 col-md-3">
+                <label class="form-label mb-1">@L["Pump"]</label>
+                <select class="form-select" name="pumpId">
+                    @foreach (var pump in Model.Pumps)
+                    {
+                        if (pump.Id == Model.PumpId)
+                        {
+                            <option value="@pump.Id" selected>@pump.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@pump.Id">@pump.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label mb-1">@L["From"]</label>
+                <input type="date" class="form-control" name="fromDate" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label mb-1">@L["To"]</label>
+                <input type="date" class="form-control" name="toDate" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary">@L["Load Report"]</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="empty-state">
+                <div class="empty-state-icon">&#128100;</div>
+                <div class="empty-state-title">@L["Nothing in this period"]</div>
+                <div class="empty-state-hint">@L["Assign attendants to nozzles on the Nozzle Cash screen, then collect their cash."]</div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>@L["Attendant"]</th>
+                            <th class="text-end">@L["Shifts"]</th>
+                            <th class="text-end">@L["Meter Sale"]</th>
+                            <th class="text-end">@L["Float"]</th>
+                            <th class="text-end">@L["Slips"]</th>
+                            <th class="text-end">@L["Should Receive"]</th>
+                            <th class="text-end">@L["Received"]</th>
+                            <th class="text-end">@L["Short / Excess"]</th>
+                            <th class="text-end">@L["Still Pending"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td data-label="@L["Attendant"]" class="fw-semibold">@r.EmployeeName</td>
+                            <td class="text-end" data-label="@L["Shifts"]">@r.Shifts</td>
+                            <td class="text-end" data-label="@L["Meter Sale"]">&#8377;@r.TotalMeterSale.ToString("N0")</td>
+                            <td class="text-end" data-label="@L["Float"]">&#8377;@r.TotalFloat.ToString("N0")</td>
+                            <td class="text-end" data-label="@L["Slips"]">@(r.TotalSlips > 0 ? "₹" + r.TotalSlips.ToString("N0") : "-")</td>
+                            <td class="text-end" data-label="@L["Should Receive"]">&#8377;@r.TotalExpected.ToString("N0")</td>
+                            <td class="text-end" data-label="@L["Received"]">&#8377;@r.TotalReturned.ToString("N0")</td>
+                            <td class="text-end fw-bold" data-label="@L["Short / Excess"]">
+                                @if (r.TotalShortExcess < 0)
+                                {
+                                    <span class="text-danger">&#8377;@Math.Abs(r.TotalShortExcess).ToString("N2") @L["short"]</span>
+                                }
+                                else if (r.TotalShortExcess > 0)
+                                {
+                                    <span class="text-success">&#8377;@r.TotalShortExcess.ToString("N2") @L["excess"]</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td class="text-end" data-label="@L["Still Pending"]">
+                                @if (r.PendingCount > 0)
+                                {
+                                    <span class="badge bg-warning text-dark">@r.PendingCount</span>
+                                    <div class="small">&#8377;@r.PendingAmount.ToString("N0")</div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                    <tfoot class="table-group-divider fw-bold">
+                        <tr>
+                            <td colspan="5" class="text-end">@L["Total"]</td>
+                            <td class="text-end" data-label="@L["Should Receive"]">&#8377;@Model.Rows.Sum(x => x.TotalExpected).ToString("N0")</td>
+                            <td class="text-end" data-label="@L["Received"]">&#8377;@Model.Rows.Sum(x => x.TotalReturned).ToString("N0")</td>
+                            @{ var grand = Model.Rows.Sum(x => x.TotalShortExcess); }
+                            <td class="text-end" data-label="@L["Short / Excess"]">
+                                @if (grand < 0)
+                                {
+                                    <span class="text-danger">&#8377;@Math.Abs(grand).ToString("N2") @L["short"]</span>
+                                }
+                                else if (grand > 0)
+                                {
+                                    <span class="text-success">&#8377;@grand.ToString("N2") @L["excess"]</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td class="text-end" data-label="@L["Still Pending"]">&#8377;@Model.Rows.Sum(x => x.PendingAmount).ToString("N0")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+}

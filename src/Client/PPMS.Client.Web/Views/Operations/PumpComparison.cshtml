@@ -1,0 +1,61 @@
+@model PPMS.Client.Web.Models.PumpComparisonReportViewModel
+@{
+    ViewData["Title"] = "Pump Comparison Report";
+}
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="PumpComparison" asp-controller="Operations" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">@L["From"]</label>
+                <input class="form-control" type="date" name="dateFrom" value="@Model.DateFrom.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">@L["To"]</label>
+                <input class="form-control" type="date" name="dateTo" value="@Model.DateTo.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-3 d-grid">
+                <button class="btn btn-primary" type="submit">@L["Load Report"]</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>@L["Pump"]</th>
+                        <th>@L["City"]</th>
+                        <th class="text-end">@L["Sales"]</th>
+                        <th class="text-end">@L["Purchase"]</th>
+                        <th class="text-end">@L["Expense"]</th>
+                        <th class="text-end">@L["Net"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Items.Count == 0)
+                    {
+                        <tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#128202;</div><div class="empty-state-title">@L["No data in this range"]</div><div class="empty-state-hint">@L["Pick a different date range above to compare sales, purchases and expenses."]</div></div></td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var row in Model.Items)
+                        {
+                            <tr>
+                                <td data-label="@L["Pump"]">@row.PumpName</td>
+                                <td data-label="@L["City"]">@row.City</td>
+                                <td class="text-end" data-label="@L["Sales"]">@row.SalesAmount.ToString("0.00")</td>
+                                <td class="text-end" data-label="@L["Purchase"]">@row.PurchaseAmount.ToString("0.00")</td>
+                                <td class="text-end" data-label="@L["Expense"]">@row.ExpenseAmount.ToString("0.00")</td>
+                                <td class="text-end @(row.NetAmount < 0 ? "text-danger" : "text-success")" data-label="@L["Net"]">@row.NetAmount.ToString("0.00")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

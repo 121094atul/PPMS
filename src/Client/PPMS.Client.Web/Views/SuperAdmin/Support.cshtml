@@ -1,0 +1,300 @@
+@model PPMS.Client.Web.Models.SupportConsoleViewModel
+@{
+    ViewData["Title"] = "Support Console";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h4 class="mb-0">@L["Support Console"]</h4>
+        <div class="text-muted small">@L["Fix an owner's shift without going into the database."]</div>
+    </div>
+    <a href="/SuperAdmin" class="btn btn-sm btn-outline-secondary">@L["Back to tenants"]</a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") alert-dismissible fade show py-2 small" role="alert">
+        @Model.Message
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" asp-action="Support" class="row g-2 align-items-end">
+            <div class="col-sm-6 col-md-5">
+                <label class="form-label mb-1">@L["Pump owner"]</label>
+                <select class="form-select" name="ownerId" onchange="this.form.submit()">
+                    <option value="0">@L["-- Select an owner --"]</option>
+                    @foreach (var o in Model.Owners)
+                    {
+                        if (o.Id == Model.SelectedOwnerId)
+                        {
+                            <option value="@o.Id" selected>@o.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@o.Id">@o.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label mb-1">@L["Show last"]</label>
+                <select class="form-select" name="days" onchange="this.form.submit()">
+                    @foreach (var d in new[] { 15, 30, 60, 180, 365 })
+                    {
+                        if (d == Model.Days)
+                        {
+                            <option value="@d" selected>@d @L["days"]</option>
+                        }
+                        else
+                        {
+                            <option value="@d">@d @L["days"]</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <button type="submit" class="btn btn-primary w-100">@L["Load"]</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.SelectedOwnerId > 0)
+{
+    <div class="row g-3 mb-3">
+        @* ── Meter ki kadi ─────────────────────────────────────────────────────
+           Ek nozzle ki shift tareekh ke kram me lagayein to har agli shift ka
+           opening reading pichhli ke closing se milna chahiye. Na mile to beech
+           ka fuel kahin darj hi nahi hua — us din ki bikri, stock aur cash
+           teeno galat. Ye sirf DIKHATA hai, kuch badalta nahi. *@
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="card-title mb-1">@L["Meter chain"]</h6>
+                    <p class="text-muted small mb-2">
+                        @L["Each shift's opening reading should match the previous shift's closing reading."]
+                    </p>
+                    @if (Model.MeterChainGaps.Count == 0)
+                    {
+                        <div class="text-success small fw-semibold">&#10003; @L["Every nozzle joins up. Nothing broken."]</div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning py-2 small mb-2">
+                            @Model.MeterChainGaps.Count @L["break(s) found. The fuel in between is not recorded anywhere."]
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>@L["Nozzle"]</th>
+                                        <th>@L["Previous"]</th>
+                                        <th>@L["Next"]</th>
+                                        <th class="text-end">@L["Gap"]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var g in Model.MeterChainGaps)
+                                {
+                                    <tr>
+                                        <td data-label="@L["Nozzle"]"><strong>@g.NozzleCode</strong></td>
+                                        <td data-label="@L["Previous"]">
+                                            @g.PrevDate.ToString("dd MMM")
+                                            <div class="text-muted small">@g.PrevClosing.ToString("N2")</div>
+                                        </td>
+                                        <td data-label="@L["Next"]">
+                                            @g.ShiftDate.ToString("dd MMM")
+                                            <div class="text-muted small">@g.OpeningReading.ToString("N2")</div>
+                                        </td>
+                                        <td class="text-end fw-bold @(g.GapQty < 0 ? "text-danger" : "text-warning")" data-label="@L["Gap"]">
+                                            @(g.GapQty > 0 ? "+" : "")@g.GapQty.ToString("N2")
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* ── Party ka bakaya ────────────────────────────────────────────────── *@
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex flex-column">
+                    <h6 class="card-title mb-1">@L["Party balances"]</h6>
+                    <p class="text-muted small">
+                        @* Section AF (2026-10-13) se pehle ye SIRF khaate ki line jodta tha aur party
+                           banate waqt bhara gaya purana baki mita deta tha. Ab: purana baki + khaata. *@
+                        @L["Each party's outstanding is a running total. If it ever drifts, this recounts it as: opening balance + the party's ledger entries."]
+                    </p>
+                    <div class="mt-auto">
+                        <form asp-action="SupportRecalculateParties" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="ownerId" value="@Model.SelectedOwnerId" />
+                            <button type="submit" class="btn btn-outline-primary btn-sm"
+                                    data-confirm="@L["Recount every party's outstanding (opening balance + ledger)?"]"
+                                    data-confirm-title="@L["Party balances"]"
+                                    data-confirm-ok="@L["Recount"]">@L["Recount from ledger"]</button>
+                        </form>
+                        <div class="form-text">@L["Opening balances are kept. Only parties whose saved balance does not match are changed - the message tells you how many."]</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.SelectedOwnerId <= 0)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="empty-state">
+                <div class="empty-state-icon">&#128736;</div>
+                <div class="empty-state-title">@L["Pick an owner to begin"]</div>
+                <div class="empty-state-hint">@L["You will see that owner's shifts, what is attached to each one, and what can safely be fixed."]</div>
+            </div>
+        </div>
+    </div>
+}
+else if (Model.Shifts.Count == 0)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="empty-state">
+                <div class="empty-state-icon">&#128197;</div>
+                <div class="empty-state-title">@L["No shifts in this period"]</div>
+                <div class="empty-state-hint">@L["Try a longer period from the dropdown above."]</div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    @* Ye dono kaam pehle sirf SQL se hote the. Isliye har line par saaf likha
+       hai ki us shift se kya-kya juda hai — faisla dekh kar ho, andaaze se nahi. *@
+    <div class="alert alert-light border py-2 small">
+        <strong>@L["Reopen"]</strong> &mdash; @L["clears the closing readings and puts the shift back to open, so the owner can enter the right readings. Blocked once the shift has moved tank stock."]
+        <br />
+        <strong>@L["Delete"]</strong> &mdash; @L["only for a shift that is truly empty. Anything attached to it - a sale, cash, expense, dip or stock - blocks the delete."]
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table data-pager="25" class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>@L["Date"]</th>
+                            <th>@L["Pump"]</th>
+                            <th>@L["Status"]</th>
+                            <th class="text-end">@L["Sale"]</th>
+                            <th class="text-end">@L["Readings"]</th>
+                            <th>@L["Attached"]</th>
+                            <th class="text-end">@L["Action"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var sh in Model.Shifts)
+                    {
+                        var isOpen = string.Equals(sh.Status, "OPEN", StringComparison.OrdinalIgnoreCase);
+                        <tr>
+                            <td data-label="@L["Date"]">
+                                <strong>@sh.ShiftDate.ToString("dd MMM yyyy")</strong>
+                                <div class="text-muted small">@sh.ShiftCode &middot; #@sh.Id</div>
+                            </td>
+                            <td data-label="@L["Pump"]">@sh.PumpName</td>
+                            <td data-label="@L["Status"]">
+                                @if (isOpen)
+                                {
+                                    <span class="badge bg-success">@L["Shift is open"]</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@L["Shift is closed"]</span>
+                                }
+                            </td>
+                            <td class="text-end" data-label="@L["Sale"]">
+                                @* Bikri 0 aur reading bhari hui - yahi wo haalat hai jisme
+                                   shift galti se band hui hoti hai. Isliye ubhaar kar dikhate hain. *@
+                                @if (!isOpen && sh.TotalMeterSale == 0)
+                                {
+                                    <span class="text-danger fw-bold">&#8377;0</span>
+                                    <div class="text-danger" style="font-size:.7rem;">@L["closed with no sale"]</div>
+                                }
+                                else
+                                {
+                                    <span>&#8377;@sh.TotalMeterSale.ToString("N0")</span>
+                                }
+                            </td>
+                            <td class="text-end" data-label="@L["Readings"]">
+                                @sh.ReadingsFilled / @sh.NozzleCount
+                            </td>
+                            <td data-label="@L["Attached"]">
+                                @{
+                                    var bits = new List<string>();
+                                    if (sh.SalesCount > 0) { bits.Add($"{sh.SalesCount} {L["bills"].Value}"); }
+                                    @* Bada "Cash" — resx me naam case ke farak se duplicate nahi
+                                       rakh sakta, aur wahi ek entry pehle se translated hai. *@
+                                    if (sh.CashTxnCount > 0) { bits.Add($"{sh.CashTxnCount} {L["Cash"].Value}"); }
+                                    if (sh.ExpenseCount > 0) { bits.Add($"{sh.ExpenseCount} {L["expenses"].Value}"); }
+                                    if (sh.DipCount > 0) { bits.Add($"{sh.DipCount} {L["dips"].Value}"); }
+                                    if (sh.TankTxnCount > 0) { bits.Add($"{sh.TankTxnCount} {L["stock rows"].Value}"); }
+                                }
+                                @if (bits.Count == 0)
+                                {
+                                    <span class="text-muted small">@L["nothing"]</span>
+                                }
+                                else
+                                {
+                                    <span class="small">@string.Join(" · ", bits)</span>
+                                }
+                            </td>
+                            <td class="text-end" data-label="@L["Action"]">
+                                <div class="d-inline-flex gap-1">
+                                    @if (sh.CanReopen)
+                                    {
+                                        <form asp-action="SupportReopenShift" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="shiftId" value="@sh.Id" />
+                                            <input type="hidden" name="ownerId" value="@Model.SelectedOwnerId" />
+                                            <input type="hidden" name="pumpId" value="@Model.SelectedPumpId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-primary"
+                                                    data-confirm="@L["Reopen this shift? The closing readings will be cleared."]"
+                                                    data-confirm-title="@L["Reopen"]"
+                                                    data-confirm-ok="@L["Reopen"]">@L["Reopen"]</button>
+                                        </form>
+                                    }
+                                    @if (sh.CanDelete)
+                                    {
+                                        <form asp-action="SupportDeleteShift" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="shiftId" value="@sh.Id" />
+                                            <input type="hidden" name="ownerId" value="@Model.SelectedOwnerId" />
+                                            <input type="hidden" name="pumpId" value="@Model.SelectedPumpId" />
+                                            <input type="hidden" name="reason" value="Support console: empty shift removed" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                    data-confirm="@L["Delete this empty shift? This cannot be undone."]"
+                                                    data-confirm-title="@L["Delete"]"
+                                                    data-confirm-ok="@L["Delete"]"
+                                                    data-confirm-danger="true">@L["Delete"]</button>
+                                        </form>
+                                    }
+                                    @if (!sh.CanReopen && !sh.CanDelete)
+                                    {
+                                        <span class="text-muted small">@L["nothing to fix"]</span>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

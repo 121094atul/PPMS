@@ -1,0 +1,493 @@
+﻿@model PPMS.Client.Web.Models.DailyStockRegisterViewModel
+@{
+    ViewData["Title"] = "Daily Stock Register";
+    
+    // Summary calculations
+    decimal totalReceipt = Model.Items.Sum(x => x.Receipt);
+    decimal totalSalesByMeter = Model.Items.Sum(x => x.SalesByMeter);
+    decimal totalPumpTest = Model.Items.Sum(x => x.PumpTest);
+    decimal totalNetSales = Model.Items.Sum(x => x.NetSalesByMeter);
+    decimal totalSalesByDip = Model.Items.Sum(x => x.SalesByDip);
+    decimal totalVariation = Model.Items.Sum(x => x.VariationDaily);
+    
+    // We get month names for dropdown
+    var months = Enumerable.Range(1, 12).Select(i => new { Value = i, Text = System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(i) });
+    var years = Enumerable.Range(2020, 10).Select(i => new { Value = i, Text = i.ToString() });
+    
+    var selectedMonthName = months.FirstOrDefault(m => m.Value == Model.Month)?.Text ?? "---";
+    var selectedProductName = Model.Products.FirstOrDefault(p => p.Id == Model.ProductId)?.Name ?? "---";
+    var selectedPumpName = Model.Pumps.FirstOrDefault(p => p.Id == Model.PumpId)?.Name ?? "---";
+}
+
+@section Styles {
+<style>
+/* ══════════════════════════════════════════
+   PRINT STYLES - Daily Stock Register
+   ══════════════════════════════════════════ */
+@@media print {
+    /* Hide everything except the report card */
+    .side-nav,
+    .side-nav-overlay,
+    .top-strip,
+    .d-print-none,
+    .hamburger-btn {
+        display: none !important;
+    }
+
+    /* Remove shell layout so report fills the page */
+    .app-shell {
+        display: block !important;
+    }
+
+    .main-pane {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    .content-pane {
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    /* Force landscape and A4 page */
+    @@page {
+        size: A4 landscape;
+        margin: 10mm 8mm;
+    }
+
+    body {
+        font-size: 10px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Make card borderless and full width */
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    .card-body {
+        padding: 0 !important;
+    }
+
+    /* Print header info block */
+    .print-header {
+        display: block !important;
+        margin-bottom: 6px;
+    }
+
+    /* Table overrides for print */
+    .table-responsive {
+        overflow: visible !important;
+    }
+
+    .table {
+        width: 100% !important;
+        font-size: 8.5px !important;
+        page-break-inside: auto;
+    }
+
+    .table th,
+    .table td {
+        padding: 1px 3px !important;
+        border: 1px solid #999 !important;
+        font-size: 8.5px !important;
+        /* Aankde EK line me. Pehle sab kuch wrap ho raha tha, isliye har line
+           51px oonchi ho jaati thi aur ek mahina TEEN page le leta tha. */
+        white-space: nowrap !important;
+    }
+
+    /* Sirf Remarks ko tootne ki chhoot - wahi ek khaana lamba hota hai
+       ("Excess 16.6 L (Rs 1583)"). Isse table chaudai me bhi aa jaati hai
+       aur line bhi neechi rehti hai. */
+    .table td:last-child,
+    .table th:last-child {
+        white-space: normal !important;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    /* Har page par column ke naam dobara chhapein - warna doosre page se
+       aage sirf nange number rehte hain. (thead ka default yahi hai, par
+       upar mobile wale block me use `display:none` kiya gaya hai, isliye
+       print ke liye saaf likhna zaroori hai.) */
+    .table thead {
+        display: table-header-group !important;
+        background-color: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* tfoot ka default `table-footer-group` HAR page par total dohra deta
+       hai. Total ek hi baar, sabse aakhir me aana chahiye. */
+    .table tfoot {
+        display: table-row-group !important;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    /* Card header for print */
+    .card-header {
+        background-color: #fff8dc !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        padding: 6px 10px !important;
+    }
+}
+
+/* ══════════════════════════════════════════
+   MOBILE STYLES - Stock Register Table
+   Overrides generic card-transform for this
+   specific wide table — use horizontal scroll
+   on small screens instead of card layout.
+   ══════════════════════════════════════════ */
+@@media screen and (max-width: 767.98px) {
+    /* Override the global card-transform for this table */
+    .stock-table-wrap table.table thead {
+        display: table-header-group !important;
+    }
+
+    .stock-table-wrap table.table tbody tr {
+        display: table-row !important;
+        background: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        margin-bottom: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .stock-table-wrap table.table tbody td {
+        display: table-cell !important;
+        text-align: right !important;
+        padding: 0.4rem 0.35rem !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        font-size: 11px !important;
+    }
+
+    .stock-table-wrap table.table tbody td::before {
+        display: none !important;
+    }
+
+    /* ── FOOTER ─────────────────────────────────────────────────────
+       Ye block pehle chhoot gaya tha. Nateeja: body to table hi rehti
+       thi (upar wale niyam se), par site.css ka global niyam tfoot ko
+       card bana deta tha — ek alag sa dhera jo kisi column ke neeche
+       nahi baithta tha. Footer ko bhi wahi vyavhaar chahiye jo body ka
+       hai: asli table footer, columns ke saath seedha. */
+    .stock-table-wrap table.table tfoot tr {
+        display: table-row !important;
+        background: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        margin-bottom: 0 !important;
+        padding: 0 !important;
+    }
+
+    .stock-table-wrap table.table tfoot td {
+        display: table-cell !important;
+        text-align: right !important;
+        padding: 0.4rem 0.35rem !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        font-size: 11px !important;
+        /* "7 / 30 days dip taken" wala aakhri khaana do line me toot kar
+           poori total-row ko dugna lamba kar deta tha. Table waise bhi
+           bagal me scroll hoti hai, to ek line me rehne do - jaisa th me hai. */
+        white-space: nowrap;
+    }
+
+    /* Khaali khaane CHHUPANE NAHI hain. Global CSS unhe hata deti hai
+       (card me wo sirf ek lakeer hote hain) — par table me hataane se
+       footer ke baaki aankde 6 column baayen khisak jaate hain aur
+       kisi galat sirnaam ke neeche ja baithte hain. */
+    .stock-table-wrap table.table tfoot td:empty {
+        display: table-cell !important;
+    }
+
+    /* data-label wala sirnaam sirf card ke liye tha. */
+    .stock-table-wrap table.table tfoot td::before {
+        display: none !important;
+    }
+
+    /* "Total" aur "Objective / Last Year" — inhe bhi apni jagah par
+       wapas laana hai, warna card wala roop chipka reh jaata hai. */
+    .stock-table-wrap table.table tfoot td.tfoot-title {
+        display: table-cell !important;
+        text-align: center !important;
+        text-transform: none;
+        font-size: 11px !important;
+        letter-spacing: normal;
+        color: inherit;
+        padding: 0.4rem 0.35rem !important;
+    }
+
+    .stock-table-wrap table.table tfoot td.tfoot-note {
+        display: table-cell !important;
+        text-align: left !important;
+        font-size: 11px !important;
+        padding: 0.4rem 0.35rem !important;
+    }
+
+    .stock-table-wrap table.table th {
+        font-size: 9px !important;
+        padding: 0.35rem 0.3rem !important;
+        white-space: nowrap;
+    }
+
+    /* Mobile filter form: stack to single column */
+    .stock-filter-card .row > div {
+        margin-bottom: 0.5rem;
+    }
+
+    /* Card header on mobile: stack vertically */
+    .stock-report-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+
+    .stock-report-header .d-flex {
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+}
+</style>
+}
+
+<!-- Print Header (only visible while printing) -->
+<div class="print-header" style="display:none;">
+    <div style="text-align:center; border-bottom: 2px solid #333; padding-bottom: 6px; margin-bottom: 6px;">
+        <strong style="font-size:14px;">@selectedPumpName</strong><br/>
+        <span style="font-size:11px;">Daily Stock Register &mdash; Product: @selectedProductName &mdash; Month: @selectedMonthName @Model.Year</span>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3 d-print-none stock-filter-card">
+    <div class="card-body">
+        <form method="get" asp-action="DailyStockRegister" asp-controller="Operations" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">@L["Pump"]</label>
+                <select class="form-select" name="pumpId">
+                    @foreach (var pump in Model.Pumps)
+                    {
+                        if (pump.Id == Model.PumpId)
+                        {
+                            <option value="@pump.Id" selected>@pump.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@pump.Id">@pump.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">@L["Product"]</label>
+                <select class="form-select" name="productId">
+                    @foreach (var prod in Model.Products)
+                    {
+                        if (prod.Id == Model.ProductId)
+                        {
+                            <option value="@prod.Id" selected>@prod.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@prod.Id">@prod.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">@L["Month"]</label>
+                <select class="form-select" name="month">
+                    @foreach(var m in months)
+                    {
+                        if (m.Value == Model.Month)
+                        {
+                            <option value="@m.Value" selected>@m.Text</option>
+                        }
+                        else
+                        {
+                            <option value="@m.Value">@m.Text</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">@L["Year"]</label>
+                <select class="form-select" name="year">
+                    @foreach(var y in years)
+                    {
+                        if (y.Value == Model.Year)
+                        {
+                            <option value="@y.Value" selected>@y.Text</option>
+                        }
+                        else
+                        {
+                            <option value="@y.Value">@y.Text</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 d-grid">
+                <button class="btn btn-primary" type="submit">@L["Load Report"]</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-warning bg-opacity-25 py-3">
+        <div class="d-flex justify-content-between align-items-center stock-report-header">
+            <h5 class="mb-0 fw-bold">@L["STOCK / SALES DETAILS"]</h5>
+            <div class="d-flex align-items-center gap-3 fw-bold flex-wrap w-100 mt-2 mt-md-0 justify-content-md-end">
+                <div>Product: <span class="text-primary">@selectedProductName</span></div>
+                <div>Month: <span class="text-primary">@selectedMonthName, @Model.Year</span></div>
+                @* CA ko mahine ka register chahiye hota hai - print se pehle CSV. *@
+                <a class="btn btn-sm btn-outline-success d-print-none ms-auto ms-md-0"
+                   href="/Operations/ExportDailyStockRegisterCsv?pumpId=@Model.PumpId&productId=@Model.ProductId&month=@Model.Month&year=@Model.Year">
+                    <i class="bi bi-file-earmark-excel me-1"></i>@L["Export to CSV"]
+                </a>
+                <button type="button" class="btn btn-sm btn-dark d-print-none" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Print / PDF
+                </button>
+                <div class="form-text d-print-none mt-1 w-100 text-end">@L["Tip: in the print window, untick \"Headers and footers\" so the web address and date do not print."]</div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive stock-table-wrap">
+            <!-- Adding a subtle yellow tint to mimic the physical register book -->
+            <table class="table table-sm table-bordered align-middle mb-0" style="background-color: #fffdf5;">
+                <thead class="table-light align-middle text-center" style="font-size: 0.85rem;">
+                    <tr>
+                        <th rowspan="2" class="align-middle">@L["Date"]</th>
+                        <th rowspan="2" class="align-middle">Opening<br/>@L["Stock"]</th>
+                        <th rowspan="2" class="align-middle">@L["Receipt"]</th>
+                        <th rowspan="2" class="align-middle">Total<br/>@L["Stock"]</th>
+                        <th rowspan="2" class="align-middle">Sales by<br/>@L["Meter"]</th>
+                        <th rowspan="2" class="align-middle">Pump<br/>@L["Test"]</th>
+                        <th rowspan="2" class="align-middle">Net Sales<br/>@L["by Meter"]</th>
+                        <th rowspan="2" class="align-middle">Cumulative<br/>@L["Sales"]</th>
+                        <th rowspan="2" class="align-middle">Sales<br/>@L["by Dip"]</th>
+                        @* CA ko variance ka aadhaar dikhna chahiye: kitna hona
+                           chahiye tha (book), kitna nikla (dip), aur register me
+                           kya chala. Pehle sirf ek "Closing Stock" tha jo chupke
+                           se dip par switch ho jaata tha. *@
+                        <th colspan="2">@L["Closing Stock"]</th>
+                        <th rowspan="2" class="align-middle">Register<br/>@L["Closing"]</th>
+                        <th colspan="3">@L["Variation"]</th>
+                        <th colspan="2">@L["Sale Value"]</th>
+                        <th rowspan="2" class="align-middle" style="width: 12%">@L["Remarks"]</th>
+                    </tr>
+                    <tr>
+                        <th>@L["Book"]</th>
+                        <th>Physical<br/>@L["(Dip)"]</th>
+                        <th>@L["Daily"]</th>
+                        <th>@L["Value (&#8377;)"]</th>
+                        <th>@L["Cumulative"]</th>
+                        <th>@L["Rate (&#8377;)"]</th>
+                        <th>@L["Amount (&#8377;)"]</th>
+                    </tr>
+                </thead>
+                <tbody class="text-end" style="font-family: monospace; font-size: 0.95rem;">
+                    @if (Model.Items.Count == 0)
+                    {
+                        <tr><td colspan="18" class="text-center text-muted py-4">@L["No data available for the selected month."]</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var row in Model.Items)
+                        {
+                            <tr>
+                                <td class="text-center fw-bold bg-light" data-label="@L["Date"]">@row.DayOfMonth</td>
+                                <td data-label="@L["Opening Stock"]">@row.OpeningStock.ToString("0")</td>
+                                <td data-label="@L["Receipt"]">@(row.Receipt > 0 ? row.Receipt.ToString("0") : "")</td>
+                                <td data-label="@L["Total Stock"]">@row.TotalStock.ToString("0")</td>
+                                <td data-label="@L["Sales by Meter"]">@(row.SalesByMeter > 0 ? row.SalesByMeter.ToString("0") : "")</td>
+                                <td data-label="@L["Pump Test"]">@(row.PumpTest > 0 ? row.PumpTest.ToString("0") : "")</td>
+                                <td data-label="@L["Net Sales (Meter)"]">@(row.NetSalesByMeter > 0 ? row.NetSalesByMeter.ToString("0") : "")</td>
+                                <td class="bg-light" data-label="@L["Cumulative Sales"]">@(row.CumulativeSales > 0 ? row.CumulativeSales.ToString("0") : "")</td>
+                                <td data-label="@L["Sales by Dip"]">@(row.SalesByDip > 0 ? row.SalesByDip.ToString("0") : "")</td>
+                                <td data-label="@L["Book Closing"]">@row.BookClosingStock.ToString("0")</td>
+                                @* Napa nahi gaya to "-" — 0 likhna galat hota,
+                                   uska matlab "tank khaali tha" nikalta hai. *@
+                                <td data-label="@L["Physical (Dip)"]" class="@(row.StockChecked ? "fw-semibold" : "text-muted")">
+                                    @(row.StockChecked && row.PhysicalClosingStock.HasValue
+                                        ? row.PhysicalClosingStock.Value.ToString("0")
+                                        : "-")
+                                </td>
+                                <td class="fw-semibold" data-label="@L["Register Closing"]">@row.ClosingStock.ToString("0")</td>
+                                <td data-label="@L["Variation (Daily)"]" class="@(row.VariationDaily < 0 ? "text-danger" : (row.VariationDaily > 0 ? "text-success" : ""))">
+                                    @(row.VariationDaily != 0 ? (row.VariationDaily > 0 ? "+" + row.VariationDaily.ToString("0") : row.VariationDaily.ToString("0")) : "-")
+                                </td>
+                                @* Nuksaan kitne rupee ka hai — sirf litre se pump wale ko andaza nahi lagta. *@
+                                <td data-label="@L["Variation Value"]" class="fw-semibold @(row.VariationValue < 0 ? "text-danger" : row.VariationValue > 0 ? "text-success" : "")">
+                                    @(row.VariationValue != 0 ? (row.VariationValue > 0 ? "+" : "-") + "₹" + Math.Abs(row.VariationValue).ToString("N0") : "-")
+                                </td>
+                                <td data-label="@L["Variation (Cumul.)"]" class="@(row.VariationCumulative < 0 ? "text-danger" : (row.VariationCumulative > 0 ? "text-success" : ""))">
+                                    @(row.VariationCumulative != 0 ? (row.VariationCumulative > 0 ? "+" + row.VariationCumulative.ToString("0") : row.VariationCumulative.ToString("0")) : "-")
+                                </td>
+                                <td data-label="@L["Rate"]">@(row.RateApplied > 0 ? row.RateApplied.ToString("0.00") : "-")</td>
+                                <td data-label="@L["Sale Amount"]">@(row.SalesValue > 0 ? row.SalesValue.ToString("N0") : "-")</td>
+                                <td data-label="@L["Remarks"]" class="text-start" style="font-size: 0.85rem;">@row.Remarks</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+                @if (Model.Items.Count > 0)
+                {
+                    <tfoot class="fw-bold text-end table-group-divider bg-light">
+                        <tr>
+                            <td class="text-center tfoot-title">@L["Total"]</td>
+                            <td></td>
+                            <td data-label="@L["Receipt"]">@(totalReceipt > 0 ? totalReceipt.ToString("0") : "")</td>
+                            <td></td>
+                            <td data-label="@L["Sales by Meter"]">@(totalSalesByMeter > 0 ? totalSalesByMeter.ToString("0") : "")</td>
+                            <td data-label="@L["Pump Test"]">@(totalPumpTest > 0 ? totalPumpTest.ToString("0") : "")</td>
+                            <td data-label="@L["Net Sales (Meter)"]">@(totalNetSales > 0 ? totalNetSales.ToString("0") : "")</td>
+                            <td></td>
+                            <td data-label="@L["Sales by Dip"]">@(totalSalesByDip > 0 ? totalSalesByDip.ToString("0") : "")</td>
+                            @* Mahine ke aakhir ka bacha hua stock — total nahi, aakhri din ka closing. *@
+                            <td data-label="@L["Book Closing"]">@Model.Items[Model.Items.Count - 1].BookClosingStock.ToString("0")</td>
+                            <td></td>
+                            <td data-label="@L["Closing Stock"]">@Model.Items[Model.Items.Count - 1].ClosingStock.ToString("0")</td>
+                            @{
+                                var totalVarQty = Model.Items.Sum(x => x.VariationDaily);
+                                var totalVarValue = Model.Items.Sum(x => x.VariationValue);
+                                var totalSaleValue = Model.Items.Sum(x => x.SalesValue);
+                                var daysChecked = Model.Items.Count(x => x.StockChecked);
+                            }
+                            <td data-label="@L["Variation (Daily)"]" class="@(totalVarQty < 0 ? "text-danger" : totalVarQty > 0 ? "text-success" : "")">
+                                @(totalVarQty != 0 ? (totalVarQty > 0 ? "+" : "") + totalVarQty.ToString("0.##") : "-")
+                            </td>
+                            <td data-label="@L["Variation Value"]" class="@(totalVarValue < 0 ? "text-danger" : totalVarValue > 0 ? "text-success" : "")">
+                                @(totalVarValue != 0 ? (totalVarValue > 0 ? "+" : "-") + "₹" + Math.Abs(totalVarValue).ToString("N0") : "")
+                            </td>
+                            <td></td>
+                            <td></td>
+                            <td data-label="@L["Sale Value"]">@(totalSaleValue > 0 ? "₹" + totalSaleValue.ToString("N0") : "")</td>
+                            <td data-label="@L["Stock Checked"]" class="text-start fw-normal" style="font-size:0.75rem;">
+                                @* CA sabse pehle yahi poochta hai: mahine me kitne din
+                                   stock sach me napa gaya. *@
+                                @daysChecked / @Model.Items.Count days dip taken
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-start tfoot-note" colspan="18" style="font-size:0.8rem; border-top: 2px solid #ddd;">
+                                <div><strong>Objective:</strong></div>
+                                <div><strong>Last Year:</strong></div>
+                            </td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>

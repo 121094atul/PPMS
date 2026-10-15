@@ -1,0 +1,185 @@
+@model PPMS.Client.Web.Models.FleetContractsViewModel
+@{
+    ViewData["Title"] = "Fleet Contracts";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Fleet Contract Entry"]</h5>
+                <p class="text-muted small mb-3">@L["Assign party-wise contract rate for a product."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveFleetContract" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.Id" type="hidden" />
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select" onchange="window.location='/Operations/FleetContracts?pumpId='+this.value">
+                            @if (Model.Pumps.Count == 0)
+                            {
+                                <option value="0">@L["No pump configured"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var p in Model.Pumps)
+                                {
+                                    <option value="@p.Id">@p.Name (@p.City)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0">@L["Party"]</label>
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" data-bs-toggle="modal" data-bs-target="#quickAddPartyModal">
+                                @L["+ Quick Add Party"]
+                            </button>
+                        </div>
+                        <select asp-for="Form.PartyId" class="form-select">
+                            @foreach (var p in Model.Parties)
+                            {
+                                <option value="@p.Id">@p.PartyName (@p.PartyType)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Product"]</label>
+                        <select asp-for="Form.ProductId" class="form-select">
+                            @foreach (var p in Model.Products)
+                            {
+                                <option value="@p.Id">@p.Name (@p.Category)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Contract Rate"]</label>
+                            <input asp-for="Form.ContractRate" class="form-control" type="number" min="0.01" step="0.01" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Valid From"]</label>
+                            <input asp-for="Form.ValidFrom" class="form-control" type="date" />
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Valid To (Optional)"]</label>
+                        <input asp-for="Form.ValidTo" class="form-control" type="date" />
+                    </div>
+
+                    <div class="mb-2 form-check">
+                        <input asp-for="Form.IsActive" class="form-check-input" />
+                        <label class="form-check-label" for="Form_IsActive">@L["Active"]</label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["Notes"]</label>
+                        <textarea asp-for="Form.Notes" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@L["Save Contract"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-2">@L["Contract List"]</h5>
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>@L["Party"]</th>
+                                <th>@L["Product"]</th>
+                                <th class="text-end">@L["Rate"]</th>
+                                <th>@L["Validity"]</th>
+                                <th>@L["Status"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Contracts.Count == 0)
+                            {
+                                <tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">&#128667;</div><div class="empty-state-title">@L["No fleet contracts"]</div><div class="empty-state-hint">@L["Create a contract to give a fleet party a special rate."]</div></div></td></tr>
+                            }
+                            else
+                            {
+                                @foreach (var c in Model.Contracts)
+                                {
+                                    <tr>
+                                        <td data-label="@L["Party"]">@c.PartyName</td>
+                                        <td data-label="@L["Product"]">@c.ProductName</td>
+                                        <td class="text-end" data-label="@L["Rate"]">@c.ContractRate.ToString("0.00")</td>
+                                        <td data-label="@L["Validity"]">@c.ValidFrom.ToString("dd-MMM-yyyy") - @(c.ValidTo?.ToString("dd-MMM-yyyy") ?? "Open")</td>
+                                        <td data-label="@L["Status"]">@(c.IsActive ? L["Active"].Value : L["Inactive"].Value)</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Add Party Modal -->
+<div class="modal fade" id="quickAddPartyModal" tabindex="-1" aria-labelledby="quickAddPartyModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="SaveParty" asp-controller="Operations" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Form.Id" value="0" />
+                <input type="hidden" name="Form.OwnerId" value="@Model.Form.OwnerId" />
+                <input type="hidden" name="Form.PumpId" value="@Model.Form.PumpId" />
+                <input type="hidden" name="Form.IsActive" value="true" />
+                <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="quickAddPartyModalLabel">@L["Quick Add Party"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@L["Close"]"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">@L["Party Name"]</label>
+                        <input type="text" name="Form.PartyName" class="form-control" placeholder="@L["Enter party name"]" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Party Type"]</label>
+                        <select name="Form.PartyType" class="form-select">
+                            <option value="Fleet" selected>@L["Fleet"]</option>
+                            <option value="B2B">B2B</option>
+                            <option value="B2C">B2C</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Mobile"]</label>
+                        <input type="text" name="Form.Mobile" class="form-control" placeholder="@L["10-digit mobile number"]" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Address"]</label>
+                        <input type="text" name="Form.Address" class="form-control" placeholder="@L["Optional address"]" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@L["Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">@L["Save Party"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

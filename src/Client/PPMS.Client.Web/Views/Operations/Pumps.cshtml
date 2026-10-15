@@ -1,0 +1,106 @@
+@model PPMS.Client.Web.Models.PumpManagementViewModel
+@{
+    ViewData["Title"] = "Pump Management";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Pump Form"]</h5>
+                <p class="text-muted small mb-3">@L["Create or update pump profile with contact details."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SavePump" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.Id" type="hidden" />
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump Name"]</label>
+                        <input asp-for="Form.Name" class="form-control" placeholder="@L["Barabanki City Fuel Point"]" required />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">@L["City"]</label>
+                        <input asp-for="Form.City" class="form-control" placeholder="@L["Barabanki"]" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">@L["Address"]</label>
+                        <textarea asp-for="Form.Address" class="form-control" rows="2" placeholder="@L["Pump full address"]"></textarea>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Contact No"]</label>
+                            <input asp-for="Form.ContactNo" class="form-control" placeholder="9876543210" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["GSTIN"]</label>
+                            <input asp-for="Form.GSTIN" class="form-control" placeholder="@L["08AABCU9603R1ZN"]" />
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@((Model.Form.Id is null) ? "Create Pump" : "Update Pump")</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Pump List"]</h5>
+                <p class="text-muted small mb-3">@L["Configured pumps under this owner."]</p>
+
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Pump Name"]</th>
+                            <th>@L["City"]</th>
+                            <th>@L["Contact / GSTIN"]</th>
+                            <th>@L["Address"]</th>
+                            <th class="text-end">@L["Action"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Pumps.Count == 0)
+                        {
+                            <tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">&#9981;</div><div class="empty-state-title">@L["No pumps added"]</div><div class="empty-state-hint">@L["Add your pump first — tanks, nozzles and sales all build on it."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var pump in Model.Pumps)
+                            {
+                                <tr>
+                                    <td data-label="@L["Pump Name"]">@pump.Name</td>
+                                    <td data-label="@L["City"]">@pump.City</td>
+                                    <td data-label="@L["Contact / GSTIN"]">
+                                        <div><i class="bi bi-telephone text-muted me-1"></i>@pump.ContactNo</div>
+                                        <div class="small text-muted"><i class="bi bi-receipt text-muted me-1"></i>@(pump.GSTIN ?? "--")</div>
+                                    </td>
+                                    <td data-label="@L["Address"]">@pump.Address</td>
+                                    <td class="text-end" data-label="@L["Action"]">
+                                        <div class="d-flex justify-content-end gap-1">
+                                            <a class="btn btn-sm btn-outline-primary" href="/Operations/Pumps?editId=@pump.Id">@L["Edit"]</a>
+                                            <form method="post" asp-action="DeletePump" asp-controller="Operations" class="d-inline">
+                                                <input type="hidden" name="id" value="@pump.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Are you sure you want to delete this pump?">@L["Delete"]</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

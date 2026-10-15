@@ -1,0 +1,1223 @@
+﻿@model PPMS.Client.Web.Models.ShiftManagementViewModel
+@{
+    ViewData["Title"] = "Shift Management";
+}
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title">@L["Open Shift"]</h5>
+                <p class="text-muted small">@L["Enter each nozzle's opening meter reading to start the shift."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="OpenShift" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="OpenShift.OwnerId" type="hidden" />
+                    @* "Owner #1" wala khaana hata diya - pump wale ke liye uska
+                       koi matlab nahi tha, aur asli value neeche hidden input me
+                       pehle se jaati hai. Sabse zyada khulne wale form par bekaar
+                       ka pehla sawaal. *@
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="OpenShift.PumpId" class="form-select form-select-sm" required onchange="window.location='/Operations/Shifts?pumpId='+this.value">
+                            @if (Model.Pumps.Count == 0)
+                            {
+                                <option value="0">@L["No pump configured"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var pump in Model.Pumps)
+                                {
+                                    <option value="@pump.Id">@pump.Name (@pump.City)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">@L["Shift In-charge"] <span class="text-muted small">(@L["optional"])</span></label>
+                        @* Pehle ye "required" tha aur khaali hone par 0 bhejta tha, jisse
+                           naye pump par pehli shift kabhi khulti hi nahi thi (FK toot kar
+                           500). Ab optional hai - chhote pump par malik khud sab dekhta
+                           hai, kisi ko chunne ki zaroorat nahi. *@
+                        @* Value ab EMPLOYEE ki Id hai, UserId nahi (Section K). Pehle
+                           UserId thi, isliye bina-login wale log is list me aate hi
+                           nahi the — jabki wahi log neeche nozzle par attendant ban
+                           sakte the. *@
+                        <select asp-for="OpenShift.OperatorEmployeeId" class="form-select form-select-sm">
+                            <option value="0">@L["-- Not assigned --"]</option>
+                            @foreach (var op in Model.Operators)
+                            {
+                                <option value="@op.Id" selected="@(op.Id == Model.OpenShift.OperatorEmployeeId)">
+                                    @op.FullName (@op.EmployeeCode)
+                                </option>
+                            }
+                        </select>
+                        <div class="form-text text-muted">
+                            @if (Model.Operators.Count == 0)
+                            {
+                                @L["No staff added yet — you can leave this blank and add people later from Employees."]
+                            }
+                            else
+                            {
+                                @L["Who is responsible for this shift. Leave blank if you are running it yourself."]
+                            }
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">@L["Shift Date"]</label>
+                        <input asp-for="OpenShift.ShiftDate" type="date" class="form-control form-control-sm @(Model.IsBackdatedEntry ? "border-warning" : "")" />
+                        @if (Model.IsBackdatedEntry)
+                        {
+                            <div class="form-text text-warning fw-semibold">
+                                @L["Catching up an earlier day — this shift will be recorded on the date shown above."]
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="form-text">@L["Missed a day? Just change this date to record that day's shift."]</div>
+                        }
+
+                        @* Tareekh badalte hi server se jaancha jaata hai (ShiftDateCheck). *@
+                        <div id="osWarnGap" class="alert alert-warning py-1 px-2 small mt-1 mb-0" hidden>
+                            ⚠ @L["No shift on these days:"] <strong class="w-range"></strong>.
+                            @L["Fill those days first, oldest first - otherwise their sale gets added to this day. If the pump was closed on those days, it is fine."]
+                        </div>
+                        <div id="osWarnLater" class="alert alert-danger py-1 px-2 small mt-1 mb-0" hidden>
+                            ⛔ @L["A later day already has a shift:"] <strong class="w-later"></strong>.
+                            @L["Adding a day in between makes that later day's opening reading wrong, and its sale gets counted twice. Do not continue - call support."]
+                            <a href="tel:6394389973" class="fw-bold">📞 6394389973</a>
+                        </div>
+                        <div id="osWarnFuture" class="alert alert-warning py-1 px-2 small mt-1 mb-0" hidden>
+                            ⚠ @L["This date is in the future. Please check the date."]
+                        </div>
+
+                        @* Purana din bharne ka tareeka - kram hi sabse zaroori hai. *@
+                        <details id="osBackdateHelp" class="small mt-2 border rounded px-2 py-1 bg-light" @(Model.IsBackdatedEntry ? "open" : "")>
+                            <summary class="fw-semibold">📋 @L["How to enter a missed (earlier) day"]</summary>
+                            <ol class="mb-1 mt-1 ps-3">
+                                <li>@L["Start from the OLDEST missed day and go one day at a time. Open today's shift only at the end."]</li>
+                                <li>@L["For each day: open the shift → enter that day's sales, credit and expenses → close the shift with that day's closing readings and the tank dip."]</li>
+                                <li>@L["If a tanker was unloaded that day, save the Purchase first, then close the shift."]</li>
+                                <li>@L["In your register, the dip written at the top of the NEXT day's page is this day's closing dip."]</li>
+                                <li>@L["If a later day's shift already exists, do not add a day in between - call support."]</li>
+                            </ol>
+                        </details>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">
+                            @L["Shift Code"]
+                            <span class="badge bg-success-subtle text-success ms-1" style="font-size:0.7rem;">@L["Auto-suggested"]</span>
+                        </label>
+                        <input asp-for="OpenShift.ShiftCode" class="form-control form-control-sm" placeholder="A / B / C" />
+                        <div class="form-text">@L["Suggested based on today's existing shifts. You can change it manually."]</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">@L["Opening Cash"]</label>
+                        <input asp-for="OpenShift.OpeningCash" type="number" min="0" step="0.01" class="form-control form-control-sm" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Notes"]</label>
+                        <textarea asp-for="OpenShift.Notes" class="form-control form-control-sm" rows="2" placeholder="@L["Shift remarks"]"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Nozzle Opening Meter"]</label>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                <tr>
+                                    <th>@L["Nozzle"]</th>
+                                    <th>@L["Product"]</th>
+                                    <th class="text-end">@L["Opening Reading"]</th>
+                                    @* Aadmi aur chhutta yahin diye jaate hain - shift shuru
+                                       hote waqt hi accountant har aadmi ko chhutta deta hai.
+                                       Dono optional: jo pump nozzle-wise cash nahi chalata,
+                                       wo khaali chhod de. *@
+                                    <th>@L["Attendant"] <span class="text-muted fw-normal" style="font-size:0.7rem">(@L["optional"])</span></th>
+                                    <th class="text-end">@L["Float"] <span class="text-muted fw-normal" style="font-size:0.7rem">(@L["optional"])</span></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @for (var i = 0; i < Model.OpenShift.NozzleReadings.Count; i++)
+                                {
+                                    <tr>
+                                        <td data-label="@L["Nozzle"]">
+                                            <strong>@Model.OpenShift.NozzleReadings[i].NozzleCode</strong>
+                                            <input type="hidden" asp-for="OpenShift.NozzleReadings[@i].NozzleId" />
+                                            <input type="hidden" asp-for="OpenShift.NozzleReadings[@i].ProductId" />
+                                            <input type="hidden" asp-for="OpenShift.NozzleReadings[@i].NozzleCode" />
+                                            <input type="hidden" asp-for="OpenShift.NozzleReadings[@i].ProductName" />
+                                        </td>
+                                        <td data-label="@L["Product"]">@Model.OpenShift.NozzleReadings[i].ProductName</td>
+                                        <td data-label="@L["Opening Reading"]">
+                                            <input asp-for="OpenShift.NozzleReadings[@i].OpeningReading" type="number" min="0" step="0.001" class="form-control form-control-sm text-end" required />
+                                        </td>
+                                        <td data-label="@L["Attendant"]">
+                                            <select class="form-select form-select-sm" name="OpenShift.NozzleReadings[@i].AttendantEmployeeId" style="min-width:130px">
+                                                <option value="">@L["-- none --"]</option>
+                                                @foreach (var emp in Model.AllEmployees)
+                                                {
+                                                    <option value="@emp.Id">@emp.FullName</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td data-label="@L["Float"]">
+                                            <input type="number" min="0" step="0.01" class="form-control form-control-sm text-end"
+                                                   name="OpenShift.NozzleReadings[@i].FloatGiven" placeholder="0" style="max-width:100px" />
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    @* Meter ki kadi (Section R). API rok deti hai jab opening reading
+                       pichli shift ke closing se nahi milti — us rok ki chaabi yahi
+                       checkbox hai. Har baar khud se untick rehta hai, taaki agli
+                       shift par rok phir se lage. *@
+                    <div class="form-check small mb-3">
+                        <input class="form-check-input" type="checkbox" value="true"
+                               name="OpenShift.AllowMeterGap" id="allowMeterGap" />
+                        <label class="form-check-label text-muted" for="allowMeterGap">
+                            @L["Meter was changed - accept a difference from the last reading"]
+                        </label>
+                        <div class="form-text">
+                            @L["Only tick this if the meter was replaced or rolled over. Otherwise correct the opening reading."]
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-sm px-4">@L["Open Shift"]</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title">@L["Shift List"]</h5>
+                <p class="text-muted small">@L["Active and closed shifts loaded from API."]</p>
+
+                @* ---- Meter ki tooti hui kadi (Section R2) ----
+                   Shift kholte waqt bhi rok lagti hai, par purani tareekh ki entry
+                   ya "meter badla hai" tick karke aage badhne par kadi tab bhi tooti
+                   reh sakti hai. Ye dusri nazar hai — rokti kuch nahi, sirf dikhati
+                   hai, taaki ek jagah chook jaye to yahan pakad me aa jaye. *@
+                @if (Model.MeterChainGaps.Count > 0)
+                {
+                    <div class="alert alert-warning py-2 px-3 small mb-3">
+                        <div class="fw-semibold mb-1">
+                            @L["Meter readings do not join up"]
+                            <span class="badge bg-warning text-dark">@Model.MeterChainGaps.Count</span>
+                        </div>
+                        <div class="mb-2">
+                            @L["A shift's opening reading does not match the previous shift's closing reading. The fuel in between is not accounted for anywhere - sale, stock and cash for that day will all be wrong."]
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-1">
+                                <thead>
+                                    <tr>
+                                        <th>@L["Nozzle"]</th>
+                                        <th>@L["Previous shift"]</th>
+                                        <th class="text-end">@L["Closed at"]</th>
+                                        <th>@L["This shift"]</th>
+                                        <th class="text-end">@L["Opened at"]</th>
+                                        <th class="text-end">@L["Difference"]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var g in Model.MeterChainGaps)
+                                    {
+                                        <tr>
+                                            <td data-label="@L["Nozzle"]">@g.NozzleCode</td>
+                                            <td data-label="@L["Previous shift"]">@g.PrevDate.ToString("dd MMM")</td>
+                                            <td class="text-end" data-label="@L["Closed at"]">@g.PrevClosing.ToString("N3")</td>
+                                            <td data-label="@L["This shift"]">@g.ShiftDate.ToString("dd MMM") (@g.ShiftCode)</td>
+                                            <td class="text-end" data-label="@L["Opened at"]">@g.OpeningReading.ToString("N3")</td>
+                                            <td class="text-end fw-semibold @(g.GapQty < 0 ? "text-danger" : "text-warning")" data-label="@L["Difference"]">
+                                                @(g.GapQty > 0 ? "+" : "")@g.GapQty.ToString("N3")
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-muted">
+                            @L["Last 90 days. If the meter really was replaced, this is expected - keep a note of it."]
+                        </div>
+                    </div>
+                }
+                @* Pehle yahan chaar bina-label ke box ek hi line me thuse the. Chhoti screen
+                   par do khaali "dd-mm-yyyy" box bilkul ek jaise dikhte the (log unhe do
+                   search box samajhte the) aur Search button wrap hokar neeche gir jaata tha.
+                   Ab har box par label hai aur row saleeke se wrap hoti hai. *@
+                <form method="get" class="row g-2 align-items-end small mb-3">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small text-muted mb-1" for="fltPump">@L["Pump"]</label>
+                        <select id="fltPump" name="pumpId" class="form-select form-select-sm">
+                            <option value="">@L["All Pumps"]</option>
+                            @foreach (var pump in Model.Pumps)
+                            {
+                                if (ViewContext.HttpContext.Request.Query["pumpId"] == pump.Id.ToString())
+                                {
+                                    <option value="@pump.Id" selected>@pump.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@pump.Id">@pump.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small text-muted mb-1" for="fltFrom">@L["From date"]</label>
+                        <input id="fltFrom" type="date" name="fromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small text-muted mb-1" for="fltTo">@L["To date"]</label>
+                        <input id="fltTo" type="date" name="toDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small text-muted mb-1" for="fltSearch">@L["Shift code / notes"]</label>
+                        <input id="fltSearch" type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control form-control-sm" placeholder="@L["e.g. A, B, remark..."]" />
+                    </div>
+                    <div class="col-12 col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary flex-fill">@L["Search"]</button>
+                        @{
+                            var filterOn = !string.IsNullOrWhiteSpace(Model.SearchTerm)
+                                           || Model.FromDate.HasValue || Model.ToDate.HasValue
+                                           || !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["pumpId"]);
+                        }
+                        @if (filterOn)
+                        {
+                            <a href="/Operations/Shifts" class="btn btn-sm btn-link px-1" title="@L["Clear all filters"]">@L["Reset"]</a>
+                        }
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Shift"]</th>
+                            <th>@L["Pump"]</th>
+                            <th>@L["Date"]</th>
+                            <th>@L["Code"]</th>
+                            <th>@L["Operator"]</th>
+                            <th>@L["Open Cash"]</th>
+                            <th>@L["Close Cash"]</th>
+                            <th>@L["Sold Qty"]</th>
+                            <th>@L["Sold Amt"]</th>
+                            <th>@L["Cash Delta"]</th>
+                            <th>@L["Variance"]</th>
+                            <th>@L["Status"]</th>
+                            <th class="text-end">@L["Action"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Shifts?.Items == null || Model.Shifts.Items.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="13" class="text-muted">@L["No shifts found."]</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var shift in Model.Shifts.Items)
+                            {
+                                var pumpName = Model.Pumps.FirstOrDefault(x => x.Id == shift.PumpId)?.Name ?? $"Pump #{shift.PumpId}";
+                                var closeCash = shift.ClosingCash ?? 0;
+                                var cashDelta = closeCash - shift.OpeningCash;
+                                var variance = cashDelta - shift.TotalSoldAmount;
+                                var isOpen = string.Equals(shift.Status, "OPEN", StringComparison.OrdinalIgnoreCase);
+                                <tr class="@(isOpen ? "table-success" : "table-secondary text-muted")" style="@(isOpen ? "" : "opacity:0.6")">
+                                    @* Pehle yahan ShiftHeaders.Id chhapta tha — poore system ka chalta hua
+                                       number (6, 7, 8...), jo kuch mahine me 2847 ho jaata aur
+                                       do pump wale owner ke liye kudta bhi tha. Ab us pump par
+                                       us din ka number dikhta hai: 1, 2, 3. *@
+                                    <td data-label="@L["Shift"]"><span class="fw-semibold">@shift.ShiftNo</span></td>
+                                    <td data-label="@L["Pump"]">@pumpName</td>
+                                    <td data-label="@L["Date"]">@shift.ShiftDate</td>
+                                    <td data-label="@L["Code"]"><strong>@shift.ShiftCode</strong></td>
+                                    <td data-label="@L["Operator"]">@(shift.OperatorName ?? "-")</td>
+                                    <td data-label="@L["Open Cash"]">@shift.OpeningCash.ToString("0.00")</td>
+                                    <td data-label="@L["Close Cash"]">@(shift.ClosingCash?.ToString("0.00") ?? "-")</td>
+                                    <td data-label="@L["Sold Qty"]">@shift.TotalSoldQty.ToString("0.000")</td>
+                                    <td class="fw-bold" data-label="@L["Sold Amt"]">@shift.TotalSoldAmount.ToString("0.00")</td>
+                                    <td data-label="@L["Cash Delta"]">@(shift.ClosingCash is null ? "-" : cashDelta.ToString("0.00"))</td>
+                                    <td class="@(shift.ClosingCash is not null && Math.Abs(variance) > 100 ? "text-danger fw-bold" : "")" data-label="@L["Variance"]">@(shift.ClosingCash is null ? "-" : variance.ToString("0.00"))</td>
+                                    <td data-label="@L["Status"]">
+                                        @if (isOpen)
+                                        {
+                                            <span class="badge bg-success">@L["Shift is open"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@L["Shift is closed"]</span>
+                                        }
+                                    </td>
+                                    <td class="text-end" data-label="@L["Action"]">
+                                        @if (isOpen)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-dark"
+                                                    data-bs-toggle="modal" data-bs-target="#closeShiftModal"
+                                                    data-shift-id="@shift.Id"
+                                                    data-opening-cash="@shift.OpeningCash"
+                                                    data-mode="close">@L["Close Shift"]</button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-warning"
+                                                    data-bs-toggle="modal" data-bs-target="#closeShiftModal"
+                                                    data-shift-id="@shift.Id"
+                                                    data-opening-cash="@shift.OpeningCash"
+                                                    data-mode="edit"
+                                                    data-closing-cash="@(shift.ClosingCash?.ToString("0.00") ?? "0")"
+                                                    title="@L["Closed by mistake? Update the closing readings"]">
+                                                ✏️ Edit
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-success"
+                                                    data-bs-toggle="modal" data-bs-target="#cashDenominationModal"
+                                                    data-shift-id="@shift.Id"
+                                                    data-pump-id="@shift.PumpId"
+                                                    title="@L["Count cash note by note and match it against closing cash"]">
+                                                🧮 Count Cash
+                                            </button>
+                                            @* Din ka collection — online, card aur udhaar (Section W).
+                                               Iske bina har shift me bada "short" dikhta hai, aur usme
+                                               asli kami chhup jaati hai. *@
+                                            <a class="btn btn-sm btn-outline-primary"
+                                               asp-action="Collection" asp-route-shiftId="@shift.Id"
+                                               title="@L["Record online, card and credit for this shift"]">
+                                                💳 @L["Collection"]
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @* Page ke saare filter link me saath le jaate hain — warna page 2 par
+                   jaate hi search/date reset ho jaate the aur poori list wapas aa jaati thi. *@
+                @if (Model.Shifts != null && Model.Shifts.TotalCount > 0)
+                {
+                    var pg = Model.Shifts;
+                    Func<int, string> pageUrl = p =>
+                        $"/Operations/Shifts?pageNumber={p}"
+                        + $"&pumpId={ViewContext.HttpContext.Request.Query["pumpId"]}"
+                        + $"&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? string.Empty)}"
+                        + $"&fromDate={Model.FromDate?.ToString("yyyy-MM-dd")}"
+                        + $"&toDate={Model.ToDate?.ToString("yyyy-MM-dd")}";
+
+                    // Controller page 1 par wapas le aata hai, phir bhi ginti ko
+                    // clamp kar rahe hain — koi seedha URL me pageNumber=99 daal de
+                    // to "Showing 981-14 of 14" jaisa ulta text na dikhe.
+                    var lastRow = Math.Min(pg.PageNumber * pg.PageSize, pg.TotalCount);
+                    var firstRow = Math.Min(((pg.PageNumber - 1) * pg.PageSize) + 1, lastRow);
+
+                    // Ek baar me 5 se zyada page number mat dikhao — 40 page ho to
+                    // pagination poori chaudai kha jaati hai.
+                    var windowStart = Math.Max(1, pg.PageNumber - 2);
+                    var windowEnd = Math.Min(pg.TotalPages, windowStart + 4);
+                    windowStart = Math.Max(1, windowEnd - 4);
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 small">
+                        <div class="text-muted">
+                            Showing <strong>@firstRow</strong>–<strong>@lastRow</strong> of <strong>@pg.TotalCount</strong> shifts
+                            @if (pg.TotalPages > 1)
+                            {
+                                <span>(page @pg.PageNumber of @pg.TotalPages)</span>
+                            }
+                        </div>
+                        @if (pg.TotalPages > 1)
+                        {
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item @(pg.HasPreviousPage ? "" : "disabled")">
+                                    <a class="page-link" href="@pageUrl(1)" title="@L["First page"]">&laquo;</a>
+                                </li>
+                                <li class="page-item @(pg.HasPreviousPage ? "" : "disabled")">
+                                    <a class="page-link" href="@pageUrl(pg.PageNumber - 1)">@L["Previous"]</a>
+                                </li>
+                                @for (var p = windowStart; p <= windowEnd; p++)
+                                {
+                                    <li class="page-item @(p == pg.PageNumber ? "active" : "")">
+                                        <a class="page-link" href="@pageUrl(p)">@p</a>
+                                    </li>
+                                }
+                                <li class="page-item @(pg.HasNextPage ? "" : "disabled")">
+                                    <a class="page-link" href="@pageUrl(pg.PageNumber + 1)">@L["Next"]</a>
+                                </li>
+                                <li class="page-item @(pg.HasNextPage ? "" : "disabled")">
+                                    <a class="page-link" href="@pageUrl(pg.TotalPages)" title="@L["Last page"]">&raquo;</a>
+                                </li>
+                            </ul>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="closeShiftModal" tabindex="-1" aria-labelledby="closeShiftModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header text-bg-dark border-0">
+                <h5 class="modal-title fs-6" id="closeShiftModalLabel">@L["Close Shift"]</h5>
+                <span id="modalEditBadge" class="badge bg-warning text-dark ms-2 d-none">@L["Edit Mode — Closed Shift"]</span>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="@L["Close"]"></button>
+            </div>
+            <form asp-action="CloseShift" asp-controller="Operations" method="post" style="display: contents;">
+                <div class="modal-body p-4">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="CloseShift.Id" type="hidden" id="modalShiftId" />
+                    <div id="shiftModalAlert" class="alert alert-danger d-none py-2 small mb-3"></div>
+                    <p class="text-muted small mb-3">@L["Please enter the closing cash amount and any relevant remarks to reconcile this shift."]</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">@L["Closing Cash"]</label>
+                        <input asp-for="CloseShift.ClosingCash" type="number" min="0" step="0.01" class="form-control form-control-sm" required />
+                    </div>
+                    <div class="small mb-2 p-2 bg-light border rounded" id="closeShiftPreview">
+                        <div class="row g-1">
+                            <div class="col-12"><strong class="text-dark">Collection Summary</strong></div>
+                            <div class="col-4">Expected Sales: <strong id="expSales">0.00</strong></div>
+                            <div class="col-4">Expected Cash: <strong id="expCloseCash">0.00</strong></div>
+                            <div class="col-4">Variance: <strong id="expVariance">0.00</strong></div>
+                            <div class="col-12 mt-1 border-top pt-1 text-muted">
+                                <em>Deductions:</em> Credit (<span id="detCredit">0.00</span>) | UPI (<span id="detUpi">0.00</span>) | Card (<span id="detCard">0.00</span>) | Bank Dep (<span id="detBank">0.00</span>) | Cash Exp (<span id="detExp">0.00</span>)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">@L["Remarks / Notes"]</label>
+                        <textarea asp-for="CloseShift.Notes" class="form-control form-control-sm" rows="3" placeholder="@L["Enter any discrepancy or shift notes"]"></textarea>
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label">@L["Nozzle Closing Meter"]</label>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                <tr>
+                                    <th>@L["Nozzle"]</th>
+                                    <th>@L["Product"]</th>
+                                    <th class="text-end">Opening Reading
+                                        <div class="text-muted fw-normal" style="font-size:0.7rem">@L["(auto-loaded)"]</div>
+                                    </th>
+                                    <th class="text-end">@L["Closing Reading"]</th>
+                                    <th class="text-end">@L["Testing (Ltr)"]</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @for (var i = 0; i < Model.CloseShift.NozzleReadings.Count; i++)
+                                {
+                                    <tr>
+                                        <td data-label="@L["Nozzle"]">
+                                            @Model.CloseShift.NozzleReadings[i].NozzleCode
+                                            <input type="hidden" asp-for="CloseShift.NozzleReadings[@i].NozzleId" />
+                                            <input type="hidden" asp-for="CloseShift.NozzleReadings[@i].NozzleCode" />
+                                            <input type="hidden" asp-for="CloseShift.NozzleReadings[@i].ProductName" />
+                                            <input type="hidden" asp-for="CloseShift.NozzleReadings[@i].OpeningReading" />
+                                            <input type="hidden" asp-for="CloseShift.NozzleReadings[@i].Rate" />
+                                        </td>
+                                        <td data-label="@L["Product"]">@Model.CloseShift.NozzleReadings[i].ProductName</td>
+                                        <td class="text-end" data-label="@L["Opening Reading"]">
+                                            <span class="badge bg-light text-dark border opening-reading-display"
+                                                  style="font-size:0.85rem; font-family:monospace; min-width:80px"
+                                                  title="@L["Opening meter reading from when this shift was started"]">—</span>
+                                        </td>
+                                        <td data-label="@L["Closing Reading"]">
+                                            <input asp-for="CloseShift.NozzleReadings[@i].ClosingReading" type="number" min="0" step="0.001" class="form-control form-control-sm text-end" required />
+                                        </td>
+                                        <td data-label="@L["Testing (Ltr)"]">
+                                            <input asp-for="CloseShift.NozzleReadings[@i].TestingLoss" type="number" min="0" step="0.001" class="form-control form-control-sm text-end" title="@L["Liters taken out for testing"]" />
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    @* ── Tank ki dip, isi form me (Section AB) ───────────────────
+                       Pehle dip alag page par daalni padti thi, aur galti wahin
+                       hoti thi: shift band hone se PEHLE dip (book stock me us din
+                       ki bikri ghati hi nahi hoti), ya galat tareekh. Ab shift band
+                       hote hi dip yahin se jaati hai - tareekh aur shift apne aap
+                       wahi. Tank ki line JS bharta hai, kyunki alag-alag pump ke
+                       alag tank hote hain. div me banaya hai, table me NAHI: upar ka
+                       saara JS `tbody tr` ko nozzle ki line maanta hai. *@
+                    <div class="mt-3" id="closeDipSection" hidden>
+                        <label class="form-label mb-1">@L["Tank dip (at closing)"] <span class="text-muted fw-normal">(@L["optional"])</span></label>
+                        <div class="form-text mt-0 mb-2">@L["Measure each tank after this shift and write the litres from the dip chart. The difference shows as you type - the same number the DSR will show."]
+                            <br />🚛 @L["Tanker unloaded today? Save the Purchase first - otherwise the difference here will look very large."]</div>
+                        <div id="closeDipWarn" class="alert alert-warning py-2 small mb-2" hidden>⚠ @L["Tank dip is not filled. If this is the last shift of the day, fill the dip below - or press the button again to close without a dip."]</div>
+                        <div id="closeDipRows"></div>
+                    </div>
+                    <template id="closeDipTpl">
+                        <div class="close-dip-row border rounded p-2 mb-2">
+                            <input type="hidden" class="dip-tank-id" />
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1 mb-1">
+                                <strong class="small"><span class="dip-tank"></span> <span class="text-muted fw-normal">(<span class="dip-product"></span>)</span></strong>
+                                <span class="small text-muted">@L["Book Stock"]: <strong class="dip-book text-dark">—</strong> L</span>
+                            </div>
+                            <div class="row g-2 align-items-end">
+                                <div class="col-5 col-md-3">
+                                    <label class="form-label small mb-0">@L["Dip"] (@L["cm"])</label>
+                                    <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end dip-cm" />
+                                </div>
+                                <div class="col-7 col-md-4">
+                                    <label class="form-label small mb-0">@L["Actual Stock"] (L)</label>
+                                    <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end dip-actual" />
+                                </div>
+                                <div class="col-12 col-md-5 small">
+                                    @L["Difference"]: <strong class="dip-diff">—</strong>
+                                </div>
+                            </div>
+                            <div class="small text-danger mt-1 dip-warn" hidden>⚠ @L["This is a very big difference. Check the litres - is it the previous day's number?"]</div>
+                        </div>
+                    </template>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">@L["Cancel"]</button>
+                    <button type="button" id="btnConfirmCloseShift" class="btn btn-primary btn-sm px-4">@L["Confirm Close Shift"]</button>
+                    <button type="button" id="btnConfirmEditShift" class="btn btn-warning btn-sm px-4 d-none">💾 Update Closed Shift</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cash Denomination Count Modal -->
+<div class="modal fade" id="cashDenominationModal" tabindex="-1" aria-labelledby="cashDenominationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header text-bg-dark border-0">
+                <h5 class="modal-title fs-6" id="cashDenominationModalLabel">@L["Cash Denomination Count"]</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="@L["Close"]"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-3">@L["Count note by note - the total must match the closing cash."]</p>
+                <div id="denomAlert" class="alert alert-danger d-none py-2 small mb-3"></div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle" id="denomTable">
+                        <thead>
+                            <tr>
+                                <th>Note (₹)</th>
+                                <th class="text-end" style="width:110px">@L["Pieces"]</th>
+                                <th class="text-end">@L["Amount"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var note in new[] { 500, 200, 100, 50, 20, 10, 5, 2, 1 })
+                            {
+                                <tr data-denomination="@note">
+                                    <td data-label="Note (₹)">₹@note</td>
+                                    <td class="text-end" data-label="@L["Pieces"]">
+                                        <input type="number" min="0" step="1" class="form-control form-control-sm text-end denom-pieces" value="0" />
+                                    </td>
+                                    <td class="text-end denom-amount" data-label="@L["Amount"]">0.00</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot class="fw-bold table-group-divider">
+                            <tr>
+                                <td colspan="2" class="text-end">@L["Total Counted"]</td>
+                                <td class="text-end" id="denomTotal" data-label="@L["Total Counted"]">0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">@L["Cancel"]</button>
+                <button type="button" id="btnSaveCashDenomination" class="btn btn-success btn-sm px-4">@L["Save Count"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const closeShiftModal = document.getElementById('closeShiftModal');
+        const closeCashInput = document.getElementById('CloseShift_ClosingCash');
+        const expSales = document.getElementById('expSales');
+        const expCloseCash = document.getElementById('expCloseCash');
+        const expVariance = document.getElementById('expVariance');
+        let openingCash = 0;
+        let nonCashDeductions = 0;
+
+        // Auto-fill closing cash in real-time if user hasn't explicitly edited it
+        if (closeCashInput) {
+            closeCashInput.addEventListener('input', () => {
+                closeCashInput.dataset.userEdited = 'true';
+                if (!closeCashInput.value) delete closeCashInput.dataset.userEdited;
+                calculatePreview(); // Recalculate variance
+            });
+        }
+
+        // ── Auto-fill Open Shift nozzle opening readings from last closed shift ──
+        const pumpIdForOpenShift = document.querySelector('select[name="OpenShift.PumpId"]')?.value;
+        if (pumpIdForOpenShift) {
+            // Tareekh saath bhejna zaroori hai — warna purana din bharte waqt yahan
+            // se aage wale din ki closing reading bhar jaati thi.
+            const openShiftDay = document.querySelector('[name="OpenShift.ShiftDate"]')?.value || '';
+            const lastReadUrl = `/Operations/LastNozzleReadings?pumpId=${pumpIdForOpenShift}`
+                + (openShiftDay ? `&beforeDate=${encodeURIComponent(openShiftDay)}` : '');
+            fetch(lastReadUrl)
+                .then(r => r.ok ? r.json() : [])
+                .then(readings => {
+                    if (!readings || readings.length === 0) return;
+                    readings.forEach(x => {
+                        const nId = x.nozzleId ?? x.NozzleId;
+                        const closingVal = x.closingReading ?? x.ClosingReading ?? 0;
+                        // Match by nozzle code — find hidden NozzleId input, then its row
+                        const allNozzleInputs = document.querySelectorAll('input[name*="OpenShift.NozzleReadings"][name*=".NozzleId"]');
+                        allNozzleInputs.forEach(inp => {
+                            if (inp.value == nId) {
+                                const tr = inp.closest('tr');
+                                const openCtrl = tr?.querySelector('input[name*=".OpeningReading"]');
+                                if (openCtrl && (!openCtrl.value || Number(openCtrl.value) === 0)) {
+                                    openCtrl.value = Number(closingVal).toFixed(3);
+                                    openCtrl.title = `Auto-filled from last shift closing reading`;
+                                }
+                            }
+                        });
+                    });
+                })
+                .catch(() => {}); // Silently ignore — first shift is OK to start from 0
+        }
+
+        const calculatePreview = () => {
+            let meterSales = 0;
+            const rows = closeShiftModal?.querySelectorAll('tbody tr') || [];
+            rows.forEach(r => {
+                const openCtrl   = r.querySelector('input[name*=".OpeningReading"]');
+                const closeCtrl  = r.querySelector('input[name*=".ClosingReading"]');  // ← fix: was missing
+                const rateCtrl   = r.querySelector('input[name*=".Rate"]');
+                const testingCtrl = r.querySelector('input[name*=".TestingLoss"]');
+                const openVal    = Number(openCtrl?.value  || 0);
+                const rateVal    = Number(rateCtrl?.value  || 0);
+                const closeVal   = Number(closeCtrl?.value || 0);
+                const testingVal = Number(testingCtrl?.value || 0);
+
+                // Color-code the closing reading input
+                if (closeCtrl && openVal > 0) {
+                    if (closeVal < openVal) {
+                        closeCtrl.classList.add('is-invalid');
+                        closeCtrl.classList.remove('is-valid');
+                    } else if (closeVal >= openVal) {
+                        closeCtrl.classList.remove('is-invalid');
+                        if (closeVal > openVal) closeCtrl.classList.add('is-valid');
+                    }
+                }
+
+                if (closeVal >= openVal) {
+                    const actualQty = Math.max(0, closeVal - openVal - testingVal);
+                    meterSales += actualQty * rateVal;
+                }
+            });
+
+            const expectedClose = openingCash + meterSales - nonCashDeductions;
+            
+            // Auto fill if the user hasn't manually edited the cash field
+            if (closeCashInput && !closeCashInput.dataset.userEdited) {
+                closeCashInput.value = expectedClose.toFixed(2);
+                closeCashInput.dataset.lastAutoFill = expectedClose.toFixed(2);
+            }
+
+            const enteredClose  = Number(closeCashInput?.value || 0);
+            const variance      = enteredClose - expectedClose;
+            if (expSales)      expSales.textContent      = meterSales.toFixed(2);
+            if (expCloseCash)  expCloseCash.textContent  = expectedClose.toFixed(2);
+            if (expVariance) {
+                expVariance.textContent  = variance.toFixed(2);
+                expVariance.style.color  = Math.abs(variance) > 100 ? 'crimson' : (Math.abs(variance) > 10 ? 'orange' : 'green');
+            }
+        };
+
+        if (closeShiftModal) {
+            closeShiftModal.addEventListener('show.bs.modal', async event => {
+                const button = event.relatedTarget;
+                const shiftId = button.getAttribute('data-shift-id');
+                const mode    = button.getAttribute('data-mode') || 'close'; // 'close' or 'edit'
+                openingCash       = Number(button.getAttribute('data-opening-cash') || 0);
+                nonCashDeductions = 0;
+
+                // ── UI mode toggle ──
+                const editBadge    = document.getElementById('modalEditBadge');
+                const btnClose     = document.getElementById('btnConfirmCloseShift');
+                const btnEdit      = document.getElementById('btnConfirmEditShift');
+                const modalLabel   = document.getElementById('closeShiftModalLabel');
+
+                if (mode === 'edit') {
+                    modalLabel.textContent = '@L["Edit Closed Shift"]';
+                    editBadge?.classList.remove('d-none');
+                    btnClose?.classList.add('d-none');
+                    btnEdit?.classList.remove('d-none');
+                    // Pre-fill closing cash if available
+                    const prevClosingCash = button.getAttribute('data-closing-cash');
+                    if (closeCashInput && prevClosingCash) closeCashInput.value = prevClosingCash;
+                } else {
+                    modalLabel.textContent = '@L["Close Shift"]';
+                    editBadge?.classList.add('d-none');
+                    btnClose?.classList.remove('d-none');
+                    btnEdit?.classList.add('d-none');
+                    if (closeCashInput) closeCashInput.value = '';
+                    // Har baar naye sire se — pichhli baar ki "haan band karo"
+                    // wali sehmati agli shift par nahi chalni chahiye.
+                    zeroSaleAck = false;
+                    dipAck = false;
+                    const dipWarnEl = document.getElementById('closeDipWarn');
+                    if (dipWarnEl) dipWarnEl.hidden = true;
+                    if (btnClose) btnClose.textContent = '@L["Confirm Close Shift"]';
+                }
+
+                const modalShiftInput = closeShiftModal.querySelector('#modalShiftId');
+                modalShiftInput.value = shiftId;
+
+                try {
+                    const [resReadings, resSummary] = await Promise.all([
+                        fetch(`/Operations/ShiftNozzleReadings?shiftId=${shiftId}`),
+                        fetch(`/Operations/ShiftSummary?shiftId=${shiftId}`)
+                    ]);
+
+                    if (resSummary.ok) {
+                        const sumData = await resSummary.json();
+                        const credit  = sumData?.totalCreditSales  || 0;
+                        const upi     = sumData?.totalUpiSales     || 0;
+                        const card    = sumData?.totalCardSales    || 0;
+                        const bank    = sumData?.totalBankDeposits || 0;
+                        const exp     = sumData?.totalCashExpenses || 0;
+                        const digital = sumData?.totalDigitalSales || 0;
+
+                        document.getElementById('detCredit').textContent = credit.toFixed(2);
+                        document.getElementById('detUpi').textContent    = upi.toFixed(2);
+                        document.getElementById('detCard').textContent   = card.toFixed(2);
+                        document.getElementById('detBank').textContent   = bank.toFixed(2);
+                        document.getElementById('detExp').textContent    = exp.toFixed(2);
+
+                        nonCashDeductions = credit + digital + upi + card + exp + bank;
+                    }
+
+                    if (resReadings.ok) {
+                        const apiRows = await resReadings.json();
+                        console.log('[ShiftNozzleReadings] API returned:', apiRows.length, 'rows', apiRows);
+
+                        apiRows.forEach((x) => {
+                            const nId      = x.nozzleId ?? x.NozzleId;
+                            const openVal  = Number(x.openingReading ?? x.OpeningReading ?? 0);
+                            const rateVal  = Number(x.rate ?? x.Rate ?? 0);
+                            const closeVal = Number(x.closingReading ?? x.ClosingReading ?? 0);
+                            const testVal  = Number(x.testingLoss ?? x.TestingLoss ?? 0);
+
+                            // Find hidden NozzleId input by iterating — avoids CSS attribute selector issues
+                            const allNozzleIdInputs = Array.from(
+                                closeShiftModal.querySelectorAll('input[type="hidden"]')
+                            ).filter(inp =>
+                                inp.name && inp.name.includes('NozzleReadings') &&
+                                inp.name.endsWith('NozzleId') &&
+                                String(inp.value) === String(nId)
+                            );
+
+                            if (allNozzleIdInputs.length === 0) {
+                                console.warn('[ShiftNozzleReadings] No DOM match for nozzleId:', nId);
+                                return;
+                            }
+
+                            const nozzleIdInput = allNozzleIdInputs[0];
+                            const tr            = nozzleIdInput.closest('tr');
+                            if (!tr) return;
+
+                            const openCtrl    = tr.querySelector('input[type="number"][name$=".OpeningReading"], input[type="hidden"][name$=".OpeningReading"]');
+                            const rateCtrl    = tr.querySelector('input[type="hidden"][name$=".Rate"]');
+                            const closeCtrl   = tr.querySelector('input[type="number"][name$=".ClosingReading"]');
+                            const testCtrl    = tr.querySelector('input[type="number"][name$=".TestingLoss"]');
+                            const openDisplay = tr.querySelector('.opening-reading-display');
+
+                            if (openCtrl)  openCtrl.value  = openVal.toFixed(3);
+                            if (rateCtrl)  rateCtrl.value  = rateVal.toFixed(2);
+                            if (testCtrl)  testCtrl.value  = testVal > 0 ? testVal.toFixed(3) : '';
+
+                            if (openDisplay) {
+                                openDisplay.textContent = openVal > 0 ? openVal.toFixed(3) : '—';
+                                openDisplay.classList.toggle('bg-success', openVal > 0);
+                                openDisplay.classList.toggle('text-white',  openVal > 0);
+                                openDisplay.classList.toggle('bg-light',    openVal === 0);
+                                openDisplay.classList.toggle('text-dark',   openVal === 0);
+                            }
+
+                            if (closeCtrl) {
+                                closeCtrl.value = (closeVal > 0 ? closeVal : openVal).toFixed(3);
+                                if (openVal > 0) closeCtrl.min = openVal.toFixed(3);
+                            }
+                        });
+                    }
+                } catch (e) { console.error('Error fetching shift details', e); }
+
+                calculatePreview();
+                // Reading bhar jaane ke BAAD - dip ka book stock unhi se ghat-ta hai.
+                await loadClosingDips(shiftId);
+            });
+        }
+
+        // ── Tank ki dip (Section AB) ─────────────────────────────────────
+        // Book stock = server se aaya "is shift ki bikri ke bina" stock, minus
+        // jo bikri abhi form me likhi ja rahi hai. Isliye farak likhte-likhte
+        // dikhta hai, aur wahi number DSR ke Variation me aata hai.
+        const dipSection = document.getElementById('closeDipSection');
+        const dipRowsEl  = document.getElementById('closeDipRows');
+        const dipTpl     = document.getElementById('closeDipTpl');
+
+        function nozzleNetSale(nozzleId) {
+            const idInp = Array.from(closeShiftModal?.querySelectorAll('input[type="hidden"]') || [])
+                .find(inp => inp.name && inp.name.includes('NozzleReadings') &&
+                             inp.name.endsWith('.NozzleId') && String(inp.value) === String(nozzleId));
+            const tr = idInp?.closest('tr');
+            if (!tr) { return 0; }
+            const o = Number(tr.querySelector('input[name$=".OpeningReading"]')?.value || 0);
+            const c = Number(tr.querySelector('input[name$=".ClosingReading"]')?.value || 0);
+            const t = Number(tr.querySelector('input[name$=".TestingLoss"]')?.value || 0);
+            return c > o ? Math.max(0, c - o - t) : 0;
+        }
+
+        function recalcCloseDips() {
+            dipRowsEl?.querySelectorAll('.close-dip-row').forEach(row => {
+                let book = Number(row.dataset.book || 0);
+                (row.dataset.nozzles || '').split(',').filter(Boolean)
+                    .forEach(id => { book -= nozzleNetSale(id); });
+                row.querySelector('.dip-book').textContent = book.toFixed(2);
+
+                const actual = Number(row.querySelector('.dip-actual').value || 0);
+                const diffEl = row.querySelector('.dip-diff');
+                const warnEl = row.querySelector('.dip-warn');
+                if (!actual) {
+                    diffEl.textContent = '—';
+                    diffEl.className = 'dip-diff';
+                    warnEl.hidden = true;
+                    return;
+                }
+                const diff = actual - book;
+                const a = Math.abs(diff);
+                diffEl.textContent = (diff > 0 ? '+' : '') + diff.toFixed(2) + ' L';
+                diffEl.className = 'dip-diff ' + (a <= 10 ? 'text-success' : a <= 30 ? 'text-warning' : 'text-danger');
+                // 09 Sep ko petrol me pichhle din ka litre (11277) likh diya tha -
+                // farak +910 aaya. Itna bada farak lagbhag hamesha galat number hota hai.
+                warnEl.hidden = a <= 100;
+            });
+        }
+
+        async function loadClosingDips(shiftId) {
+            if (!dipRowsEl || !dipTpl) { return; }
+            dipRowsEl.innerHTML = '';
+            if (dipSection) { dipSection.hidden = true; }
+
+            let rows = [];
+            try {
+                const r = await fetch('/Operations/ShiftClosingDips?shiftId=' + encodeURIComponent(shiftId));
+                if (r.ok) { rows = await r.json(); }
+            } catch (e) {
+                // Dip ke bina bhi shift band honi chahiye - hissa bas nahi dikhega.
+                console.error('Dip ke tank nahi mile:', e);
+            }
+            if (!rows || rows.length === 0) { return; }
+
+            rows.forEach((d, i) => {
+                const node = dipTpl.content.firstElementChild.cloneNode(true);
+                node.dataset.book    = d.bookExcludingShift ?? 0;
+                node.dataset.nozzles = d.nozzleIds || '';
+                node.querySelector('.dip-tank').textContent    = d.tankName || '';
+                node.querySelector('.dip-product').textContent = d.productName || '';
+
+                const idEl = node.querySelector('.dip-tank-id');
+                idEl.name  = 'CloseShift.Dips[' + i + '].TankId';
+                idEl.value = d.tankId;
+
+                const cmEl = node.querySelector('.dip-cm');
+                cmEl.name  = 'CloseShift.Dips[' + i + '].DipCm';
+                cmEl.value = d.dipCm ?? '';
+
+                const actEl = node.querySelector('.dip-actual');
+                actEl.name  = 'CloseShift.Dips[' + i + '].ActualStock';
+                actEl.value = d.actualStock ?? '';
+                actEl.addEventListener('input', recalcCloseDips);
+
+                dipRowsEl.appendChild(node);
+            });
+
+            if (dipSection) { dipSection.hidden = false; }
+            recalcCloseDips();
+        }
+
+        closeShiftModal?.querySelectorAll('input[name*=".ClosingReading"], input[name*=".TestingLoss"]')
+            .forEach(x => x.addEventListener('input', recalcCloseDips));
+
+        closeCashInput?.addEventListener('input', calculatePreview);
+        // Also recalculate when user types in any ClosingReading or TestingLoss field
+        closeShiftModal?.querySelectorAll('input[name*=".ClosingReading"], input[name*=".TestingLoss"]')
+            .forEach(x => x.addEventListener('input', calculatePreview));
+
+        // ── Tareekh ki jaanch: chhoote din / aage ka din / bhavishya ──────
+        (function () {
+            const dateEl = document.querySelector('[name="OpenShift.ShiftDate"]');
+            const pumpEl = document.querySelector('[name="OpenShift.PumpId"]');
+            const gapEl = document.getElementById('osWarnGap');
+            const laterEl = document.getElementById('osWarnLater');
+            const futEl = document.getElementById('osWarnFuture');
+            const helpEl = document.getElementById('osBackdateHelp');
+            if (!dateEl || !pumpEl || !gapEl) { return; }
+            let seq = 0;
+
+            async function checkDate() {
+                const day = dateEl.value;
+                const pumpId = pumpEl.value;
+                gapEl.hidden = laterEl.hidden = futEl.hidden = true;
+                if (!day || !pumpId || pumpId === '0') { return; }
+                const mine = ++seq;
+                try {
+                    const r = await fetch('/Operations/ShiftDateCheck?pumpId=' + pumpId + '&date=' + encodeURIComponent(day));
+                    if (!r.ok || mine !== seq) { return; }
+                    const d = await r.json();
+                    if (mine !== seq) { return; }
+                    if (d.gapDays > 0) {
+                        // Ek hi din chhoota ho to tareekh ek baar.
+                        gapEl.querySelector('.w-range').textContent =
+                            d.gapFrom === d.gapTo ? d.gapFrom : d.gapFrom + ' – ' + d.gapTo;
+                        gapEl.hidden = false;
+                    }
+                    if (d.laterDate) {
+                        laterEl.querySelector('.w-later').textContent = d.laterDate;
+                        laterEl.hidden = false;
+                    }
+                    futEl.hidden = !d.isFuture;
+                    // Purana din ya koi gadbad - tareeka khud khol do.
+                    if (helpEl && (d.isPast || d.gapDays > 0 || d.laterDate)) { helpEl.open = true; }
+                } catch (e) {
+                    console.error('Tareekh ki jaanch nahi ho paayi:', e);
+                }
+            }
+
+            dateEl.addEventListener('change', checkDate);
+            checkDate();
+        })();
+
+        // ── Tareekh badle to opening reading dobara mangwao ──────────────
+        // Form khulte waqt jo reading bhari thi wo CHUNI HUI TAREEKH ke hisaab
+        // se thi. User tareekh badal de (purana din bharne ke liye) to wo purani
+        // reading wahin padi reh jaati thi — aur us din ki bikri galat ban jaati.
+        (function () {
+            const dateEl = document.querySelector('[name="OpenShift.ShiftDate"]');
+            const pumpEl = document.querySelector('[name="OpenShift.PumpId"]');
+            if (!dateEl || !pumpEl) { return; }
+
+            let reqSeq = 0;   // sirf aakhri jawab maano
+
+            dateEl.addEventListener('change', async function () {
+                const day = dateEl.value;
+                const pumpId = pumpEl.value;
+                if (!day || !pumpId || pumpId === '0') { return; }
+
+                const mine = ++reqSeq;
+                try {
+                    const resp = await fetch('/Operations/LastNozzleReadings?pumpId=' + pumpId +
+                                             '&beforeDate=' + encodeURIComponent(day));
+                    if (!resp.ok || mine !== reqSeq) { return; }
+                    const rows = await resp.json();
+                    if (mine !== reqSeq) { return; }
+
+                    // Nozzle id se milaan — kram par bharosa nahi karna.
+                    const byNozzle = {};
+                    rows.forEach(r => { byNozzle[r.nozzleId] = r.closingReading; });
+
+                    document.querySelectorAll('input[name^="OpenShift.NozzleReadings"][name$=".NozzleId"]').forEach(idEl => {
+                        const prefix = idEl.name.replace(/\.NozzleId$/, '');
+                        const openEl = document.querySelector('input[name="' + prefix + '.OpeningReading"]');
+                        if (!openEl) { return; }
+                        const val = byNozzle[idEl.value];
+                        openEl.value = (val === undefined || val === null) ? 0 : val;
+                    });
+                } catch (e) {
+                    // Net gaya to jo bhara hai wahi rehne do — khaali karna isse bura hai.
+                    console.error('Opening reading nahi mil paayi:', e);
+                }
+            });
+        })();
+
+        // "Kuch bika hi nahi" wali chetavni ek baar dikhti hai; dobara
+        // dabane par shift band ho jaati hai.
+        let zeroSaleAck = false;
+
+        // Mobile par dip ka hissa form me sabse neeche hai (6 nozzle ke card ke
+        // baad) - jaldi me log use dekhe bina hi band kar dete. Khaali ho to ek
+        // baar puchho, dobara dabane par bina dip band. Zero-bikri wala hi tareeka.
+        let dipAck = false;
+
+        // Confirm Close Shift — handled via button click to avoid browser-extension form interference
+        document.getElementById('btnConfirmCloseShift')?.addEventListener('click', function () {
+            const rows = Array.from(closeShiftModal?.querySelectorAll('tbody tr') || []);
+            let hasError = false;
+            let soldCount = 0;      // kitne nozzle par kuch bika
+            rows.forEach(r => {
+                const openCtrl = r.querySelector('input[name*=".OpeningReading"]');
+                const closeCtrl = r.querySelector('input[name*=".ClosingReading"]');
+                const openVal = Number(openCtrl?.value || 0);
+                const closeVal = Number(closeCtrl?.value || 0);
+                if (openVal > 0 && closeVal < openVal) {
+                    hasError = true;
+                    if (closeCtrl) closeCtrl.classList.add('is-invalid');
+                }
+                if (closeVal > openVal) { soldCount++; }
+            });
+            const alertDiv = document.getElementById('shiftModalAlert');
+            if (hasError) {
+                if (alertDiv) {
+                    alertDiv.className = 'alert alert-danger py-2 small';
+                    alertDiv.textContent = '@L["Error: One or more nozzle closing readings are less than the opening reading."]';
+                    alertDiv.classList.remove('d-none');
+                }
+                return;
+            }
+
+            // Form me closing reading pehle se opening ke barabar bhari aati hai.
+            // Isliye "Close Shift" seedha daba dene par shift bina kisi bikri ke
+            // band ho jaati thi aur us din ka hisaab hamesha ke liye 0 reh jaata
+            // tha (07 Sep par yahi hua). Ab ek baar rok kar poochte hain.
+            if (soldCount === 0 && rows.length > 0 && !zeroSaleAck) {
+                zeroSaleAck = true;
+                if (alertDiv) {
+                    alertDiv.className = 'alert alert-warning py-2 small';
+                    alertDiv.textContent = '@L["No reading has changed, so this shift will be saved with zero sale. Fill the closing readings, or press the button again to close it anyway."]';
+                    alertDiv.classList.remove('d-none');
+                }
+                this.textContent = '@L["Close anyway - nothing was sold"]';
+                return;
+            }
+
+            const dipRowsNow = Array.from(document.querySelectorAll('#closeDipRows .close-dip-row'));
+            const dipSectionShown = !document.getElementById('closeDipSection')?.hidden;
+            const anyDip = dipRowsNow.some(r => Number(r.querySelector('.dip-actual')?.value || 0) > 0);
+            if (dipSectionShown && dipRowsNow.length > 0 && !anyDip && !dipAck) {
+                dipAck = true;
+                if (alertDiv) alertDiv.classList.add('d-none');
+                const dipWarnEl = document.getElementById('closeDipWarn');
+                if (dipWarnEl) {
+                    dipWarnEl.hidden = false;
+                    dipWarnEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                }
+                dipRowsNow[0].querySelector('.dip-actual')?.focus({ preventScroll: true });
+                this.textContent = '@L["Close without dip"]';
+                return;
+            }
+
+            if (alertDiv) alertDiv.classList.add('d-none');
+            // Submit the form natively — bypasses extension content_script interference
+            const form = closeShiftModal?.querySelector('form');
+            if (form) form.submit();
+        });
+
+        // ── Edit Closed Shift — same validation, same form submit ──
+        document.getElementById('btnConfirmEditShift')?.addEventListener('click', function () {
+            const rows = Array.from(closeShiftModal?.querySelectorAll('tbody tr') || []);
+            let hasError = false;
+            rows.forEach(r => {
+                const openCtrl  = r.querySelector('input[name*=".OpeningReading"]');
+                const closeCtrl = r.querySelector('input[name*=".ClosingReading"]');
+                const openVal   = Number(openCtrl?.value  || 0);
+                const closeVal  = Number(closeCtrl?.value || 0);
+                if (openVal > 0 && closeVal < openVal) {
+                    hasError = true;
+                    if (closeCtrl) closeCtrl.classList.add('is-invalid');
+                }
+            });
+            const alertDiv = document.getElementById('shiftModalAlert');
+            if (hasError) {
+                if (alertDiv) {
+                    alertDiv.textContent = '@L["Error: One or more nozzle closing readings are less than the opening reading."]';
+                    alertDiv.classList.remove('d-none');
+                }
+                return;
+            }
+            if (alertDiv) alertDiv.classList.add('d-none');
+            const form = closeShiftModal?.querySelector('form');
+            if (form) form.submit();
+        });
+    });
+
+    // ── Cash Denomination Count modal ──
+    document.addEventListener('DOMContentLoaded', () => {
+        const denomModal = document.getElementById('cashDenominationModal');
+        const denomTotalEl = document.getElementById('denomTotal');
+        const denomAlert = document.getElementById('denomAlert');
+        const btnSave = document.getElementById('btnSaveCashDenomination');
+        let currentShiftId = null;
+        let currentPumpId = null;
+
+        const recalcDenomTotal = () => {
+            let total = 0;
+            denomModal?.querySelectorAll('#denomTable tbody tr').forEach(row => {
+                const denomination = Number(row.getAttribute('data-denomination') || 0);
+                const pieces = Number(row.querySelector('.denom-pieces')?.value || 0);
+                const amount = denomination * pieces;
+                const amountCell = row.querySelector('.denom-amount');
+                if (amountCell) amountCell.textContent = amount.toFixed(2);
+                total += amount;
+            });
+            if (denomTotalEl) denomTotalEl.textContent = total.toFixed(2);
+            return total;
+        };
+
+        denomModal?.querySelectorAll('.denom-pieces').forEach(input => {
+            input.addEventListener('input', recalcDenomTotal);
+        });
+
+        denomModal?.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            currentShiftId = button?.getAttribute('data-shift-id');
+            currentPumpId = button?.getAttribute('data-pump-id');
+            denomModal.querySelectorAll('.denom-pieces').forEach(input => { input.value = 0; });
+            denomAlert?.classList.add('d-none');
+            recalcDenomTotal();
+        });
+
+        btnSave?.addEventListener('click', async () => {
+            const lines = Array.from(denomModal?.querySelectorAll('#denomTable tbody tr') || [])
+                .map(row => ({
+                    denomination: Number(row.getAttribute('data-denomination') || 0),
+                    pieces: Number(row.querySelector('.denom-pieces')?.value || 0)
+                }))
+                .filter(x => x.pieces > 0);
+
+            btnSave.disabled = true;
+            try {
+                // ppmsFetch = fetch + CSRF token header (site.js me hai)
+                const response = await ppmsFetch(`/Operations/SaveShiftCashDenomination?shiftId=${currentShiftId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pumpId: Number(currentPumpId), lines })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    bootstrap.Modal.getInstance(denomModal)?.hide();
+                    window.location.reload();
+                } else if (denomAlert) {
+                    denomAlert.textContent = result.message || 'Could not save the cash count.';
+                    denomAlert.classList.remove('d-none');
+                }
+            } catch (e) {
+                if (denomAlert) {
+                    denomAlert.textContent = '@L["Server error - please try again."]';
+                    denomAlert.classList.remove('d-none');
+                }
+            } finally {
+                btnSave.disabled = false;
+            }
+        });
+    });
+</script>
+}

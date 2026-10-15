@@ -1,0 +1,233 @@
+@model PPMS.Client.Web.Models.PlatformCreditViewModel
+@{
+    ViewData["Title"] = "Message Credits";
+    var s = Model.Summary;
+    var available = s?.CreditsAvailable ?? 0;
+    var pending = Model.Recharges.Where(r => r.Status == "PENDING").ToList();
+    var upiMissing = string.IsNullOrWhiteSpace(Model.UpiId);
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") alert-dismissible fade show py-2 small" role="alert">
+        @Model.Message
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button>
+    </div>
+}
+
+@* ---- Aapka stock ek nazar me ---- *@
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">@L["Bought"]</div>
+                <div class="fs-4 fw-bold">@(s?.CreditsBought ?? 0)</div>
+                <div class="text-muted small">₹@((s?.AmountPaid ?? 0).ToString("N2")) spent</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">@L["Sold to pumps"]</div>
+                <div class="fs-4 fw-bold">@(s?.CreditsAllocated ?? 0)</div>
+                <div class="text-muted small">@(s?.TenantCount ?? 0) pump(s) with balance</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        @* Yahi asli ginti hai — isse zyada kisi ko de nahi sakte. *@
+        <div class="card border-0 shadow-sm h-100 @(available <= 0 ? "border-danger" : "")">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">@L["Left to sell"]</div>
+                <div class="fs-4 fw-bold @(available <= 0 ? "text-danger" : "text-success")">@available</div>
+                <div class="text-muted small">@L["you cannot allocate more than this"]</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">@L["Used by pumps"]</div>
+                <div class="fs-4 fw-bold">@(s?.CreditsSpent ?? 0)</div>
+                <div class="text-muted small">@(s?.CreditsPending ?? 0) waiting approval</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        @* ---- UPI aur rate ---- *@
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title mb-1">@L["Payment &amp; pricing"]</h6>
+                <p class="text-muted small mb-3">
+                    Pump owners send their recharge money to this UPI ID. It is shown to them on their
+                    Message Balance page.
+                </p>
+
+                @if (upiMissing)
+                {
+                    <div class="alert alert-warning py-2 px-2 small">
+                        No UPI ID set yet, so pumps cannot recharge at all.
+                    </div>
+                }
+
+                <form method="post" asp-action="SaveCreditSettings">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-2">
+                        <label class="form-label small mb-1" for="upiId">@L["UPI ID"]</label>
+                        <input id="upiId" name="upiId" value="@Model.UpiId" class="form-control form-control-sm"
+                               placeholder="yourname@bank" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1" for="upiName">@L["Name shown on UPI"]</label>
+                        <input id="upiName" name="upiName" value="@Model.UpiName" class="form-control form-control-sm"
+                               placeholder="@L["So the owner can check it matches"]" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small mb-1" for="price">Price per message (₹)</label>
+                        <input id="price" name="pricePerCredit" value="@Model.PricePerCredit" type="number" min="0.01" step="0.01"
+                               class="form-control form-control-sm" />
+                        <div class="form-text">₹100 at ₹0.50 gives the pump 200 messages.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm px-4">@L["Save"]</button>
+                </form>
+            </div>
+        </div>
+
+        @* ---- Aapne provider se khareeda ---- *@
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title mb-1">@L["Record a purchase"]</h6>
+                <p class="text-muted small mb-3">
+                    After you buy messages from Twilio, record it here. This is your stock —
+                    you cannot sell more than this.
+                </p>
+                <form method="post" asp-action="AddPlatformCredit">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-2">
+                        <div class="col-6 mb-2">
+                            <label class="form-label small mb-1" for="amountPaid">Amount paid (₹)</label>
+                            <input id="amountPaid" name="amountPaid" type="number" min="0" step="0.01"
+                                   class="form-control form-control-sm" required />
+                        </div>
+                        <div class="col-6 mb-2">
+                            <label class="form-label small mb-1" for="creditsBought">@L["Messages bought"]</label>
+                            <input id="creditsBought" name="creditsBought" type="number" min="1" step="1"
+                                   class="form-control form-control-sm" required />
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6 mb-2">
+                            <label class="form-label small mb-1" for="provider">@L["Provider"]</label>
+                            <input id="provider" name="provider" value="Twilio" class="form-control form-control-sm" />
+                        </div>
+                        <div class="col-6 mb-2">
+                            <label class="form-label small mb-1" for="referenceNo">@L["Invoice / reference"]</label>
+                            <input id="referenceNo" name="referenceNo" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary btn-sm px-4 mt-2">@L["Add to stock"]</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title mb-1">@L["Recharge requests"]</h6>
+                <p class="text-muted small mb-3">
+                    Check the money actually reached your UPI, then approve.
+                    Approving adds the messages to that pump's balance.
+                </p>
+
+                @if (pending.Count > 0 && available <= 0)
+                {
+                    <div class="alert alert-danger py-2 px-2 small">
+                        Your stock is empty. Buy more messages from Twilio and record the purchase
+                        before approving anything.
+                    </div>
+                }
+
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>@L["Pump"]</th>
+                                <th class="text-end">@L["Paid"]</th>
+                                <th class="text-end">@L["Messages"]</th>
+                                <th>@L["UPI ref"]</th>
+                                <th>@L["Status"]</th>
+                                <th class="text-end">@L["Action"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Recharges.Count == 0)
+                            {
+                                <tr><td colspan="6" class="text-center text-muted py-4">@L["No recharge requests yet."]</td></tr>
+                            }
+                            else
+                            {
+                                @foreach (var r in Model.Recharges)
+                                {
+                                    <tr>
+                                        <td data-label="@L["Pump"]">
+                                            <div class="fw-semibold">@r.OwnerName</div>
+                                            <div class="text-muted small">@r.RequestedOn.ToString("dd MMM yyyy, HH:mm")</div>
+                                        </td>
+                                        <td class="text-end" data-label="@L["Paid"]">₹@r.Amount.ToString("N2")</td>
+                                        <td class="text-end" data-label="@L["Messages"]">@r.Credits</td>
+                                        <td data-label="@L["UPI ref"]">@(string.IsNullOrWhiteSpace(r.UpiReference) ? "—" : r.UpiReference)</td>
+                                        <td data-label="@L["Status"]">
+                                            @if (r.Status == "PENDING")
+                                            {
+                                                <span class="badge bg-warning text-dark">@L["Pending"]</span>
+                                            }
+                                            else if (r.Status == "APPROVED")
+                                            {
+                                                <span class="badge bg-success">@L["Approved"]</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">@L["Rejected"]</span>
+                                            }
+                                        </td>
+                                        <td class="text-end" data-label="@L["Action"]">
+                                            @if (r.Status == "PENDING")
+                                            {
+                                                <form method="post" asp-action="ApproveRecharge" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@r.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-success"
+                                                            data-confirm="Approve @r.Credits messages for @r.OwnerName? Make sure ₹@r.Amount.ToString("N2") has actually reached your UPI."
+                                                            data-confirm-title="@L["Approve recharge"]"
+                                                            data-confirm-ok="Approve">@L["Approve"]</button>
+                                                </form>
+                                                <form method="post" asp-action="RejectRecharge" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@r.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                            data-confirm="Reject this recharge request?"
+                                                            data-confirm-title="@L["Reject recharge"]"
+                                                            data-confirm-ok="Reject"
+                                                            data-confirm-danger="true">@L["Reject"]</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small">@(r.DecidedOn?.ToString("dd MMM") ?? "—")</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

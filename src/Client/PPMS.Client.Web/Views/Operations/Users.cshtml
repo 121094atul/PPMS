@@ -1,0 +1,113 @@
+@model PPMS.Client.Web.Models.UserManagementViewModel
+@{
+    ViewData["Title"] = "User Management";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">@L["User Form"]</h5>
+                <p class="text-muted small mb-3">@L["Create or update user and assign role."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveUser" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.Id" type="hidden" />
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Full Name"]</label>
+                        <input asp-for="Form.FullName" class="form-control" required />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">@L["Username"]</label>
+                        <input asp-for="Form.Username" class="form-control" required />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Password @(Model.Form.Id is null or 0 ? L["(Required)"].Value : L["(Leave blank to keep current)"].Value)</label>
+                        @if (Model.Form.Id is null or 0)
+                        {
+                            <input asp-for="Form.Password" class="form-control" type="password" placeholder="@L["Enter password"]" required />
+                        }
+                        else
+                        {
+                            <input asp-for="Form.Password" class="form-control" type="password" placeholder="@L["Leave blank to keep current"]" />
+                        }
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">@L["Mobile"]</label>
+                        <input asp-for="Form.Mobile" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Role"]</label>
+                        <select asp-for="Form.RoleId" class="form-select" required>
+                            @foreach (var role in Model.Roles)
+                            {
+                                <option value="@role.Id">@role.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@((Model.Form.Id is null) ? "Create User" : "Update User")</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">@L["User List"]</h5>
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Name"]</th>
+                            <th>@L["Username"]</th>
+                            <th>@L["Role"]</th>
+                            <th>@L["Mobile"]</th>
+                            <th class="text-end">@L["Action"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Users.Count == 0)
+                        {
+                            <tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">&#128100;</div><div class="empty-state-title">@L["No users created"]</div><div class="empty-state-hint">@L["Create logins for your staff and assign them a role."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var user in Model.Users)
+                            {
+                                <tr>
+                                    <td data-label="@L["Name"]">@user.FullName</td>
+                                    <td data-label="@L["Username"]">@user.Username</td>
+                                    <td data-label="@L["Role"]">@user.RoleName</td>
+                                    <td data-label="@L["Mobile"]">@user.Mobile</td>
+                                    <td class="text-end" data-label="@L["Action"]">
+                                        <div class="d-flex justify-content-end gap-1">
+                                            <a class="btn btn-sm btn-outline-primary" href="/Operations/Users?editId=@user.Id">@L["Edit"]</a>
+                                            @if (user.Username != "owneradmin")
+                                            {
+                                                <form method="post" asp-action="DeleteUser" asp-controller="Operations" class="d-inline">
+                                                    <input type="hidden" name="id" value="@user.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Are you sure you want to delete this user?">@L["Delete"]</button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,232 @@
+@model PPMS.Client.Web.Models.StaffManagementViewModel
+@{
+    ViewData["Title"] = "Staff Management";
+}
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@(Model.Form.Id is null or 0 ? L["Add Person"] : L["Edit Person"])</h5>
+                <p class="text-muted small mb-3">
+                    @L["A person's details and, if they need one, their login — all in one form."]
+                </p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2 small" role="alert">
+                        @Model.Message
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button>
+                    </div>
+                }
+
+                <form method="post" asp-action="SaveStaff">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.Id" type="hidden" />
+                    <input asp-for="Form.OwnerId" type="hidden" />
+                    <input asp-for="Form.HasExistingLogin" type="hidden" />
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select form-select-sm"
+                                onchange="window.location='/Operations/Staff?pumpId='+this.value">
+                            @foreach (var p in Model.Pumps)
+                            {
+                                <option value="@p.Id" selected="@(p.Id == Model.Form.PumpId)">@p.Name (@p.City)</option>
+                            }
+                        </select>
+                        @* Employee hamesha EK pump ka hota hai. Wahi aadmi doosre pump par
+                           bhi kaam karta ho to wahan uska alag record banega — alag code,
+                           alag salary. Login dono jagah ek hi rehta hai. *@
+                        <div class="form-text">@L["This record shows on this pump only."]</div>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">@L["Employee Code"]</label>
+                            <input asp-for="Form.EmployeeCode" class="form-control form-control-sm" readonly />
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">@L["Join Date"]</label>
+                            <input asp-for="Form.JoinDate" type="date" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["Full Name"]</label>
+                        <input asp-for="Form.FullName" class="form-control form-control-sm" required />
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">@L["Mobile"]</label>
+                            <input asp-for="Form.Mobile" class="form-control form-control-sm" />
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">@L["Monthly Salary"]</label>
+                            <input asp-for="Form.MonthlySalary" type="number" min="0" step="0.01" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["Designation"]</label>
+                        <input asp-for="Form.Designation" class="form-control form-control-sm" placeholder="@L["Operator / Manager / Cashier / Guard"]" />
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="Form.IsActive" class="form-check-input" />
+                        <label asp-for="Form.IsActive" class="form-check-label">@L["Active"]</label>
+                    </div>
+
+                    @* ---- Login wala hissa ------------------------------------------
+                       Checkbox band ho to neeche ke khaane chhup jaate hain. Bahut se
+                       log (chowkidar, helper, safai wala) ko login chahiye hi nahi —
+                       unka record bina login ke poora hai. *@
+                    <hr class="my-3" />
+
+                    <div class="form-check form-switch mb-2">
+                        <input asp-for="Form.WantsLogin" class="form-check-input" role="switch" id="wantsLogin" />
+                        <label class="form-check-label fw-semibold" for="wantsLogin">
+                            @L["Also give this person a login"]
+                        </label>
+                    </div>
+                    <div class="form-text mb-2">
+                        @L["Staff like guards and helpers usually do not need a login — leave this off for them."]
+                    </div>
+
+                    <div id="loginFields" class="border rounded p-2 bg-light @(Model.Form.WantsLogin ? "" : "d-none")">
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">@L["Username"]</label>
+                            <input asp-for="Form.Username" class="form-control form-control-sm" autocomplete="off" />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">
+                                @L["Password"]
+                                @if (Model.Form.HasExistingLogin)
+                                {
+                                    <span class="text-muted">@L["(leave blank to keep the current one)"]</span>
+                                }
+                            </label>
+                            <input asp-for="Form.Password" type="password" class="form-control form-control-sm"
+                                   autocomplete="new-password"
+                                   placeholder="@(Model.Form.HasExistingLogin ? L["Leave blank to keep current"].Value : L["At least 6 characters"].Value)" />
+                        </div>
+                        <div class="mb-1">
+                            <label class="form-label small mb-1">@L["Role"]</label>
+                            <select asp-for="Form.RoleId" class="form-select form-select-sm">
+                                <option value="">@L["-- Select Role --"]</option>
+                                @foreach (var r in Model.Roles)
+                                {
+                                    <option value="@r.Id" selected="@(r.Id == Model.Form.RoleId)">@r.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-primary btn-sm px-4">
+                            @(Model.Form.Id is null or 0 ? L["Add Person"] : L["Save Changes"])
+                        </button>
+                        @if (Model.Form.Id is > 0)
+                        {
+                            <a href="/Operations/Staff?pumpId=@Model.Form.PumpId" class="btn btn-outline-secondary btn-sm">@L["Cancel"]</a>
+                        }
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Staff List"]</h5>
+                <p class="text-muted small mb-3">@L["People on this pump. A blank Login means that person does not sign in to the software."]</p>
+
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>@L["Code"]</th>
+                                <th>@L["Name"]</th>
+                                <th>@L["Designation"]</th>
+                                <th>@L["Login"]</th>
+                                <th>@L["Role"]</th>
+                                <th class="text-end">@L["Salary"]</th>
+                                <th>@L["Status"]</th>
+                                <th class="text-end">@L["Action"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Staff.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        @L["Nobody added yet. Add your first person using the form on the left."]
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var s in Model.Staff)
+                                {
+                                    <tr>
+                                        <td>@s.EmployeeCode</td>
+                                        <td>@s.FullName</td>
+                                        <td>@(string.IsNullOrWhiteSpace(s.Designation) ? "-" : s.Designation)</td>
+                                        <td>
+                                            @if (string.IsNullOrWhiteSpace(s.UserName))
+                                            {
+                                                <span class="text-muted">@L["No login"]</span>
+                                            }
+                                            else
+                                            {
+                                                <span>@s.UserName</span>
+                                                @if (!s.LoginActive)
+                                                {
+                                                    <span class="badge bg-warning text-dark ms-1">@L["disabled"]</span>
+                                                }
+                                            }
+                                        </td>
+                                        <td>@(string.IsNullOrWhiteSpace(s.RoleName) ? "-" : s.RoleName)</td>
+                                        <td class="text-end">@s.MonthlySalary.ToString("N2")</td>
+                                        <td>
+                                            @if (s.IsActive)
+                                            {
+                                                <span class="badge bg-success">@L["Active"]</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">@L["Inactive"]</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="/Operations/Staff?pumpId=@Model.Form.PumpId&editId=@s.Id"
+                                               class="btn btn-sm btn-outline-primary">@L["Edit"]</a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Login ka switch band ho to neeche ke khaane chhupa do. Sirf dikhne ka
+    // farq hai — asli faisla server par WantsLogin se hota hai.
+    (function () {
+        const toggle = document.getElementById("wantsLogin");
+        const fields = document.getElementById("loginFields");
+        if (!toggle || !fields) { return; }
+
+        const sync = () => fields.classList.toggle("d-none", !toggle.checked);
+        toggle.addEventListener("change", sync);
+        sync();
+    })();
+</script>
+}

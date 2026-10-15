@@ -1,0 +1,188 @@
+@model PPMS.Client.Web.Models.NozzleManagementViewModel
+@{
+    ViewData["Title"] = "Nozzle Management";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Nozzle Form"]</h5>
+                <p class="text-muted small mb-3">@L["Map nozzle code with pump and product."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveNozzle" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.Id" type="hidden" />
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select" required onchange="window.location='/Operations/Nozzles?pumpId='+this.value">
+                            @if (Model.Pumps.Count == 0)
+                            {
+                                <option value="0">@L["No pump available"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var pump in Model.Pumps)
+                                {
+                                    <option value="@pump.Id">@pump.Name (@pump.City)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Product"]</label>
+                        <select asp-for="Form.ProductId" class="form-select" required onchange="filterTanks()">
+                            @if (Model.Products.Count == 0)
+                            {
+                                <option value="0">@L["No product for selected pump"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var product in Model.Products)
+                                {
+                                    <option value="@product.Id">@product.Name (@product.Category)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                  
+                    <div class="mb-2">
+                        <label class="form-label">@L["Tank"]</label>
+                        <select asp-for="Form.TankId" class="form-select" required>
+                            <option value="">@L["-- Select tank --"]</option>
+                            @foreach (var tank in Model.Tanks)
+                            {
+                                <option value="@tank.Id" data-product-id="@tank.ProductId">@tank.Name (@tank.ProductName)</option>
+                            }
+                        </select>
+                        @if (Model.Tanks.Count == 0)
+                        {
+                            @* Is product ka koi tank hi nahi — bina raasta bataye rok dena
+                               bekaar hai, isliye seedha Tanks page ka link de rahe hain. *@
+                            <div class="alert alert-warning py-2 px-2 small mt-2 mb-0">
+                                @L["This product has no tank on this pump yet."]
+                                <a href="/Operations/Tanks?pumpId=@Model.Form.PumpId" class="alert-link">@L["Add the tank first"]</a>,
+                                @L["then come back and create the nozzle."]
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="form-text">@L["The tank this nozzle draws from. Only tanks of the same pump and product are listed."]</div>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["Nozzle Code"]</label>
+                        <input asp-for="Form.NozzleCode" class="form-control" placeholder="@L["N1 / D1 / C1 / EV1"]" required />
+                    </div>
+
+                    <div class="d-grid">
+                       
+                        <button type="submit" class="btn btn-primary" disabled="@(Model.Tanks.Count == 0)">
+                            @((Model.Form.Id is null) ? L["Create Nozzle"] : L["Update Nozzle"])
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Nozzle List"]</h5>
+                <p class="text-muted small mb-3">@L["Nozzles for selected pump."]</p>
+
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Nozzle"]</th>
+                            <th>@L["Product"]</th>
+                            <th>@L["Tank"]</th>
+                            <th>@L["Status"]</th>
+                            <th class="text-end">@L["Action"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Nozzles.Count == 0)
+                        {
+                            <tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">&#9981;</div><div class="empty-state-title">@L["No nozzles on this pump"]</div><div class="empty-state-hint">@L["Add a nozzle by choosing its code, product and tank on the left."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var nozzle in Model.Nozzles)
+                            {
+                                <tr>
+                                    <td data-label="@L["Nozzle"]">@nozzle.NozzleCode</td>
+                                    <td data-label="@L["Product"]">@nozzle.ProductName</td>
+                                    <td data-label="@L["Tank"]">@(Model.Tanks.FirstOrDefault(t => t.Id == nozzle.TankId)?.Name ?? "—")</td>
+                                    <td data-label="@L["Status"]">@(nozzle.IsActive ? L["Active"].Value : L["Inactive"].Value)</td>
+                                    <td class="text-end" data-label="@L["Action"]">
+                                        <div class="d-flex justify-content-end gap-1">
+                                            <a class="btn btn-sm btn-outline-primary" href="/Operations/Nozzles?pumpId=@Model.Form.PumpId&editId=@nozzle.Id">@L["Edit"]</a>
+                                            <form method="post" asp-action="DeleteNozzle" asp-controller="Operations" class="d-inline">
+                                                <input type="hidden" name="id" value="@nozzle.Id" />
+                                                <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Are you sure you want to delete this nozzle?">@L["Delete"]</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function filterTanks() {
+            const productSelect = document.getElementById("Form_ProductId");
+            const tankSelect = document.getElementById("Form_TankId");
+            if (!productSelect || !tankSelect) return;
+            
+            const selectedProduct = productSelect.value;
+            const options = tankSelect.options;
+            let firstVisible = null;
+            let visibleCount = 0;
+            
+            // i=1 se start karo taaki "-- Select tank --" ko touch na karein
+            for (let i = 1; i < options.length; i++) { 
+                const option = options[i];
+                if (option.getAttribute("data-product-id") === selectedProduct) {
+                    option.style.display = "";
+                    option.disabled = false;
+                    if (!firstVisible) firstVisible = option.value;
+                    visibleCount++;
+                } else {
+                    option.style.display = "none";
+                    option.disabled = true;
+                }
+            }
+            
+            // Agar pehle se koi tank chuna hua hai jo ab is product ka nahi hai, to usko clear/change karo
+            const currentSelected = tankSelect.options[tankSelect.selectedIndex];
+            if (currentSelected && currentSelected.getAttribute("data-product-id") !== selectedProduct && tankSelect.selectedIndex > 0) {
+                // Agar ek hi tank bacha hai to usko select kar lo, warna reset kardo
+                tankSelect.value = visibleCount === 1 ? firstVisible : "";
+            }
+        }
+        
+        // Form load hote hi check karo
+        document.addEventListener("DOMContentLoaded", filterTanks);
+    </script>
+}

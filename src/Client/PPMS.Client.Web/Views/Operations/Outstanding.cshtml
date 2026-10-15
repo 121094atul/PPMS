@@ -1,0 +1,68 @@
+@model PPMS.Client.Web.Models.OutstandingReportViewModel
+@{
+    ViewData["Title"] = "Outstanding Report";
+    var totalOutstanding = Model.Items.Sum(x => x.CurrentBalance);
+}
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="Outstanding" asp-controller="Operations" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">@L["Pump"]</label>
+                <select class="form-select" name="pumpId">
+                    @foreach (var p in Model.Pumps)
+                    {
+                        <option value="@p.Id" selected="@(p.Id == Model.PumpId)">@p.Name (@p.City)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 d-grid">
+                <button class="btn btn-primary" type="submit">@L["Load Report"]</button>
+                <a class="btn btn-outline-success ms-2"
+                   href="/Operations/ExportOutstandingCsv?pumpId=@Model.PumpId">
+                    <i class="bi bi-file-earmark-excel me-1"></i>@L["Export to CSV"]
+                </a>
+            </div>
+            <div class="col-md-5 text-md-end">
+                <div class="small text-muted mt-2 mt-md-0">Total Outstanding: <strong>@totalOutstanding.ToString("0.00")</strong></div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table data-pager="25" class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>@L["Party"]</th>
+                        <th>@L["Type"]</th>
+                        <th class="text-end">@L["Credit Limit"]</th>
+                        <th class="text-end">@L["Outstanding"]</th>
+                        <th>@L["Last Credit Sale"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Items.Count == 0)
+                    {
+                        <tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">&#127974;</div><div class="empty-state-title">@L["No outstanding dues"]</div><div class="empty-state-hint">@L["All clear. Balances from credit sales will show up here."]</div></div></td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var row in Model.Items)
+                        {
+                            <tr>
+                                <td data-label="@L["Party"]">@row.PartyName</td>
+                                <td data-label="@L["Type"]">@row.PartyType</td>
+                                <td class="text-end" data-label="@L["Credit Limit"]">@row.CreditLimit.ToString("0.00")</td>
+                                <td class="text-end @(row.CurrentBalance > row.CreditLimit ? "text-danger" : "")" data-label="@L["Outstanding"]">@row.CurrentBalance.ToString("0.00")</td>
+                                <td data-label="@L["Last Credit Sale"]">@(row.LastSaleDate?.ToString("dd-MMM-yyyy hh:mm tt") ?? "-")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

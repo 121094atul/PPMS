@@ -1,0 +1,549 @@
+﻿@model PPMS.Client.Web.Models.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var today = DateTime.Today;
+    var netProfit = Model.TotalSalesAmount - Model.TotalExpenseAmount;
+    var todayNet = Model.TodaySalesAmount - Model.TodayExpenseAmount;
+}
+
+<style>
+    .kpi-card {
+        border: none;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,.08);
+        transition: transform .15s, box-shadow .15s;
+    }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 6px 22px rgba(0,0,0,.13); }
+    .kpi-card .kpi-icon {
+        width: 52px; height: 52px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem;
+    }
+    .kpi-value { font-size: 1.6rem; font-weight: 700; line-height: 1.1; }
+    .kpi-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+    .kpi-sub { font-size: .78rem; }
+
+    .dash-header {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 60%, #1565c0 100%);
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        color: #fff;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 4px 18px rgba(21,101,192,.3);
+    }
+    .dash-header h4 { font-weight: 700; margin-bottom: .1rem; }
+    .dash-header .meta { font-size: .82rem; opacity: .85; }
+
+    .section-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.07);
+    }
+    .section-card .card-header {
+        background: transparent;
+        border-bottom: 1px solid rgba(0,0,0,.06);
+        padding: .85rem 1rem;
+        font-weight: 600;
+        font-size: .9rem;
+    }
+    .table-sm td, .table-sm th { padding: .45rem .6rem; font-size: .83rem; }
+    .badge-mode { font-size: .7rem; padding: .25em .6em; border-radius: 6px; }
+    .low-stock-bar {
+        height: 7px; border-radius: 4px; background: #eee; overflow: hidden;
+    }
+    .low-stock-bar .fill { height: 100%; border-radius: 4px; }
+
+    .quick-btn {
+        border-radius: 10px;
+        font-size: .8rem;
+        padding: .4rem .9rem;
+        font-weight: 600;
+        transition: transform .12s;
+    }
+    .quick-btn:hover { transform: translateY(-1px); }
+
+    /* Mobile optimization for KPI cards to prevent text overflow */
+    @@media screen and (max-width: 575.98px) {
+        .kpi-card .card-body {
+            padding: 0.75rem !important;
+            gap: 0.5rem !important;
+        }
+        .kpi-card .kpi-icon {
+            width: 36px !important;
+            height: 36px !important;
+            font-size: 1.1rem !important;
+            border-radius: 8px !important;
+        }
+        .kpi-value {
+            font-size: 1.05rem !important;
+        }
+        .kpi-label {
+            font-size: 0.62rem !important;
+        }
+        .kpi-sub {
+            font-size: 0.68rem !important;
+        }
+    }
+</style>
+
+<div class="dash-header d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+        <h4 class="mb-0">⛽ @L["Operations Dashboard"]</h4>
+        <div class="meta">
+            @today.ToString("dddd, dd MMMM yyyy") &nbsp;·&nbsp; @L["Pump"]: <strong>@Model.PumpName</strong>
+            @if (Model.OpenShiftCount > 0)
+            {
+                <span class="ms-2 badge bg-success">🟢 @Model.OpenShiftCount Shift(s) Running</span>
+            }
+            else
+            {
+                <span class="ms-2 badge bg-warning text-dark">⚠️ No Open Shift</span>
+            }
+        </div>
+    </div>
+    <div class="d-flex align-items-end gap-2">
+        <form method="get" asp-action="Index" asp-controller="Home" class="d-flex gap-2 align-items-center flex-wrap">
+            <select class="form-select form-select-sm bg-white" name="pumpId" style="min-width:180px;">
+                @foreach (var pump in Model.Pumps)
+                {
+                    <option value="@pump.Id" selected="@(pump.Id == Model.PumpId)">@pump.Name (@pump.City)</option>
+                }
+            </select>
+            <select class="form-select form-select-sm bg-white" name="monthYear" style="min-width:140px;">
+                @foreach (var m in Model.AvailableMonths)
+                {
+                    <option value="@m.Value" selected="@(m.Value == Model.SelectedMonthYear)">@m.Label</option>
+                }
+            </select>
+            <button type="submit" class="btn btn-light btn-sm quick-btn">@L["Load"]</button>
+        </form>
+    </div>
+</div>
+
+@* Low Stock Alert *@
+@if (Model.LowStockTanks.Count > 0)
+{
+    <div class="alert alert-warning border-0 rounded-3 mb-3 d-flex gap-2 align-items-start py-2" style="background:#fff8e1;border-left:4px solid #f9a825 !important;">
+        <span style="font-size:1.3rem;">⚠️</span>
+        <div>
+            <strong class="d-block" style="color:#e65100;font-size:.85rem;">@L["Low Tank Stock Alert"]</strong>
+            <div class="small">
+                @foreach (var tank in Model.LowStockTanks)
+                {
+                    var pct = tank.Capacity > 0 ? (double)tank.CurrentStock / (double)tank.Capacity * 100 : 0;
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <span class="fw-semibold" style="min-width:110px;">@tank.Name</span>
+                        <div class="low-stock-bar" style="width:120px;">
+                            <div class="fill bg-danger" style="width:@pct.ToString("0")%"></div>
+                        </div>
+                        <span class="text-danger fw-bold">@tank.CurrentStock.ToString("0.#") @tank.Unit</span>
+                        <span class="text-muted">(Safe: @tank.SafeFillLevel.ToString("0.#") @tank.Unit)</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Naya pump: pehle din kya karna hai ─────────────────────────────────
+   Pehle naye user ko sirf zero aur ek daraawna "Low Tank Stock Alert" dikhta
+   tha, aur aage ka koi raasta nahi. Ye panel wahi raasta hai. Sab ho jaane par
+   apne aap gayab ho jaata hai — purane pump ko ye kabhi nahi dikhega. *@
+@if (!Model.Setup.IsComplete)
+{
+    <div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #0d6efd !important;">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <div>
+                    <strong style="color:#0a58ca;">@L["Set up your pump"]</strong>
+                    <div class="text-muted small">@L["A few one-time steps. Do them in order and you are ready."]</div>
+                </div>
+                <span class="badge bg-primary">
+                    @Model.Setup.DoneCount / @PPMS.Client.Web.Models.SetupStatus.TotalSteps @L["done"]
+                </span>
+            </div>
+
+            <div class="progress mb-3" style="height:6px;">
+                <div class="progress-bar" role="progressbar"
+                     style="width:@((Model.Setup.DoneCount * 100) / PPMS.Client.Web.Models.SetupStatus.TotalSteps)%"></div>
+            </div>
+
+            @{
+                // Har kadam: ho gaya?, naam, samjhaane wali line, link
+                var steps = new[]
+                {
+                    (Done: Model.Setup.HasProducts,     Title: L["Add your fuels"].Value,
+                     Hint: L["Petrol, Diesel, and any premium grade you sell - each one is a separate product."].Value,
+                     Url: "/Operations/Products"),
+
+                    (Done: Model.Setup.HasRates,        Title: L["Set today's rates"].Value,
+                     Hint: L["Each fuel has its own rate. You will update these every morning."].Value,
+                     Url: "/Operations/DailyRates"),
+
+                    (Done: Model.Setup.HasTanks,        Title: L["Add your tanks"].Value,
+                     Hint: L["One tank per fuel. Enter its capacity and the level at which you want a refill warning."].Value,
+                     Url: "/Operations/Tanks"),
+
+                    (Done: Model.Setup.HasNozzles,      Title: L["Add your nozzles"].Value,
+                     Hint: L["Link every nozzle to its fuel and its tank, so stock comes off the right tank."].Value,
+                     Url: "/Operations/Nozzles"),
+
+                    (Done: Model.Setup.HasOpeningStock, Title: L["Enter opening stock"].Value,
+                     Hint: L["How much fuel is in each tank right now. Use OPENING as the entry type."].Value,
+                     Url: "/Operations/TankStock"),
+
+                    (Done: Model.Setup.HasAnyShift,     Title: L["Open your first shift"].Value,
+                     Hint: L["Enter each nozzle's meter reading. Close it at the end and the day's sale is calculated for you."].Value,
+                     Url: "/Operations/Shifts"),
+                };
+
+                // Pehla adhoora kadam hi "agla kaam" hai - usi ko ubhaar kar dikhate
+                // hain, taaki user ko sochna na pade ki ab kya karun.
+                var nextIndex = Array.FindIndex(steps, x => !x.Done);
+            }
+
+            <div class="row g-2">
+                @for (var i = 0; i < steps.Length; i++)
+                {
+                    var st = steps[i];
+                    var isNext = i == nextIndex;
+                    <div class="col-12 col-lg-6">
+                        <a href="@st.Url" class="text-decoration-none">
+                            <div class="d-flex gap-2 align-items-start p-2 rounded @(isNext ? "bg-primary bg-opacity-10 border border-primary" : "")">
+                                <span style="font-size:1.1rem; line-height:1.2;">
+                                    @if (st.Done)
+                                    {
+                                        <span class="text-success">&#10004;</span>
+                                    }
+                                    else if (isNext)
+                                    {
+                                        <span class="text-primary">&#9654;</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">&#9675;</span>
+                                    }
+                                </span>
+                                <div class="flex-grow-1">
+                                    <div class="@(st.Done ? "text-muted text-decoration-line-through" : "fw-semibold text-dark")">
+                                        @st.Title
+                                        @if (isNext)
+                                        {
+                                            <span class="badge bg-primary ms-1">@L["Next"]</span>
+                                        }
+                                    </div>
+                                    @if (!st.Done)
+                                    {
+                                        <div class="text-muted small">@st.Hint</div>
+                                    }
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@* Chhoot gayi entries — pump wale kai baar kuch din bharna bhool jaate hain.
+   Ye panel CHUNE HUE MAHINE ke saare khaali din dikhata hai (pehle sirf 15 din,
+   aur wo bhi hamesha aaj se peeche — mahina badalne ka asar hi nahi hota tha).
+   Har tareekh seedha us din ki shift entry par le jaati hai. *@
+@if (Model.MissingDays.Count > 0)
+{
+    var firstMissing = Model.MissingDays[0].Date;
+    var lastMissing = Model.MissingDays[Model.MissingDays.Count - 1].Date;
+    <div class="alert border-0 rounded-3 mb-3 py-2" style="background:#eef2ff;border-left:4px solid #4f46e5 !important;">
+        <div class="d-flex gap-2 align-items-start">
+            <span style="font-size:1.3rem;">&#128197;</span>
+            <div class="flex-grow-1">
+                <strong class="d-block" style="color:#3730a3;font-size:.85rem;">
+                    @L["Pending entries"] &mdash; @Model.SelectedMonthLabel:
+                    @Model.MissingDays.Count @L["day(s) with no shift or sale"]
+                </strong>
+                <div class="small text-muted mb-2">
+                    @if (Model.MissingDays.Count > 1)
+                    {
+                        <span>@firstMissing.ToString("dd MMM") &ndash; @lastMissing.ToString("dd MMM"). </span>
+                    }
+                    @L["Click a date to open that day's shift and back-date the entry. Change the month above to check older months."]
+                </div>
+                <div class="d-flex flex-wrap gap-1">
+                    @foreach (var d in Model.MissingDays)
+                    {
+                        <a class="btn btn-sm btn-outline-primary py-0 px-2"
+                           style="font-size:.72rem;"
+                           href="/Operations/Shifts?pumpId=@Model.PumpId&shiftDate=@d.Date.ToString("yyyy-MM-dd")"
+                           title="@L["Open a shift for this day"]">
+                            @d.Label
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* KPI Cards *@
+<div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+        <div class="card kpi-card h-100" style="background:linear-gradient(135deg,#e3f2fd,#fff);">
+            <div class="card-body d-flex gap-3 align-items-center">
+                <div class="kpi-icon" style="background:#1565c0;color:#fff;">💰</div>
+                <div>
+                    <div class="kpi-label text-primary">Sales – @Model.SelectedMonthLabel</div>
+                    <div class="kpi-value text-primary">₹@Model.TotalSalesAmount.ToString("N0")</div>
+                    <div class="kpi-sub text-muted">@L["Today"]: <strong class="text-primary">₹@Model.TodaySalesAmount.ToString("N0")</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card kpi-card h-100" style="background:linear-gradient(135deg,#fce4ec,#fff);">
+            <div class="card-body d-flex gap-3 align-items-center">
+                <div class="kpi-icon" style="background:#c62828;color:#fff;">📤</div>
+                <div>
+                    <div class="kpi-label text-danger">Expenses – @Model.SelectedMonthLabel</div>
+                    <div class="kpi-value text-danger">₹@Model.TotalExpenseAmount.ToString("N0")</div>
+                    <div class="kpi-sub text-muted">@L["Today"]: <strong class="text-danger">₹@Model.TodayExpenseAmount.ToString("N0")</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card kpi-card h-100" style="background:linear-gradient(135deg,#e8f5e9,#fff);">
+            <div class="card-body d-flex gap-3 align-items-center">
+                <div class="kpi-icon" style="background:@(netProfit >= 0 ? "#2e7d32" : "#b71c1c");color:#fff;">📈</div>
+                <div>
+                    <div class="kpi-label @(netProfit >= 0 ? "text-success" : "text-danger")">Net – @Model.SelectedMonthLabel</div>
+                    <div class="kpi-value @(netProfit >= 0 ? "text-success" : "text-danger")">₹@netProfit.ToString("N0")</div>
+                    <div class="kpi-sub text-muted">@L["Today"]: <strong class="@(todayNet >= 0 ? "text-success" : "text-danger")">₹@todayNet.ToString("N0")</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card kpi-card h-100" style="background:linear-gradient(135deg,#fff3e0,#fff);">
+            <div class="card-body d-flex gap-3 align-items-center">
+                <div class="kpi-icon" style="background:#e65100;color:#fff;">🏦</div>
+                <div>
+                    <div class="kpi-label text-warning">@L["Outstanding"]</div>
+                    <div class="kpi-value text-warning">₹@Model.OutstandingAmount.ToString("N0")</div>
+                    <div class="kpi-sub text-muted">@Model.ActivePartyCount @L["active parties"]</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Quick Actions *@
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <span class="text-muted small fw-semibold align-self-center me-1">@L["Quick:"]</span>
+    <a href="/Operations/Shifts?pumpId=@Model.PumpId" class="btn btn-outline-primary quick-btn">⏱ Shifts</a>
+    <a href="/Operations/Sales?pumpId=@Model.PumpId" class="btn btn-outline-success quick-btn">🛒 Sales</a>
+    <a href="/Operations/Expenses?pumpId=@Model.PumpId" class="btn btn-outline-danger quick-btn">📤 Expenses</a>
+    <a href="/Operations/Purchase?pumpId=@Model.PumpId" class="btn btn-outline-secondary quick-btn">📦 Purchase</a>
+    <a href="/Operations/DayBook?pumpId=@Model.PumpId" class="btn btn-outline-dark quick-btn">📒 Day Book</a>
+</div>
+
+<div class="row g-3">
+    @* Open Shifts Panel *@
+    <div class="col-lg-4">
+        <div class="card section-card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>⏱ @L["Active Shifts"]</span>
+                <span class="badge @(Model.OpenShiftCount > 0 ? "bg-success" : "bg-secondary") rounded-pill">@Model.OpenShiftCount</span>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.OpenShifts.Count == 0)
+                {
+                    <div class="text-center text-muted py-4 small">
+                        <div style="font-size:2rem;">🔒</div>
+                        @L["No open shift right now."]<br />
+                        <a href="/Operations/Shifts?pumpId=@Model.PumpId" class="btn btn-sm btn-warning mt-2">@L["Open Shift"]</a>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr><th>@L["Code"]</th><th>@L["Operator"]</th><th class="text-end">Opening ₹</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in Model.OpenShifts)
+                                {
+                                    <tr>
+                                        <td data-label="@L["Code"]"><span class="badge bg-primary-subtle text-primary">@s.ShiftCode</span><br/><small class="text-muted">@s.ShiftDate.ToString("dd-MMM")</small></td>
+                                        <td class="fw-semibold" data-label="@L["Operator"]">@(s.OperatorName ?? "—")</td>
+                                        <td class="text-end" data-label="Opening ₹">₹@s.OpeningCash.ToString("N0")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Recent Sales *@
+    <div class="col-lg-8">
+        <div class="card section-card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>🛒 @L["Recent Sales"]</span>
+                <a href="/Operations/Sales?pumpId=@Model.PumpId" class="btn btn-sm btn-outline-success quick-btn">@L["All Sales"] →</a>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.RecentSales.Count == 0)
+                {
+                    <div class="text-center text-muted py-4 small">
+                        <div style="font-size:2rem;">📋</div>
+                        @L["No sales yet today."]
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>@L["Bill No"]</th>
+                                    <th>@L["Customer"]</th>
+                                    <th>@L["Payment"]</th>
+                                    <th>@L["Time"]</th>
+                                    <th class="text-end">@L["Amount"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sale in Model.RecentSales)
+                                {
+                                    var modeClass = sale.PaymentMode switch {
+                                        "Cash"   => "bg-success-subtle text-success",
+                                        "Credit" => "bg-danger-subtle text-danger",
+                                        "UPI"    => "bg-info-subtle text-info",
+                                        _        => "bg-secondary-subtle text-secondary"
+                                    };
+                                    <tr>
+                                        <td class="fw-semibold text-primary" data-label="@L["Bill No"]">@sale.BillNo</td>
+                                        <td data-label="@L["Customer"]">@(sale.CustomerName ?? sale.VehicleNo ?? "—")</td>
+                                        <td data-label="@L["Payment"]"><span class="badge badge-mode @modeClass">@sale.PaymentMode</span></td>
+                                        <td class="text-muted" data-label="@L["Time"]">@sale.BillDateTime.ToString("dd-MMM hh:mm tt")</td>
+                                        <td class="text-end fw-semibold" data-label="@L["Amount"]">₹@sale.TotalAmount.ToString("N0")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Outstanding Parties *@
+    <div class="col-lg-5">
+        <div class="card section-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>🏦 @L["Top Outstanding"]</span>
+                <a href="/Operations/Outstanding?pumpId=@Model.PumpId" class="btn btn-sm btn-outline-warning quick-btn">@L["View All"] →</a>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.TopOutstanding.Count == 0)
+                {
+                    <div class="text-center text-muted py-3 small">@L["No outstanding dues."]</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr><th>@L["Party"]</th><th>@L["Type"]</th><th class="text-end">@L["Balance"]</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in Model.TopOutstanding)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold" data-label="@L["Party"]">@p.PartyName</td>
+                                        <td data-label="@L["Type"]"><span class="badge bg-secondary-subtle text-secondary">@p.PartyType</span></td>
+                                        <td class="text-end text-danger fw-bold" data-label="@L["Balance"]">₹@p.CurrentBalance.ToString("N0")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Tank Stock Status *@
+    <div class="col-lg-7">
+        <div class="card section-card">
+            <div class="card-header">
+                🛢️ @L["Tank Stock Status"]
+            </div>
+            @* Pehle yahan sirf wo tank aate the jinka stock safe level se neeche
+               tha. Sab theek hone par card khaali reh jaata tha — aur pump wale
+               ka pehla sawaal ("tank me kitna tel hai?") ka jawab kahin nahi
+               milta tha. Ab har tank dikhta hai, kam wale sabse upar. *@
+            <div class="card-body">
+                @if (Model.AllTanks.Count == 0)
+                {
+                    <div class="text-center text-muted py-2 small">
+                        @L["No tanks added yet."]
+                    </div>
+                }
+                else
+                {
+                    @* Kam stock wale pehle — wahi turant dekhne layak hain. *@
+                    var lowIds = Model.LowStockTanks.Select(x => x.Id).ToHashSet();
+                    var orderedTanks = Model.AllTanks
+                        .OrderByDescending(t => lowIds.Contains(t.Id))
+                        .ThenBy(t => t.Name)
+                        .ToList();
+
+                    foreach (var tank in orderedTanks)
+                    {
+                        var pct = tank.Capacity > 0 ? Math.Min((double)tank.CurrentStock / (double)tank.Capacity * 100, 100) : 0;
+                        var isLow = lowIds.Contains(tank.Id);
+                        var barColor = isLow ? (pct < 20 ? "bg-danger" : "bg-warning") : "bg-success";
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-semibold small">
+                                    @tank.Name <span class="text-muted">(@tank.ProductName)</span>
+                                    @if (isLow)
+                                    {
+                                        <span class="badge bg-danger ms-1" style="font-size:.6rem;">@L["Low!"]</span>
+                                    }
+                                </span>
+                                <span class="small fw-bold @(isLow ? "text-danger" : "text-success")">
+                                    @tank.CurrentStock.ToString("N0") / @tank.Capacity.ToString("N0") @tank.Unit
+                                </span>
+                            </div>
+                            <div class="progress" style="height:10px;border-radius:6px;">
+                                <div class="progress-bar @barColor" style="width:@pct.ToString("0")%;border-radius:6px;" title="@pct.ToString("0")%"></div>
+                            </div>
+                            <div class="text-muted" style="font-size:.7rem;">
+                                @L["Safe Level"]: @tank.SafeFillLevel.ToString("N0") @tank.Unit &nbsp;·&nbsp; @pct.ToString("0")% @L["filled"]
+                            </div>
+                        </div>
+                    }
+
+                    if (Model.LowStockTanks.Count > 0)
+                    {
+                        <a href="/Operations/Purchase?pumpId=@Model.PumpId" class="btn btn-sm btn-outline-danger quick-btn">📦 @L["Buy Stock"]</a>
+                    }
+                    else
+                    {
+                        <div class="text-muted small">
+                            <span class="text-success fw-semibold">✅ @L["All tanks above safe level."]</span>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>

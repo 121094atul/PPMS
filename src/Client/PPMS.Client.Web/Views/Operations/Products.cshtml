@@ -1,0 +1,202 @@
+@model PPMS.Client.Web.Models.ProductManagementViewModel
+@{
+    ViewData["Title"] = "Product Management";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Create Product"]</h5>
+                <p class="text-muted small mb-3">@L["Define product, category, unit and current rate for selected pump."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveProduct" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.Id" type="hidden" />
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select" required onchange="window.location='/Operations/Products?pumpId='+this.value">
+                            @foreach (var pump in Model.Pumps)
+                            {
+                                <option value="@pump.Id">@pump.Name (@pump.City)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Product Name"]</label>
+                        <input asp-for="Form.Name" class="form-control" placeholder="@L["e.g. Petrol XP95"]" required />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Category"]</label>
+                        <select asp-for="Form.Category" class="form-select">
+                            <option>@L["Petrol"]</option>
+                            <option>@L["Diesel"]</option>
+                            <option>@L["CNG"]</option>
+                            <option>@L["ElectricCharging"]</option>
+                            <option>@L["Lubricant"]</option>
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Unit"]</label>
+                            <select asp-for="Form.Unit" class="form-select" required>
+                                <option>@L["Litre"]</option>
+                                <option>@L["Kg"]</option>
+                                <option>@L["Piece"]</option>
+                                <option>@L["kWh"]</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Rate (₹)</label>
+                            <input asp-for="Form.CurrentRate" class="form-control" type="number" step="0.01" min="0" required />
+                        </div>
+                    </div>
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["HSN Code"]</label>
+                            <input asp-for="Form.HSNCode" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Tax %"]</label>
+                            <div class="input-group">
+                                <input asp-for="Form.CGSTRate" class="form-control" type="number" step="0.01" min="0" placeholder="@L["CGST"]" title="@L["CGST %"]" />
+                                <input asp-for="Form.SGSTRate" class="form-control" type="number" step="0.01" min="0" placeholder="@L["SGST"]" title="@L["SGST %"]" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 d-grid">
+                        <button type="submit" class="btn btn-primary">@((Model.Form.Id is null) ? "Create Product" : "Update Product")</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Product List"]</h5>
+                <p class="text-muted small mb-3">@L["All active products loaded from database."]</p>
+
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>@L["Name"]</th>
+                                <th>@L["Category"]</th>
+                                <th>@L["Unit"]</th>
+                                <th>Rate (₹)</th>
+                                <th>@L["HSN / Tax"]</th>
+                                <th class="text-end">@L["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Products.Count == 0)
+                        {
+                            <tr>
+                                <tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#9981;</div><div class="empty-state-title">@L["No products added"]</div><div class="empty-state-hint">@L["Add products like Petrol, Diesel or CNG first — nozzles and sales depend on them."]</div></div></td></tr>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var p in Model.Products)
+                            {
+                                <tr>
+                                    <td class="fw-semibold" data-label="@L["Name"]">@p.Name</td>
+                                    <td data-label="@L["Category"]"><span class="badge bg-secondary-subtle text-secondary">@p.Category</span></td>
+                                    <td data-label="@L["Unit"]">@p.Unit</td>
+                                    <td class="fw-bold text-success" data-label="Rate (₹)">@p.CurrentRate.ToString("0.00")</td>
+                                    <td class="small text-muted" data-label="@L["HSN / Tax"]">@p.HSNCode | C:@p.CGSTRate% S:@p.SGSTRate%</td>
+                                    <td class="text-end" data-label="@L["Actions"]">
+                                        <div class="d-flex justify-content-end gap-1">
+                                            <button type="button" class="btn btn-sm btn-outline-info" onclick="viewHistory(@p.Id, '@p.Name')">@L["History"]</button>
+                                            <a class="btn btn-sm btn-outline-primary" href="/Operations/Products?pumpId=@Model.Form.PumpId&editId=@p.Id">@L["Edit"]</a>
+                                            <form method="post" asp-action="DeleteProduct" asp-controller="Operations" class="d-inline">
+                                                <input type="hidden" name="id" value="@p.Id" />
+                                                <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Are you sure you want to delete this product?">@L["Delete"]</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rate History Modal -->
+<div class="modal fade" id="rateHistoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Rate History: <span id="historyProductName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@L["Close"]"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle" id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>@L["Date"]</th>
+                                <th class="text-end">@L["Old Rate"]</th>
+                                <th class="text-end">@L["New Rate"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="3" class="text-center text-muted">@L["Loading..."]</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function viewHistory(productId, productName) {
+            document.getElementById('historyProductName').textContent = productName;
+            const tbody = document.querySelector('#historyTable tbody');
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">@L["Loading..."]</td></tr>';
+            
+            const modal = new bootstrap.Modal(document.getElementById('rateHistoryModal'));
+            modal.show();
+
+            fetch(`/Operations/GetProductRateHistory?productId=${productId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        tbody.innerHTML = data.map(x => `
+                            <tr>
+                                <td data-label="Date">${new Date(x.changedAt).toLocaleString()}</td>
+                                <td class="text-end text-muted text-decoration-line-through" data-label="Old Rate">${x.oldRate.toFixed(2)}</td>
+                                <td class="text-end text-success fw-bold" data-label="New Rate">${x.newRate.toFixed(2)}</td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">@L["No history available"]</td></tr>';
+                    }
+                })
+                .catch(() => {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">@L["Error loading history"]</td></tr>';
+                });
+        }
+    </script>
+}

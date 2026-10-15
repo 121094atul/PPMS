@@ -1,0 +1,264 @@
+@{
+    ViewData["Title"] = "Tank Master";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 mb-0 text-primary"><i class="fas fa-database me-2"></i>@ViewData["Title"]</h2>
+    <button class="btn btn-primary btn-sm" onclick="openTankModal()"><i class="fas fa-plus me-1"></i> @L["Add New Tank"]</button>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div id="tankAlert" class="alert d-none py-2 small mb-3"></div>
+        <div class="table-responsive">
+            <table id="tanksTable" class="table table-hover table-bordered table-sm align-middle" style="width:100%; font-size: 0.85rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th>@L["ID"]</th>
+                        <th>@L["Tank Name"]</th>
+                        <th>@L["Product"]</th>
+                        <th>@L["Capacity"]</th>
+                        <th>@L["Safe Level"]</th>
+                        <th>@L["Current Stock"]</th>
+                        <th>@L["Status"]</th>
+                        <th class="text-center">@L["Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody id="tanksTbody">
+                    <tr><td colspan="8" class="text-center">@L["Loading data..."]</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <!-- Simple Pagination Controls -->
+        <div class="d-flex justify-content-between align-items-center mt-3" style="font-size: 0.85rem;">
+            <div>
+                <span id="pageInfo">@L["Showing Page 1"]</span>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary btn-sm" id="btnPrevPage" onclick="changePage(-1)">@L["Previous"]</button>
+                <button class="btn btn-outline-secondary btn-sm" id="btnNextPage" onclick="changePage(1)">@L["Next"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tank Modal -->
+<div class="modal fade" id="tankModal" tabindex="-1" aria-labelledby="tankModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fs-6" id="tankModalLabel"><i class="fas fa-edit me-2"></i> @L["Tank Details"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@L["Close"]"></button>
+            </div>
+            <div class="modal-body" style="font-size: 0.85rem;">
+                <form id="tankForm">
+                    <input type="hidden" id="TankId" value="0" />
+                    
+                    <div class="mb-3">
+                        <label for="Name" class="form-label fw-bold">Tank Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="Name" required placeholder="@L["e.g. Tank 1"]">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="ProductId" class="form-label fw-bold">Product <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm" id="ProductId" required>
+                            <option value="">@L["Select Product..."]</option>
+                        </select>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="Capacity" class="form-label fw-bold">Capacity (Ltrs) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" id="Capacity" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="SafeFillLevel" class="form-label fw-bold">Safe Fill Level <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" id="SafeFillLevel" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="CurrentStock" class="form-label fw-bold">@L["Initial Stock (Ltrs)"]</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" id="CurrentStock" value="0">
+                        <small class="text-muted d-block mt-1">@L["Leave 0 if entering a new empty tank."]</small>
+                    </div>
+
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox" id="IsActive" checked>
+                        <label class="form-check-label" for="IsActive">@L["Active Status"]</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light p-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">@L["Cancel"]</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveTank()"><i class="fas fa-save me-1"></i> @L["Save Changes"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentModal = null;
+        let currentPage = 1;
+        const pageSize = 10;
+        let hasNext = false;
+        
+        // Cache products for DDL
+        let productsCache = [];
+
+        $(document).ready(function() {
+            currentModal = new bootstrap.Modal(document.getElementById('tankModal'));
+            loadProducts();
+            loadTanks();
+        });
+
+        function showMessage(msg, isSuccess) {
+            const alertDiv = $('#tankAlert');
+            alertDiv.removeClass('d-none alert-success alert-danger');
+            alertDiv.addClass(isSuccess ? 'alert-success' : 'alert-danger');
+            alertDiv.text(msg);
+            setTimeout(() => alertDiv.addClass('d-none'), 5000);
+        }
+
+        function loadProducts() {
+            $.get('/Operations/GetProductsDropdown', function(res) {
+                if(res && res.success) {
+                    productsCache = res.data;
+                    const ddl = $('#ProductId');
+                    ddl.empty().append('<option value="">@L["Select Product..."]</option>');
+                    productsCache.forEach(p => {
+                        ddl.append($('<option></option>').val(p.id).text(p.name + ' (' + p.category + ')'));
+                    });
+                }
+            });
+        }
+
+        function loadTanks() {
+            $('#tanksTbody').html('<tr><td colspan="8" class="text-center">@L["Loading data..."]</td></tr>');
+            
+            $.get('/Masters/GetTanks', { pageNumber: currentPage, pageSize: pageSize }, function(res) {
+                if(res && res.success && res.data) {
+                    const pageData = res.data;
+                    renderTable(pageData.items);
+                    
+                    hasNext = pageData.hasNextPage;
+                    $('#btnPrevPage').prop('disabled', !pageData.hasPreviousPage);
+                    $('#btnNextPage').prop('disabled', !pageData.hasNextPage);
+                    $('#pageInfo').text(`Showing Page ${pageData.pageNumber} of ${pageData.totalPages || 1} (Total: ${pageData.totalCount})`);
+                } else {
+                    $('#tanksTbody').html('<tr><td colspan="8" class="text-center text-danger">@L["Failed to load data."]</td></tr>');
+                }
+            }).fail(function() {
+                $('#tanksTbody').html('<tr><td colspan="8" class="text-center text-danger">@L["Server error while loading data."]</td></tr>');
+            });
+        }
+
+        function renderTable(items) {
+            const tbody = $('#tanksTbody');
+            tbody.empty();
+            
+            if(!items || items.length === 0) {
+                tbody.html('<tr><td colspan="8" class="text-center">@L["No tanks found."]</td></tr>');
+                return;
+            }
+
+            items.forEach(t => {
+                const statusBadge = t.isActive 
+                    ? '<span class="badge bg-success">@L["Active"]</span>' 
+                    : '<span class="badge bg-secondary">@L["Inactive"]</span>';
+                
+                const tr = `
+                    <tr>
+                        <td data-label="ID">${t.id}</td>
+                        <td class="fw-bold" data-label="Tank Name">${t.name}</td>
+                        <td data-label="Product">${t.productName}</td>
+                        <td data-label="Capacity">${t.capacity.toFixed(2)}</td>
+                        <td data-label="Safe Level">${t.safeFillLevel.toFixed(2)}</td>
+                        <td data-label="Current Stock">${t.currentStock.toFixed(2)}</td>
+                        <td data-label="Status">${statusBadge}</td>
+                        <td class="text-center" data-label="Actions">
+                            <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick='editTank(${JSON.stringify(t).replace(/'/g, "&#39;")})'><i class="fas fa-edit"></i> Edit</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(tr);
+            });
+        }
+
+        function changePage(delta) {
+            if(delta === 1 && !hasNext) return;
+            if(delta === -1 && currentPage <= 1) return;
+            
+            currentPage += delta;
+            loadTanks();
+        }
+
+        function openTankModal() {
+            document.getElementById('tankForm').reset();
+            $('#TankId').val(0);
+            $('#IsActive').prop('checked', true);
+            $('#tankModalLabel').html('<i class="fas fa-plus me-2"></i> Add New Tank');
+            currentModal.show();
+        }
+
+        function editTank(tank) {
+            document.getElementById('tankForm').reset();
+            
+            $('#TankId').val(tank.id);
+            $('#Name').val(tank.name);
+            $('#ProductId').val(tank.productId);
+            $('#Capacity').val(tank.capacity);
+            $('#SafeFillLevel').val(tank.safeFillLevel);
+            $('#CurrentStock').val(tank.currentStock);
+            $('#IsActive').prop('checked', tank.isActive);
+            
+            $('#tankModalLabel').html('<i class="fas fa-edit me-2"></i> Edit Tank');
+            currentModal.show();
+        }
+
+        function saveTank() {
+            const form = document.getElementById('tankForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const payload = {
+                id: parseInt($('#TankId').val() || "0"),
+                name: $('#Name').val(),
+                productId: parseInt($('#ProductId').val()),
+                capacity: parseFloat($('#Capacity').val() || "0"),
+                safeFillLevel: parseFloat($('#SafeFillLevel').val() || "0"),
+                currentStock: parseFloat($('#CurrentStock').val() || "0"),
+                isActive: $('#IsActive').is(':checked')
+            };
+
+            const btn = $(event.currentTarget);
+            const originalText = btn.html();
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+
+            $.ajax({
+                type: "POST",
+                url: "/Masters/SaveTank",
+                contentType: "application/json",
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res && res.success) {
+                        currentModal.hide();
+                        loadTanks(); // Refresh grid
+                        showMessage('Tank saved successfully!', true);
+                    } else {
+                        showMessage('Failed to save tank: ' + (res.message || 'Check console'), false);
+                    }
+                },
+                error: function () {
+                    showMessage('An error occurred while saving the tank.', false);
+                },
+                complete: function () {
+                    btn.prop('disabled', false).html(originalText);
+                }
+            });
+        }
+    </script>
+}

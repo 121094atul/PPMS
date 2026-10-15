@@ -1,0 +1,200 @@
+﻿@model PPMS.Client.Web.Models.ShiftCollectionViewModel
+@{
+    ViewData["Title"] = "Day Collection";
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") alert-dismissible fade show py-2 small" role="alert">
+        @Model.Message
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button>
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Day Collection"] <span class="text-muted fw-normal">- @Model.ShiftLabel</span></h5>
+                <p class="text-muted small mb-3">
+                    @L["The meter already tells us how much fuel was sold. Here you only record how that money came in - not everything comes as cash."]
+                </p>
+
+                <form asp-action="SaveCollection" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Form.ShiftId" />
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label" for="upi">@L["Online"]</label>
+                            <div class="input-group">
+                                <span class="input-group-text">&#8377;</span>
+                                <input id="upi" asp-for="Form.UpiAmount" type="number" step="0.01" min="0" class="form-control coll-amt" />
+                            </div>
+                            <div class="form-text">@L["PhonePe, GPay, Paytm - all together"]</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="card">@L["Card"]</label>
+                            <div class="input-group">
+                                <span class="input-group-text">&#8377;</span>
+                                <input id="card" asp-for="Form.CardAmount" type="number" step="0.01" min="0" class="form-control coll-amt" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <label class="form-label">@L["Credit (udhaar)"]</label>
+                    <div class="table-responsive mb-2">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>@L["Customer"]</th>
+                                    <th class="text-end" style="width:38%">@L["Amount"]</th>
+                                </tr>
+                            </thead>
+                            <tbody id="creditRows">
+                                @for (var i = 0; i < Model.Form.Credits.Count; i++)
+                                {
+                                    <tr>
+                                        <td data-label="@L["Customer"]">
+                                            <select name="Form.Credits[@i].PartyId" class="form-select form-select-sm">
+                                                <option value="0">@L["-- none --"]</option>
+                                                @foreach (var p in Model.Parties)
+                                                {
+                                                    if (p.Id == Model.Form.Credits[i].PartyId)
+                                                    {
+                                                        <option value="@p.Id" selected>@p.PartyName</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@p.Id">@p.PartyName</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </td>
+                                        <td class="text-end" data-label="@L["Amount"]">
+                                            <input name="Form.Credits[@i].Amount" type="number" step="0.01" min="0"
+                                                   value="@(Model.Form.Credits[i].Amount > 0 ? Model.Form.Credits[i].Amount.ToString("0.##") : "")"
+                                                   class="form-control form-control-sm text-end coll-amt" placeholder="0" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" id="addCreditLine" class="btn btn-sm btn-outline-secondary mb-2">
+                        + @L["Add line"]
+                    </button>
+                    <div class="form-text mb-3">
+                        @L["Each customer's account is updated, so it shows in the Outstanding report."]
+                    </div>
+
+                    <button type="submit" class="btn btn-primary px-4">@L["Save Collection"]</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        @* Ye card sirf ganit dikhata hai - user ko turant pata chale ki cash
+           milta hai ya nahi, save karne se pehle hi. *@
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title mb-3">@L["Cash check"]</h6>
+
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">@L["Sale by meter"]</span>
+                    <span class="fw-semibold">&#8377;<span id="sumSale">@Model.MeterSale.ToString("N2")</span></span>
+                </div>
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">@L["Not received as cash"]</span>
+                    <span>&#8722; &#8377;<span id="sumNonCash">@Model.NonCashTotal.ToString("N2")</span></span>
+                </div>
+                <hr class="my-2" />
+                <div class="d-flex justify-content-between small mb-1">
+                    <span>@L["Cash there should be"]</span>
+                    <span class="fw-semibold">&#8377;<span id="sumExpected">@Model.ExpectedCash.ToString("N2")</span></span>
+                </div>
+                <div class="d-flex justify-content-between small mb-2">
+                    <span class="text-muted">@L["Cash entered at shift close"]</span>
+                    <span>&#8377;<span id="sumCash">@Model.CashEntered.ToString("N2")</span></span>
+                </div>
+
+                <div id="sumDiffBox" class="alert py-2 px-3 small mb-0">
+                    <span id="sumDiffText"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body small text-muted">
+                <div class="fw-semibold text-body mb-1">@L["Why this matters"]</div>
+                @L["Without this, every shift shows a big shortage - and a real shortage hides inside it. Once online and credit are recorded, any shortage left is a real one."]
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Save se pehle hi ganit dikha dete hain — user ko turant pata chale ki
+    // cash mil raha hai ya nahi, warna save karke phir dekhna padta.
+    (function () {
+        const sale = @Model.MeterSale.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        const cash = @Model.CashEntered.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        const fmt = n => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        function recalc() {
+            let nonCash = 0;
+            document.querySelectorAll('.coll-amt').forEach(el => {
+                const v = parseFloat(el.value);
+                if (!isNaN(v)) { nonCash += v; }
+            });
+
+            const expected = sale - nonCash;
+            const diff = cash - expected;
+
+            document.getElementById('sumNonCash').textContent = fmt(nonCash);
+            document.getElementById('sumExpected').textContent = fmt(expected);
+
+            const box = document.getElementById('sumDiffBox');
+            const txt = document.getElementById('sumDiffText');
+
+            // 100 rupaye tak ka farak chhota maana jaata hai (AppSettings me
+            // CashShortToleranceRs wahi 100 hai).
+            if (Math.abs(diff) <= 100) {
+                box.className = 'alert alert-success py-2 px-3 small mb-0';
+                txt.textContent = '@L["Cash matches."]' + ' (' + (diff >= 0 ? '+' : '-') + '₹' + fmt(Math.abs(diff)) + ')';
+            } else if (diff < 0) {
+                box.className = 'alert alert-danger py-2 px-3 small mb-0';
+                txt.textContent = '@L["Short by"]' + ' ₹' + fmt(Math.abs(diff));
+            } else {
+                box.className = 'alert alert-warning py-2 px-3 small mb-0';
+                txt.textContent = '@L["Excess of"]' + ' ₹' + fmt(diff);
+            }
+        }
+
+        document.addEventListener('input', function (e) {
+            if (e.target.classList.contains('coll-amt')) { recalc(); }
+        });
+
+        // Aur udhaar likhne ho to nayi line. Naam me index badalna zaroori hai
+        // (Form.Credits[0], [1], ...) warna server sirf pehli line padhta hai.
+        const addBtn = document.getElementById('addCreditLine');
+        if (addBtn) {
+            addBtn.addEventListener('click', function () {
+                const body = document.getElementById('creditRows');
+                const last = body.rows[body.rows.length - 1];
+                const row = last.cloneNode(true);
+                const idx = body.rows.length;
+                row.querySelectorAll('select, input').forEach(el => {
+                    el.name = el.name.replace(/\[\d+\]/, '[' + idx + ']');
+                    el.value = el.tagName === 'SELECT' ? '0' : '';
+                });
+                body.appendChild(row);
+            });
+        }
+
+        recalc();
+    })();
+</script>
+}

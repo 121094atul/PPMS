@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ppms-api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/API/PPMS.Api/PPMS.Api.csproj"],
+      "port": 5258
+    },
+    {
+      "name": "ppms-client",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/Client/PPMS.Client.Web/PPMS.Client.Web.csproj"],
+      "port": 5131
+    }
+  ]
+}

@@ -1,0 +1,1468 @@
+﻿@model PPMS.Client.Web.Models.LoginViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login — Petrol Pump Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Mobile par page screen se 100px chaudi ho rahi thi.
+
+           Wajah: neeche `body.login-page::before` ek 600px ka gola hai jiska
+           `right: -100px` hai — wo daayen se 100px bahar nikalta hai. body par
+           `overflow: hidden` laga tha, par CSS ka niyam ye hai ki agar `html`
+           ka overflow `visible` ho to viewport apna overflow BODY se utha leta
+           hai — aur tab body khud `visible` maani jaati hai. Yaani wo hidden
+           gole ko kaat hi nahi rahi thi.
+
+           Nateeja: document 475px chaudi (viewport 375px), phone use zoom out
+           karke dikhata tha, text daayen se kat jaata tha, aur zoom karne par
+           layout aur bigad jaati thi.
+
+           `html` par overflow-x: hidden lagate hi document wapas 375px par aa
+           gaya (chala kar jaancha). */
+        html {
+            overflow-x: hidden;
+        }
+
+        body.login-page {
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #0c2340 40%, #0f3460 70%, #1a1a2e 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        body.login-page::before {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%);
+            top: -150px;
+            right: -100px;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        body.login-page::after {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+            bottom: -100px;
+            left: -100px;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .login-card {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 420px;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            border-radius: 20px;
+            padding: 2.5rem 2.25rem 2rem;
+            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(249,115,22,0.08);
+            margin: 1rem;
+            animation: slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @@keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px) scale(0.98); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .login-logo {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #f97316, #dc2626);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 1.1rem;
+            box-shadow: 0 8px 24px rgba(249,115,22,0.50), 0 0 0 4px rgba(249,115,22,0.12);
+        }
+
+        .login-title {
+            color: #ffffff;
+            font-size: 1.5rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 2px;
+            letter-spacing: -0.3px;
+        }
+
+        .login-subtitle {
+            color: rgba(255,255,255,0.50);
+            font-size: 0.82rem;
+            text-align: center;
+            margin-bottom: 1.25rem;
+            font-weight: 500;
+        }
+
+        .trial-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, rgba(16,185,129,0.20), rgba(5,150,105,0.15));
+            border: 1px solid rgba(16,185,129,0.45);
+            color: #34d399;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 0.45rem 1.1rem;
+            border-radius: 50px;
+            letter-spacing: 0.2px;
+            box-shadow: 0 0 16px rgba(16,185,129,0.15);
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s ease;
+        }
+        .trial-badge:hover {
+            background: linear-gradient(135deg, rgba(16,185,129,0.35), rgba(5,150,105,0.28));
+            border-color: rgba(16,185,129,0.75);
+            box-shadow: 0 0 22px rgba(16,185,129,0.30);
+            transform: translateY(-1px);
+        }
+        .trial-badge .dot {
+            width: 7px;
+            height: 7px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse-dot 1.8s ease infinite;
+            flex-shrink: 0;
+        }
+        @@keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.5; transform: scale(0.7); }
+        }
+
+        .btn-features {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.35);
+            color: #60a5fa;
+            font-size: 0.76rem;
+            font-weight: 600;
+            padding: 0.35rem 0.9rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 0.3rem;
+        }
+        .btn-features:hover {
+            background: rgba(59,130,246,0.25);
+            color: #93c5fd;
+            border-color: #60a5fa;
+        }
+
+        .form-label-custom {
+            color: rgba(255,255,255,0.60);
+            font-size: 11.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+        .input-icon {
+            position: absolute;
+            left: 13px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255,255,255,0.35);
+            font-size: 15px;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .login-input {
+            width: 100%;
+            background: rgba(255,255,255,0.06) !important;
+            border: 1.5px solid rgba(255,255,255,0.12) !important;
+            border-radius: 10px !important;
+            color: #ffffff !important;
+            font-size: 14.5px !important;
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 500;
+            padding: 0.7rem 0.9rem 0.7rem 2.6rem !important;
+            height: auto !important;
+            outline: none !important;
+            box-shadow: none !important;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+            caret-color: #f97316;
+        }
+        .login-input::placeholder {
+            color: rgba(255,255,255,0.28) !important;
+            font-weight: 400;
+        }
+        .login-input:focus {
+            background: rgba(249,115,22,0.08) !important;
+            border-color: #f97316 !important;
+            box-shadow: 0 0 0 3px rgba(249,115,22,0.18) !important;
+            color: #ffffff !important;
+        }
+        .login-input:-webkit-autofill,
+        .login-input:-webkit-autofill:hover,
+        .login-input:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px rgba(15,23,42,0.98) inset !important;
+            -webkit-text-fill-color: #ffffff !important;
+            border-color: rgba(255,255,255,0.18) !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
+        .btn-login {
+            width: 100%;
+            background: linear-gradient(135deg, #f97316 0%, #dc2626 100%);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            padding: 0.78rem 1rem;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            margin-top: 0.5rem;
+            box-shadow: 0 4px 20px rgba(249,115,22,0.40);
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(249,115,22,0.55);
+            background: linear-gradient(135deg, #fb923c 0%, #ef4444 100%);
+        }
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .login-error {
+            background: rgba(239,68,68,0.12);
+            border: 1px solid rgba(239,68,68,0.35);
+            color: #fca5a5;
+            border-radius: 10px;
+            font-size: 13px;
+            padding: 0.6rem 0.85rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .login-footer {
+            text-align: center;
+            color: rgba(255,255,255,0.25);
+            font-size: 11px;
+            margin-top: 1.5rem;
+            font-weight: 500;
+        }
+
+        /* Feature Card styling inside Feature Modal */
+        .feature-box {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 1rem 1.1rem;
+            margin-bottom: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        .feature-box:hover {
+            background: rgba(255,255,255,0.07);
+            border-color: rgba(249,115,22,0.3);
+            transform: translateY(-1px);
+        }
+        .feature-box-title {
+            color: #fb923c;
+            font-size: 0.92rem;
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .feature-box-desc {
+            color: rgba(255,255,255,0.65);
+            font-size: 0.8rem;
+            line-height: 1.5;
+            margin: 0;
+        }
+        /* Install wala button. `btn-features` se alag rakha hai — wo halka,
+           "chahein to dekh lo" wala button hai; ye kaam ka hai, isliye thoda
+           bhara hua aur poori chaudai ka. */
+        .btn-install-app {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            width: 100%;
+            padding: 9px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(249, 115, 22, 0.45);
+            background: rgba(249, 115, 22, 0.12);
+            color: #fdba74;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .btn-install-app:hover {
+            background: rgba(249, 115, 22, 0.2);
+            border-color: rgba(249, 115, 22, 0.7);
+        }
+
+        .feature-pill {
+            display: inline-block;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #e2e8f0;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin: 4px 4px 0 0;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           MODAL (Trial + Features) — mobile par screen se bahar nikal
+           rahe the. Wajah: card ek flex item hai aur flex item ka
+           default `min-width:auto` hota hai, yaani wo apne content ke
+           min-content se chhota ho hi nahi sakta. 3 plan cards aur
+           phone+WhatsApp wali line 375px me nahi samati thi, isliye
+           card 440px par ada rehta tha aur daayen se text kat jaata
+           tha — band karne ka (X) button bhi pahunch se bahar.
+           ══════════════════════════════════════════════════════════════ */
+        .ppms-modal-card {
+            /* Ye do line asli fix hai: ab card sach me sikud sakta hai. */
+            min-width: 0;
+            max-width: min(540px, 100%);
+        }
+
+        #trialModal .ppms-modal-card { max-width: min(440px, 100%); }
+
+        /* Lambe modal ko upar se shuru karo, warna chhoti screen par
+           header hi upar kat jaata hai aur scroll karke wapas nahi
+           aa sakte. */
+        .ppms-modal {
+            /* !important isliye: har modal ke apne tag par INLINE
+               `align-items:center` likha hai, aur inline style stylesheet ko
+               hamesha dabaa deta hai. Isi wajah se pehle ki koshishein bekaar
+               gayi thin — modal ab bhi center hi ho raha tha aur uska upar ka
+               hissa screen ke bahar reh jaata tha (naap kar dekha: top -1042px). */
+            align-items: flex-start !important;
+
+            /* Pehle yahan overflow-x: hidden tha. Wo us waqt laga tha jab card
+               screen se bahar nikal jaata tha — ab wo dikkat nahi hai (card
+               min-width:0 + max-width:100% se sikud jaata hai; 320px par bhi
+               poora samata hai, naap kar dekha).
+
+               Par zoom karne par wahi 'hidden' ulta pad raha tha: modal
+               position:fixed hai, to pinch-zoom me uska daayan hissa screen se
+               bahar chala jaata tha AUR hidden ki wajah se use kheench kar
+               dekha bhi nahi ja sakta tha — bas kata hua dikhta tha.
+               'auto' se ab zoom karke bhi poora padha ja sakta hai. */
+            overflow-x: auto;
+        }
+
+        /* Yahan pehle `align-items: center` tha (720px se lambi screen par).
+           Wahi asli dikkat thi:
+
+           Flex container me item ko center karo aur item container se LAMBA ho
+           jaye, to wo dono taraf barabar bahar nikalta hai — upar wala hissa
+           screen ke UPAR chala jaata hai, aur browser wahan scroll karne hi
+           nahi deta (scroll sirf neeche ki taraf chalta hai). Nateeja: features
+           modal ka header aur X button dikhte hi nahi the, aur upar khinchne
+           par bhi kuch nahi aata tha.
+
+           Mobile par `.ppms-modal-scroll` ka max-height hata diya jaata hai
+           (taaki andar do scrollbar na banein), isliye modal aur lamba ho jaata
+           hai — aur ye bug wahin sabse zyada dikhta tha.
+
+           Ab centering `align-items` se nahi, card ke `margin: auto` se hoti
+           hai. Jagah ho to card beech me aa jaata hai; na ho to upar se shuru
+           hota hai aur poora scroll ho jaata hai. Kuch kabhi kata nahi rehta. */
+        .ppms-modal-card {
+            /* `margin: auto` bhi kaam nahi aaya — jab item container se lamba ho
+               to auto margin RINAATMAK ho jaata hai aur upar ka hissa phir bahar
+               chala jaata hai (naap kar dekha: card ka top -1042px par tha).
+
+               Isliye centering poori tarah hata di. Modal hamesha upar se shuru
+               hota hai. Chhota modal thoda upar dikhega — par kuch bhi kabhi
+               kata nahi rahega, aur X button hamesha haath me rahega. */
+            margin-top: 0 !important;
+            margin-bottom: 1rem !important;
+        }
+
+        /* Andar ka scrollbar dark theme me safed patti jaisa chubhta
+           tha — ab background ke saath ghul jaata hai. */
+        .ppms-modal-scroll::-webkit-scrollbar { width: 8px; }
+        .ppms-modal-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .ppms-modal-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.18);
+            border-radius: 8px;
+        }
+        .ppms-modal-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.30);
+        }
+        .ppms-modal-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.18) transparent;
+        }
+
+        @@media screen and (max-width: 575.98px) {
+            .ppms-modal { padding: 0.5rem; }
+
+            .ppms-modal-card {
+                border-radius: 16px;
+                margin: 0.5rem auto !important;
+            }
+
+            /* Header ka bada text chhoti screen par do line le leta tha
+               aur X button ke neeche chala jaata tha. */
+            .ppms-modal-card h1,
+            .ppms-modal-card .modal-head-title { font-size: 1.05rem !important; }
+
+            /* Teen plan side-by-side me "1 Year" kat jaata tha. */
+            .ppms-plan-grid { grid-template-columns: 1fr 1fr !important; }
+            .ppms-plan-grid > :last-child { grid-column: 1 / -1; }
+
+            /* Phone number aur WhatsApp button ek line me nahi samate. */
+            .ppms-contact-row { flex-direction: column; align-items: stretch !important; }
+            .ppms-contact-row > a { justify-content: center; }
+
+            /* Feature ke pills lambe naam par bahar nikal jaate the. */
+            .feature-pill { white-space: normal; }
+
+            .ppms-modal-scroll {
+                padding: 1rem 1rem 1.2rem !important;
+                max-height: none !important;
+            }
+        }
+
+        @@media screen and (max-width: 359.98px) {
+            .ppms-plan-grid { grid-template-columns: 1fr !important; }
+            .ppms-plan-grid > :last-child { grid-column: auto; }
+        }
+    </style>
+    @* ---- PWA ----
+       Ye page Layout = null par chalta hai, isliye _Layout waale PWA tags yahan
+       apne aap nahi aate. Aur yahi PEHLA page hai jahan user aata hai — agar
+       yahan manifest na ho to Chrome ko app "installable" dikhti hi nahi aur
+       "Install app" ka option kabhi nahi aata. *@
+    <link rel="manifest" href="~/manifest.webmanifest" />
+    <meta name="theme-color" content="#0f172a" />
+    <link rel="apple-touch-icon" href="~/images/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PPMS" />
+</head>
+<body class="login-page">
+    <div class="login-card">
+
+        @* ---- App install ----
+           Sabse upar hai kyunki nazar pehle yahin padti hai, aur ye pehli baar
+           aane wale ke liye sabse kaam ki cheez hai.
+
+           Chrome khud se koi popup nahi dikhata (desktop par sirf address bar me
+           chhota icon, jo kisi ko dikhta hi nahi), isliye apna button de rahe hain.
+
+           Ye shuru me CHHUPA rehta hai aur teen soorat me kabhi nahi dikhta:
+             * app pehle se install ho (display-mode: standalone)
+             * browser install support hi na karta ho
+             * install ho jaane ke baad (appinstalled) — turant gayab ho jaata hai
+           Yaani jiske phone me app lag chuki hai use ye dobara kabhi nahi dikhega. *@
+        <div id="installBar" style="display:none; margin-bottom:14px;">
+            <button type="button" id="btnInstallApp" class="btn-install-app" title="@L["Install PPMS on this phone"]">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+                @L["Get the mobile app"]
+            </button>
+            <div id="iosInstallHint" style="display:none; font-size:11px; color:#94a3b8; margin-top:6px; text-align:center;">
+                On iPhone: tap <strong>Share</strong> at the bottom, scroll down and tap <strong>Add to Home Screen</strong>.
+            </div>
+        </div>
+
+        <!-- Logo -->
+        <div class="login-logo">&#9981;</div>
+        <h1 class="login-title">@L["Petrol Pump Portal"]</h1>
+        <p class="login-subtitle">@L["Management System &bull; Secure Access"]</p>
+
+        <!-- Buttons Header: 7 Days Trial & Explore Features -->
+        <div class="text-center mb-4">
+            <button type="button" class="trial-badge mb-2" onclick="openTrialModal()" title="@L["Click to Request 7-Day Free Trial"]">
+                <span class="dot"></span>
+                @L["7 Days Free Trial Available"]
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-left:4px;opacity:0.7"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </button>
+            <br />
+            <button type="button" class="btn-features" onclick="openFeaturesModal()" title="@L["View All Software Features & Modules"]">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                @L["Explore All Software Features"]
+            </button>
+
+        </div>
+
+        <!-- Error Message -->
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="login-error">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                @* Sandesh aur number ek hi khaane me - .login-error flex hai, alag-alag
+                   rakhne par number sandesh ke bagal me dab jaata tha. *@
+                <div>
+                @Model.ErrorMessage
+                @if (Model.ErrorCode is "TRIAL_EXPIRED" or "OWNER_SUSPENDED")
+                {
+                    @* Plan khatam hua owner kya kare - yahi sabse zaroori baat hai. Number
+                       wahi jo neeche "OTP nahi aaya?" me hai. *@
+                    <div style="margin-top:6px;"><a href="tel:6394389973" style="color:#fcd34d; font-weight:700;">📞 6394389973</a></div>
+                }
+                </div>
+            </div>
+        }
+
+        <!-- Login Form -->
+        <form method="post" asp-action="Login" asp-controller="Account" novalidate>
+            @Html.AntiForgeryToken()
+
+            <div class="mb-3">
+                <label class="form-label-custom">@L["Username"]</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </span>
+                    <input asp-for="Username"
+                           class="login-input"
+                           autocomplete="username"
+                           placeholder="@L["Enter your username"]"
+                           spellcheck="false" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label-custom">@L["Password"]</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    </span>
+                    <input asp-for="Password"
+                           id="passwordInput"
+                           type="password"
+                           class="login-input"
+                           autocomplete="current-password"
+                           placeholder="@L["Enter your password"]"
+                           style="padding-right:2.8rem !important;" />
+                    <button type="button" id="togglePassword" onclick="togglePasswordVisibility()"
+                            title="@L["Show/Hide Password"]"
+                            style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:rgba(255,255,255,0.38); padding:0; display:flex; align-items:center; transition:color 0.2s; z-index:3;">
+                        <svg id="eyeIcon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        <svg id="eyeOffIcon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:none;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-login" id="loginBtn">
+                <span id="btnText">@L["Sign In &rarr;"]</span>
+                <span id="btnSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+            </button>
+
+            <div style="text-align:center; margin-top:0.9rem;">
+                <button type="button" onclick="openForgotModal()"
+                        style="background:none; border:none; color:#93c5fd; font-size:13px; cursor:pointer; padding:0; text-decoration:underline;">
+                    @L["Forgot password?"]
+                </button>
+            </div>
+        </form>
+
+        <div class="login-footer">
+            Petrol Pump Portal v1.0 &nbsp;&bull;&nbsp; &copy; 2026
+        </div>
+    </div>
+
+    <!-- 0. Password bhool gaye - Modal -->
+    <div id="forgotModal" class="ppms-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center; padding:1rem; overflow-y:auto;">
+        <div class="ppms-modal-card" style="background:#1e293b; border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:0; max-width:420px; width:100%; position:relative; box-shadow:0 30px 70px rgba(0,0,0,0.7); overflow:hidden;">
+
+            <div style="background:linear-gradient(135deg,#6366f1,#4338ca); padding:1.3rem 1.5rem 1rem;">
+                <button onclick="closeForgotModal()" style="position:absolute; top:12px; right:14px; background:rgba(255,255,255,0.2); border:none; color:#fff; width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; line-height:1;">&times;</button>
+                <div style="color:#fff; font-weight:800; font-size:1.1rem;">@L["Reset your password"]</div>
+                <div style="color:rgba(255,255,255,0.75); font-size:0.8rem;">@L["We will send an OTP to your registered mobile"]</div>
+            </div>
+
+            <div style="padding:1.3rem 1.5rem 1.5rem;">
+
+                <!-- Step 1: number maango -->
+                <div id="forgotStep1">
+                    <label style="color:rgba(255,255,255,0.55); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:0.4rem;">@L["Mobile number"]</label>
+                    <input id="forgotMobile" type="tel" maxlength="15" inputmode="numeric" placeholder="@L["The mobile number registered with us"]"
+                           style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:#fff; padding:0.65rem 0.8rem; font-size:14px; margin-bottom:1rem;" />
+
+                    <div id="forgotMsg1" style="display:none; font-size:12px; margin-bottom:0.8rem;"></div>
+
+                    <button onclick="sendOtp()" id="sendOtpBtn"
+                            style="width:100%; background:linear-gradient(135deg,#6366f1,#4338ca); border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:700; padding:0.72rem; cursor:pointer;">
+                        @L["Send OTP"]
+                    </button>
+                </div>
+
+                <!-- Step 2: OTP + naya password -->
+                <div id="forgotStep2" style="display:none;">
+                    <div style="background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:0.6rem 0.8rem; margin-bottom:1rem;">
+                        <div style="color:#c7d2fe; font-size:12px;">
+                            @L["If this number is registered, an OTP has been sent."]
+                            <span style="color:rgba(255,255,255,0.5);">@L["It expires in 10 minutes."]</span>
+                        </div>
+                        <!-- SMS kabhi-kabhi fail hoti hai (provider down, balance khatam,
+                             galat key). Bahar se hum ye nahi bata sakte ki kis number par
+                             fail hui - warna pata chal jaata ki kaun sa number registered
+                             hai. Isliye har haal me ye raasta dikhate hain, taaki user
+                             OTP ka intezaar karta na reh jaye. -->
+                        <div style="color:rgba(255,255,255,0.55); font-size:11px; margin-top:6px;">
+                            @L["OTP not received?"]
+                            <a href="tel:6394389973" style="color:#93c5fd;">@L["Call 6394389973"]</a>
+                        </div>
+                    </div>
+
+                    <label style="color:rgba(255,255,255,0.55); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:0.4rem;">@L["6-digit OTP"]</label>
+                    <input id="forgotOtp" type="text" maxlength="6" inputmode="numeric" placeholder="000000"
+                           style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:#fff; padding:0.65rem 0.8rem; font-size:18px; letter-spacing:6px; text-align:center; font-weight:700; margin-bottom:0.9rem;" />
+
+                    <label style="color:rgba(255,255,255,0.55); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:0.4rem;">@L["New password"]</label>
+                    <input id="forgotPass" type="password" maxlength="100" placeholder="@L["At least 6 characters"]"
+                           style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:#fff; padding:0.65rem 0.8rem; font-size:14px; margin-bottom:0.9rem;" />
+
+                    <label style="color:rgba(255,255,255,0.55); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:0.4rem;">@L["New password dobara"]</label>
+                    <input id="forgotPass2" type="password" maxlength="100" placeholder="@L["Re-enter the same password"]"
+                           style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:#fff; padding:0.65rem 0.8rem; font-size:14px; margin-bottom:1rem;" />
+
+                    <div id="forgotMsg2" style="display:none; font-size:12px; margin-bottom:0.8rem;"></div>
+
+                    <button onclick="submitReset()" id="resetBtn"
+                            style="width:100%; background:linear-gradient(135deg,#10b981,#059669); border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:700; padding:0.72rem; cursor:pointer;">
+                        @L["Change password"]
+                    </button>
+
+                    <div style="text-align:center; margin-top:0.7rem;">
+                        <button type="button" onclick="backToStep1()"
+                                style="background:none; border:none; color:rgba(255,255,255,0.5); font-size:12px; cursor:pointer; text-decoration:underline;">
+                            @L["Change number / resend OTP"]
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: ho gaya -->
+                <div id="forgotStep3" style="display:none; text-align:center; padding:0.5rem 0;">
+                    <div style="font-size:2.2rem; margin-bottom:0.5rem;">&#9989;</div>
+                    <div style="color:#fff; font-weight:700; margin-bottom:0.3rem;">@L["Password changed"]</div>
+                    <div style="color:rgba(255,255,255,0.6); font-size:13px; margin-bottom:1rem;">@L["You can now sign in with your new password."]</div>
+                    <button onclick="closeForgotModal()"
+                            style="width:100%; background:linear-gradient(135deg,#6366f1,#4338ca); border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:700; padding:0.7rem; cursor:pointer;">
+                        @L["Go to sign in"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. Trial & Subscription Request Modal -->
+    <div id="trialModal" class="ppms-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center; padding:1rem; overflow-y:auto;">
+        <div class="ppms-modal-card" style="background:#1e293b; border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:0; max-width:440px; width:100%; position:relative; box-shadow:0 30px 70px rgba(0,0,0,0.7); overflow:hidden;">
+            
+            <div style="background:linear-gradient(135deg,#10b981,#059669); padding:1.4rem 1.5rem 1rem;">
+                <button onclick="closeTrialModal()" style="position:absolute; top:12px; right:14px; background:rgba(255,255,255,0.2); border:none; color:#fff; width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; line-height:1;">&times;</button>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:42px; height:42px; background:rgba(255,255,255,0.2); border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                        <svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <div style="color:#fff; font-weight:800; font-size:1.15rem;">@L["Get Free 7-Day Trial"]</div>
+                        <div style="color:rgba(255,255,255,0.8); font-size:0.78rem;">@L["Petrol Pump Management Software"]</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding:1.25rem 1.5rem 1.5rem;">
+
+                <div id="modalFormView">
+                    <!-- Direct Contact Banner -->
+                    <div style="background:rgba(249,115,22,0.12); border:1px solid rgba(249,115,22,0.35); border-radius:12px; padding:0.9rem 1rem; margin-bottom:1.2rem;">
+                        <div style="color:rgba(255,255,255,0.50); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:0.4rem;">@L["Super Admin Direct Support"]</div>
+                        <div class="ppms-contact-row" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                            <div>
+                                <div style="color:#fb923c; font-size:1.15rem; font-weight:800;">&#128222; 6394389973</div>
+                                <div style="color:rgba(255,255,255,0.45); font-size:0.75rem; margin-top:2px;">@L["Call or WhatsApp for immediate setup"]</div>
+                            </div>
+                            <a href="https://wa.me/916394389973?text=Hello!%20I%20want%20to%20start%20my%207-Day%20Free%20Trial%20for%20Petrol%20Pump%20Portal." 
+                               target="_blank"
+                               style="display:inline-flex; align-items:center; gap:5px; background:#25d366; color:#fff; font-size:12px; font-weight:700; padding:0.45rem 0.9rem; border-radius:8px; text-decoration:none;">
+                                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                @L["WhatsApp"]
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Plan Selection -->
+                    <div style="color:rgba(255,255,255,0.50); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:0.6rem;">@L["Select Plan / Trial"]</div>
+                    <div class="ppms-plan-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-bottom:1.1rem;">
+                        <div onclick="selectModalPlan('7_DAY_TRIAL', this)" class="modal-plan-card active-plan" style="background:rgba(16,185,129,0.15); border:2px solid #10b981; border-radius:10px; padding:0.6rem 0.4rem; cursor:pointer; text-align:center;">
+                            <div style="color:#34d399; font-size:1.1rem; font-weight:800;">@L["7 Days"]</div>
+                            <div style="color:#a7f3d0; font-size:0.7rem; font-weight:700;">@L["Free Trial"]</div>
+                        </div>
+                        <div onclick="selectModalPlan('6_MONTH', this)" class="modal-plan-card" style="background:rgba(59,130,246,0.08); border:2px solid rgba(59,130,246,0.25); border-radius:10px; padding:0.6rem 0.4rem; cursor:pointer; text-align:center;">
+                            <div style="color:#60a5fa; font-size:1.1rem; font-weight:800;">@L["6 Month"]</div>
+                            <div style="color:#93c5fd; font-size:0.7rem; font-weight:700;">@L["Plan"]</div>
+                        </div>
+                        <div onclick="selectModalPlan('1_YEAR', this)" class="modal-plan-card" style="background:rgba(168,85,247,0.08); border:2px solid rgba(168,85,247,0.25); border-radius:10px; padding:0.6rem 0.4rem; cursor:pointer; text-align:center;">
+                            <div style="color:#c084fc; font-size:1.1rem; font-weight:800;">@L["1 Year"]</div>
+                            <div style="color:#d8b4fe; font-size:0.7rem; font-weight:700;">@L["Plan"]</div>
+                        </div>
+                    </div>
+
+                    <!-- Input Fields -->
+                    <div style="margin-bottom:0.85rem;">
+                        <label style="color:rgba(255,255,255,0.60); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:4px; display:block;">@L["Your Full Name *"]</label>
+                        <input id="modalName" type="text" placeholder="@L["e.g. Rahul Sharma"]" maxlength="100"
+                               style="width:100%; background:rgba(255,255,255,0.07); border:1.5px solid rgba(255,255,255,0.12); border-radius:9px; color:#fff; font-size:14px; padding:0.6rem 0.85rem; outline:none; font-family:Inter,sans-serif;"
+                               oninput="validateModalForm()" />
+                    </div>
+
+                    <div style="margin-bottom:0.85rem;">
+                        <label style="color:rgba(255,255,255,0.60); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:4px; display:block;">@L["Mobile Number *"]</label>
+                        <input id="modalPhone" type="tel" placeholder="@L["10-digit mobile number"]" maxlength="10"
+                               style="width:100%; background:rgba(255,255,255,0.07); border:1.5px solid rgba(255,255,255,0.12); border-radius:9px; color:#fff; font-size:14px; padding:0.6rem 0.85rem; outline:none; font-family:Inter,sans-serif;"
+                               oninput="validateModalForm()" />
+                    </div>
+
+                    <div style="margin-bottom:1.1rem;">
+                        <label style="color:rgba(255,255,255,0.60); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:4px; display:block;">@L["Petrol Pump Name"]</label>
+                        <input id="modalPump" type="text" placeholder="@L["e.g. Apex Fuel Station"]" maxlength="150"
+                               style="width:100%; background:rgba(255,255,255,0.07); border:1.5px solid rgba(255,255,255,0.12); border-radius:9px; color:#fff; font-size:14px; padding:0.6rem 0.85rem; outline:none; font-family:Inter,sans-serif;" />
+                    </div>
+
+                    <!-- Sirf 7-din trial ke liye: account yahin ban jaata hai.
+                         Paid plan me abhi payment nahi hai, isliye wo request hi
+                         jaati hai (superadmin call karke plan lagata hai). -->
+                    <div id="signupFields">
+                        <div style="border-top:1px solid rgba(255,255,255,0.12); margin:0.9rem 0 0.9rem;"></div>
+                        <div style="color:rgba(255,255,255,0.50); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:0.6rem;">@L["Sign-in details"]</div>
+
+                        <label style="color:rgba(255,255,255,0.55); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:0.35rem;">@L["Username *"]</label>
+                        <input id="modalUsername" type="text" maxlength="100" placeholder="@L["e.g. gupta_pump"]"
+                               style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:#fff; padding:0.6rem 0.8rem; font-size:14px; margin-bottom:0.7rem;"
+                               oninput="validateModalForm()" />
+
+                        <label style="color:rgba(255,255,255,0.55); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:0.35rem;">@L["Password *"]</label>
+                        <input id="modalPassword" type="password" maxlength="100" placeholder="@L["At least 6 characters"]"
+                               style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:#fff; padding:0.6rem 0.8rem; font-size:14px; margin-bottom:0.7rem;"
+                               oninput="validateModalForm()" />
+                    </div>
+
+                    <div id="modalFormError" style="display:none; color:#fca5a5; font-size:12px; margin-bottom:0.8rem;"></div>
+
+                    <button onclick="submitModalRequest()" id="modalSubmitBtn" style="width:100%; background:linear-gradient(135deg,#10b981,#059669); border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:700; padding:0.75rem; cursor:pointer; opacity:0.5;" disabled>
+                        <span id="modalSubmitText">@L["Submit Request &amp; Start Trial"]</span>
+                    </button>
+                </div>
+
+                <!-- Success View -->
+                <div id="modalSuccessView" style="display:none; text-align:center; padding:0.5rem 0;">
+                    <div style="width:60px; height:60px; background:linear-gradient(135deg,#10b981,#059669); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem;">
+                        <svg width="30" height="30" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    <div id="successHeadline" style="color:#fff; font-size:1.15rem; font-weight:800; margin-bottom:0.4rem;">@L["Request Received Successfully!"]</div>
+                    <div id="successSubline" style="color:rgba(255,255,255,0.60); font-size:0.85rem; line-height:1.6; margin-bottom:1.2rem;">
+                        @L["Thank you for your interest. The Super Admin has been notified of your request. Our team will contact you shortly to complete your access setup."]
+                    </div>
+                    <div style="background:rgba(249,115,22,0.12); border:1px solid rgba(249,115,22,0.3); border-radius:10px; padding:0.8rem; margin-bottom:1.2rem;">
+                        <div style="color:rgba(255,255,255,0.50); font-size:11px;">@L["Direct Super Admin Contact"]</div>
+                        <div style="color:#fb923c; font-weight:800; font-size:1.05rem; margin-top:2px;">&#128222; 6394389973</div>
+                    </div>
+                    <button onclick="closeTrialModal()" style="width:100%; background:linear-gradient(135deg,#f97316,#dc2626); border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:700; padding:0.7rem; cursor:pointer;">@L["Close"]</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Software Features Showcase Modal -->
+    <div id="featuresModal" class="ppms-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.80); z-index:9999; align-items:center; justify-content:center; padding:1rem; overflow-y:auto;">
+        <div class="ppms-modal-card" style="background:#1e293b; border:1px solid rgba(255,255,255,0.14); border-radius:22px; padding:0; max-width:540px; width:100%; position:relative; box-shadow:0 35px 80px rgba(0,0,0,0.8); overflow:hidden; margin:1rem auto;">
+            
+            <!-- Modal Header -->
+            <div style="background:linear-gradient(135deg,#0284c7,#0369a1); padding:1.4rem 1.6rem 1.1rem; position:relative;">
+                <button onclick="closeFeaturesModal()" style="position:absolute; top:14px; right:16px; background:rgba(255,255,255,0.2); border:none; color:#fff; width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;">&times;</button>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:44px; height:44px; background:rgba(255,255,255,0.2); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px;">
+                        &#9881;
+                    </div>
+                    <div>
+                        <div style="color:#fff; font-weight:800; font-size:1.2rem;">@L["Complete Software Features"]</div>
+                        <div style="color:rgba(255,255,255,0.8); font-size:0.8rem;">@L["Petrol Pump Operations &amp; Accounting Suite"]</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Content Body -->
+            <div class="ppms-modal-scroll" style="padding:1.4rem 1.6rem 1.6rem; max-height:75vh; overflow-y:auto;">
+                
+                <!-- 1. Reports -->
+                <div class="feature-box">
+                    <div class="feature-box-title">
+                        <span>&#128202;</span> Reports &amp; Registers
+                    </div>
+                    <div class="feature-box-desc">
+                        @L["The registers you actually need — and every one of them exports to Excel."]
+                    </div>
+                    <div style="margin-top:6px;">
+                        <span class="feature-pill">@L["&#128202; Daily Stock Register (DSR)"]</span>
+                        <span class="feature-pill">@L["&#128214; Day Book"]</span>
+                        <span class="feature-pill">@L["&#128176; Outstanding (Credit)"]</span>
+                        <span class="feature-pill">@L["&#128100; Attendant Cash"]</span>
+                        <span class="feature-pill">@L["&#127970; Multi-Pump Comparison"]</span>
+                        <span class="feature-pill">@L["&#128190; CSV export on every report"]</span>
+                    </div>
+                </div>
+
+                <!-- 2. Shift -->
+                <div class="feature-box">
+                    <div class="feature-box-title">
+                        <span>&#9881;</span> Shift &amp; Nozzle Operations
+                    </div>
+                    <div class="feature-box-desc">
+                        @L["Enter the meter reading at the start and end of a shift. Sales, stock and cash are worked out for you."]
+                    </div>
+                    <div style="margin-top:6px;">
+                        <span class="feature-pill">@L["&#9981; Nozzle meter reading"]</span>
+                        <span class="feature-pill">@L["&#128260; Shift open &amp; close"]</span>
+                        <span class="feature-pill">@L["&#128181; Cash / credit / UPI / card"]</span>
+                        <span class="feature-pill">@L["&#129534; Note-by-note cash count"]</span>
+                        <span class="feature-pill">@L["&#128197; Forgot a day? Enter it later"]</span>
+                        <span class="feature-pill">@L["&#9889; Multi-pump support"]</span>
+                    </div>
+                </div>
+
+                <!-- 3. Nozzle-wise cash (naya) -->
+                <div class="feature-box">
+                    <div class="feature-box-title">
+                        <span>&#128176;</span> Cash from each attendant
+                    </div>
+                    <div class="feature-box-desc">
+                        @L["A different man on every nozzle? Track each one separately — so one man&#39;s shortage never hides behind another man&#39;s excess."]
+                    </div>
+                    <div style="margin-top:6px;">
+                        <span class="feature-pill">@L["&#129689; Float given per nozzle"]</span>
+                        <span class="feature-pill">@L["&#128203; Credit / UPI slips deducted"]</span>
+                        <span class="feature-pill">@L["&#9878; Short / excess per man"]</span>
+                        <span class="feature-pill">@L["&#127769; Collect the whole day&#39;s cash at night"]</span>
+                        <span class="feature-pill">@L["&#128241; Pending list with phone numbers"]</span>
+                    </div>
+                </div>
+
+                <!-- 4. Rates (naya) -->
+                <div class="feature-box">
+                    <div class="feature-box-title">
+                        <span>&#8377;</span> Daily rates, grade by grade
+                    </div>
+                    <div class="feature-box-desc">
+                        @L["Normal, Premium (XP95), E20, Diesel — each grade keeps its own rate, and each nozzle bills at its own."]
+                    </div>
+                    <div style="margin-top:6px;">
+                        <span class="feature-pill">@L["&#127749; All fuels on one screen"]</span>
+                        <span class="feature-pill">@L["&#128200; Shows what moved up or down"]</span>
+                        <span class="feature-pill">@L["&#128220; Full rate history"]</span>
+                        <span class="feature-pill">@L["&#9200; Old entries use that day&#39;s rate"]</span>
+                    </div>
+                </div>
+
+                <!-- 5. Stock -->
+                <div class="feature-box">
+                    <div class="feature-box-title">
+                        <span>&#128738;</span> Tank Stock &amp; Dip Testing
+                    </div>
+                    <div class="feature-box-desc">
+                        @L["Every litre accounted for, with the loss shown in rupees — not just litres."]
+                    </div>
+                    <div style="margin-top:6px;">
+                        <span class="feature-pill">@L["&#128207; Fuel dip &amp; water dip"]</span>
+                        <span class="feature-pill">@L["&#128201; Variance in litres and &#8377;"]</span>
+                        <span class="feature-pill">@L["&#128666; Tanker purchase entry"]</span>
+                        <span class="feature-pill">@L["&#128721; Wrong-tank entry blocked"]</span>
+                        <span class="feature-pill">@L["&#128276; Low stock alert"]</span>
+                    </div>
+                </div>
+
+                <!-- 6. Credit -->
+                <div class="feature-box">
+                    <div class="feature-box-title">
+                        <span>&#128203;</span> Credit Customers &amp; Ledger
+                    </div>
+                    <div class="feature-box-desc">
+                        @L["Know who owes what, and stop a sale before the limit is crossed."]
+                    </div>
+                    <div style="margin-top:6px;">
+                        <span class="feature-pill">@L["&#128210; Party ledger"]</span>
+                        <span class="feature-pill">@L["&#128179; Payment collection"]</span>
+                        <span class="feature-pill">@L["&#9888; Credit limit enforced on sale"]</span>
+                        <span class="feature-pill">@L["&#127903; Coupon books"]</span>
+                        <span class="feature-pill">@L["&#128667; Fleet contracts"]</span>
+                    </div>
+                </div>
+
+                <!-- 7. Staff -->
+                <div class="feature-box">
+                    <div class="feature-box-title">
+                        <span>&#128101;</span> Staff &amp; Expenses
+                    </div>
+                    <div class="feature-box-desc">
+                        @L["Your people and your day-to-day spending, in the same place as everything else."]
+                    </div>
+                    <div style="margin-top:6px;">
+                        <span class="feature-pill">@L["&#128100; Employee records"]</span>
+                        <span class="feature-pill">@L["&#128176; Monthly salary payment"]</span>
+                        <span class="feature-pill">@L["&#128221; Operating expenses"]</span>
+                        <span class="feature-pill">@L["&#128193; Head-wise categories"]</span>
+                        <span class="feature-pill">@L["&#127974; Bank deposits"]</span>
+                    </div>
+                </div>
+
+                <!-- 8. Bharosa (naya) -->
+                <div class="feature-box">
+                    <div class="feature-box-title">
+                        <span>&#128737;</span> Control &amp; Safety
+                    </div>
+                    <div class="feature-box-desc">
+                        @L["The part you only notice when something goes wrong — and then it matters more than anything else."]
+                    </div>
+                    <div style="margin-top:6px;">
+                        <span class="feature-pill">@L["&#128269; Who did what, and when"]</span>
+                        <span class="feature-pill">@L["&#128683; Voided bills are never deleted"]</span>
+                        <span class="feature-pill">@L["&#128190; Automatic daily backup"]</span>
+                        <span class="feature-pill">@L["&#128274; Account lock after failed logins"]</span>
+                        <span class="feature-pill">@L["&#128241; Password reset by OTP"]</span>
+                        <span class="feature-pill">@L["&#128272; Each pump&#39;s data stays its own"]</span>
+                    </div>
+                </div>
+
+                <!-- 9. Aasani (naya) -->
+                <div class="feature-box">
+                    <div class="feature-box-title">
+                        <span>&#128077;</span> Easy for everyone
+                    </div>
+                    <div class="feature-box-desc">
+                        @L["Built for the person standing at the pump, not for a computer operator."]
+                    </div>
+                    <div style="margin-top:6px;">
+                        <span class="feature-pill">@L["&#127760; English &amp; &#2361;&#2367;&#2306;&#2342;&#2368;"]</span>
+                        <span class="feature-pill">@L["&#128241; Works on a phone"]</span>
+                        <span class="feature-pill">@L["&#128214; Manual built in (download / print)"]</span>
+                        <span class="feature-pill">@L["&#9989; Step-by-step setup on day one"]</span>
+                        <span class="feature-pill">@L["&#128424; Print-ready registers"]</span>
+                    </div>
+                </div>
+
+                <!-- Bottom Action -->
+                <div style="display:flex; gap:0.75rem; margin-top:1.2rem;">
+                    <button onclick="closeFeaturesModal(); openTrialModal();" style="flex:1; background:linear-gradient(135deg,#10b981,#059669); border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:700; padding:0.75rem; cursor:pointer;">
+                        Start 7-Day Free Trial &rarr;
+                    </button>
+                    <button onclick="closeFeaturesModal()" style="flex:0 0 auto; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:10px; color:rgba(255,255,255,0.7); font-size:14px; padding:0.75rem 1.2rem; cursor:pointer;">
+                        @L["Close"]
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var selectedModalPlan = '7_DAY_TRIAL';
+
+        function openTrialModal() {
+            document.getElementById('trialModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            toggleSignupFields();
+        }
+
+        function closeTrialModal() {
+            document.getElementById('trialModal').style.display = 'none';
+            document.body.style.overflow = '';
+            document.getElementById('modalFormView').style.display = 'block';
+            document.getElementById('modalSuccessView').style.display = 'none';
+            document.getElementById('modalName').value = '';
+            document.getElementById('modalPhone').value = '';
+            document.getElementById('modalPump').value = '';
+            document.getElementById('modalFormError').style.display = 'none';
+            validateModalForm();
+        }
+
+        // ── Password bhool gaye ─────────────────────────────────────────────
+        function openForgotModal() {
+            backToStep1();
+            document.getElementById('forgotModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeForgotModal() {
+            document.getElementById('forgotModal').style.display = 'none';
+            document.body.style.overflow = '';
+            backToStep1();
+        }
+
+        function backToStep1() {
+            document.getElementById('forgotStep1').style.display = 'block';
+            document.getElementById('forgotStep2').style.display = 'none';
+            document.getElementById('forgotStep3').style.display = 'none';
+            document.getElementById('forgotOtp').value = '';
+            document.getElementById('forgotPass').value = '';
+            document.getElementById('forgotPass2').value = '';
+            hideMsg('forgotMsg1');
+            hideMsg('forgotMsg2');
+        }
+
+        function showMsg(id, text, isError) {
+            var el = document.getElementById(id);
+            el.textContent = text;
+            el.style.color = isError ? '#fca5a5' : '#86efac';
+            el.style.display = 'block';
+        }
+
+        function hideMsg(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function sendOtp() {
+            var mobile = document.getElementById('forgotMobile').value.replace(/\D/g, '');
+            if (mobile.length < 10) {
+                showMsg('forgotMsg1', 'Enter the complete mobile number.', true);
+                return;
+            }
+
+            var btn = document.getElementById('sendOtpBtn');
+            btn.disabled = true;
+            btn.textContent = '@L["Sending..."]';
+            hideMsg('forgotMsg1');
+
+            fetch('/Account/ForgotPassword', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mobile: mobile })
+            })
+            .then(function (r) {
+                // Server hamesha safal lautata hai - number registered ho ya na ho.
+                // Isliye yahan bhi dono soorat me step 2 par le jaate hain.
+                if (r.status === 429) {
+                    showMsg('forgotMsg1', 'Too many attempts. Please try again later.', true);
+                    return null;
+                }
+                return r.json().catch(function () { return {}; });
+            })
+            .then(function (data) {
+                if (data === null) { return; }
+
+                // SMS ka intezaam hi na ho to OTP ki screen kholna bekaar hai —
+                // wo kabhi aayega hi nahi. Server saaf batata hai (ye poore system
+                // ki haalat hai, kisi khaas number ki nahi, isliye batana surakshit).
+                if (data.smsAvailable === false) {
+                    showMsg('forgotMsg1', data.message || 'OTP service is not set up. Please call 6394389973.', true);
+                    return;
+                }
+
+                document.getElementById('forgotStep1').style.display = 'none';
+                document.getElementById('forgotStep2').style.display = 'block';
+                document.getElementById('forgotOtp').focus();
+            })
+            .catch(function () {
+                showMsg('forgotMsg1', 'Something went wrong. Please try again.', true);
+            })
+            .finally(function () {
+                btn.disabled = false;
+                btn.textContent = '@L["Send OTP"]';
+            });
+        }
+
+        function submitReset() {
+            var mobile = document.getElementById('forgotMobile').value.replace(/\D/g, '');
+            var otp = document.getElementById('forgotOtp').value.trim();
+            var pass = document.getElementById('forgotPass').value;
+            var pass2 = document.getElementById('forgotPass2').value;
+
+            if (otp.length !== 6) {
+                showMsg('forgotMsg2', 'Enter the 6-digit OTP.', true);
+                return;
+            }
+            if (pass.length < 6) {
+                showMsg('forgotMsg2', 'Password must be at least 6 characters.', true);
+                return;
+            }
+            // Server par bhi jaanch hoti hai, lekin yahan rok dene se user ko
+            // ek galat OTP koshish bachti hai (sirf 5 milti hain).
+            if (pass !== pass2) {
+                showMsg('forgotMsg2', 'The two passwords do not match.', true);
+                return;
+            }
+
+            var btn = document.getElementById('resetBtn');
+            btn.disabled = true;
+            btn.textContent = '@L["Changing..."]';
+            hideMsg('forgotMsg2');
+
+            fetch('/Account/ResetPassword', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mobile: mobile, otp: otp, newPassword: pass })
+            })
+            .then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (d) {
+                    return { ok: r.ok, data: d };
+                });
+            })
+            .then(function (res) {
+                if (res.ok) {
+                    document.getElementById('forgotStep2').style.display = 'none';
+                    document.getElementById('forgotStep3').style.display = 'block';
+                } else {
+                    showMsg('forgotMsg2', res.data.message || 'Could not reset the password.', true);
+                }
+            })
+            .catch(function () {
+                showMsg('forgotMsg2', 'Something went wrong. Please try again.', true);
+            })
+            .finally(function () {
+                btn.disabled = false;
+                btn.textContent = '@L["Change password"]';
+            });
+        }
+
+        function openFeaturesModal() {
+            document.getElementById('featuresModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeFeaturesModal() {
+            document.getElementById('featuresModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        /* Modal ke bahar (kaale hisse par) click karne se band ho — phone par
+           X button chhota padta hai, aur log yahi umeed karte hain. Click seedha
+           overlay par hi hona chahiye, andar ke card par nahi. */
+        ['trialModal', 'featuresModal', 'forgotModal'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('click', function (e) {
+                if (e.target !== el) return;
+                if (id === 'trialModal') { closeTrialModal(); }
+                else if (id === 'forgotModal') { closeForgotModal(); }
+                else { closeFeaturesModal(); }
+            });
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            var t = document.getElementById('trialModal');
+            var f = document.getElementById('featuresModal');
+            if (t && t.style.display === 'flex') { closeTrialModal(); }
+            if (f && f.style.display === 'flex') { closeFeaturesModal(); }
+            var g = document.getElementById('forgotModal');
+            if (g && g.style.display === 'flex') { closeForgotModal(); }
+        });
+
+        function selectModalPlan(plan, el) {
+            selectedModalPlan = plan;
+            document.querySelectorAll('.modal-plan-card').forEach(c => {
+                c.style.borderColor = 'rgba(255,255,255,0.25)';
+                c.style.background = 'rgba(255,255,255,0.06)';
+            });
+            el.style.borderColor = plan === '7_DAY_TRIAL' ? '#10b981' : (plan === '6_MONTH' ? '#60a5fa' : '#c084fc');
+            el.style.background = plan === '7_DAY_TRIAL' ? 'rgba(16,185,129,0.15)' : (plan === '6_MONTH' ? 'rgba(59,130,246,0.15)' : 'rgba(168,85,247,0.15)');
+
+            // Trial par account yahin banta hai, isliye username/password ke khaane
+            // dikhane hain. Paid plan par sirf request jaati hai.
+            toggleSignupFields();
+        }
+
+        function validateModalForm() {
+            var name = document.getElementById('modalName').value.trim();
+            var phone = document.getElementById('modalPhone').value.trim();
+            var isValid = name.length >= 2 && /^[6-9]\d{9}$/.test(phone);
+
+            // Trial me account yahin banta hai, to pump ka naam, username aur
+            // password teeno chahiye - warna login kis se karenge.
+            if (typeof isTrialSelected === 'function' && isTrialSelected()) {
+                var pump = document.getElementById('modalPump').value.trim();
+                var u = document.getElementById('modalUsername');
+                var p = document.getElementById('modalPassword');
+                isValid = isValid && pump.length >= 3 &&
+                          u && u.value.trim().length >= 4 &&
+                          p && p.value.length >= 6;
+            }
+
+            var btn = document.getElementById('modalSubmitBtn');
+            btn.disabled = !isValid;
+            btn.style.opacity = isValid ? '1' : '0.5';
+        }
+
+        // Trial par account TURANT ban jaata hai; paid plan par abhi sirf request
+        // jaati hai (payment gateway nahi hai). Isliye do alag raaste.
+        function isTrialSelected() {
+            return selectedModalPlan === '7_DAY_TRIAL';
+        }
+
+        function toggleSignupFields() {
+            var box = document.getElementById('signupFields');
+            if (box) { box.style.display = isTrialSelected() ? 'block' : 'none'; }
+
+            var txt = document.getElementById('modalSubmitText');
+            if (txt) {
+                txt.textContent = isTrialSelected()
+                    ? 'Create account & start trial'
+                    : 'Send request';
+            }
+            validateModalForm();
+        }
+
+        function submitModalRequest() {
+            if (isTrialSelected()) {
+                submitSignup();
+            } else {
+                submitPlanRequest();
+            }
+        }
+
+        function modalError(text) {
+            var el = document.getElementById('modalFormError');
+            el.style.display = 'block';
+            el.textContent = text;
+        }
+
+        function submitSignup() {
+            var name = document.getElementById('modalName').value.trim();
+            var phone = document.getElementById('modalPhone').value.replace(/\D/g, '');
+            var pump = document.getElementById('modalPump').value.trim();
+            var username = document.getElementById('modalUsername').value.trim();
+            var password = document.getElementById('modalPassword').value;
+
+            if (!name || phone.length < 10 || !pump) {
+                modalError('Name, 10-digit mobile and pump name are all required.');
+                return;
+            }
+            if (username.length < 4) {
+                modalError('Username must be at least 4 characters.');
+                return;
+            }
+            if (password.length < 6) {
+                modalError('Password must be at least 6 characters.');
+                return;
+            }
+
+            var btn = document.getElementById('modalSubmitBtn');
+            var txt = document.getElementById('modalSubmitText');
+            btn.disabled = true;
+            txt.textContent = '@L["Creating account..."]';
+            document.getElementById('modalFormError').style.display = 'none';
+
+            fetch('/Account/Signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pumpName: pump, contactName: name, contactNo: phone,
+                    username: username, password: password, city: null, stateCode: null, email: null
+                })
+            })
+            .then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (d) {
+                    return { ok: r.ok, data: d };
+                });
+            })
+            .then(function (res) {
+                if (res.ok) {
+                    document.getElementById('modalFormView').style.display = 'none';
+                    document.getElementById('modalSuccessView').style.display = 'block';
+                    var head = document.getElementById('successHeadline');
+                    var sub = document.getElementById('successSubline');
+                    if (head) { head.textContent = '@L["Account created!"]'; }
+                    if (sub) { sub.textContent = 'Username "' + username + '" - your 7-day trial has started.'; }
+                } else {
+                    modalError(res.data.message || 'Could not create the account. Please call 6394389973.');
+                    btn.disabled = false;
+                    toggleSignupFields();
+                }
+            })
+            .catch(function () {
+                modalError('Network problem. Please call 6394389973.');
+                btn.disabled = false;
+                toggleSignupFields();
+            });
+        }
+
+        function submitPlanRequest() {
+            var name = document.getElementById('modalName').value.trim();
+            var phone = document.getElementById('modalPhone').value.trim();
+            var pump = document.getElementById('modalPump').value.trim();
+            if (!name || !phone) { return; }
+
+            var btn = document.getElementById('modalSubmitBtn');
+            var txt = document.getElementById('modalSubmitText');
+            btn.disabled = true;
+            txt.textContent = '@L["Sending request..."]';
+
+            fetch('/Account/SubmitSubscriptionRequest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contactName: name, contactNo: phone,
+                    planType: selectedModalPlan, ownerId: null, pumpName: pump
+                })
+            })
+            .then(function (r) {
+                if (r.ok) {
+                    document.getElementById('modalFormView').style.display = 'none';
+                    document.getElementById('modalSuccessView').style.display = 'block';
+                } else {
+                    modalError('Could not send the request. Please call 6394389973.');
+                    btn.disabled = false;
+                    toggleSignupFields();
+                }
+            })
+            .catch(function () {
+                modalError('Network problem. Please call 6394389973.');
+                btn.disabled = false;
+                toggleSignupFields();
+            });
+        }
+
+        document.querySelector('form').addEventListener('submit', function () {
+            const btn = document.getElementById('loginBtn');
+            const text = document.getElementById('btnText');
+            const spinner = document.getElementById('btnSpinner');
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.8';
+            text.textContent = '@L["Signing In..."]';
+            spinner.classList.remove('d-none');
+        });
+
+        function togglePasswordVisibility() {
+            var input = document.getElementById('passwordInput');
+            var eyeOn  = document.getElementById('eyeIcon');
+            var eyeOff = document.getElementById('eyeOffIcon');
+            var btn    = document.getElementById('togglePassword');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                eyeOn.style.display  = 'none';
+                eyeOff.style.display = 'block';
+                btn.style.color = 'rgba(249,115,22,0.80)';
+            } else {
+                input.type = 'password';
+                eyeOn.style.display  = 'block';
+                eyeOff.style.display = 'none';
+                btn.style.color = 'rgba(255,255,255,0.38)';
+            }
+        }
+    </script>
+    <script>
+        // Service worker yahin se register ho jaata hai — user ko login karne ka
+        // intezaar nahi karna padta.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/service-worker.js').catch(function () { });
+            });
+        }
+    
+        // ---- App install button ----
+        // Browser tabhi bolta hai jab sab shart poori hon (https, manifest,
+        // service worker, icons). Event pakad kar rakh lete hain, warna wo
+        // ek baar aakar chala jaata hai aur phir kabhi nahi milta.
+        (function () {
+            var deferred = null;
+            var btn = document.getElementById('btnInstallApp');
+            var bar = document.getElementById('installBar');
+            var hint = document.getElementById('iosInstallHint');
+            if (!btn) { return; }
+
+            // Pehle se install hai to kuch mat dikhao.
+            var installed = window.matchMedia('(display-mode: standalone)').matches
+                         || window.navigator.standalone === true;
+
+            window.addEventListener('beforeinstallprompt', function (e) {
+                e.preventDefault();          // Chrome ki apni chhoti patti rok do
+                deferred = e;
+                if (!installed && bar) { bar.style.display = 'block'; }
+            });
+
+            btn.addEventListener('click', function () {
+                if (!deferred) { return; }
+                deferred.prompt();
+                deferred.userChoice.then(function () {
+                    deferred = null;
+                    if (bar) { bar.style.display = 'none'; }
+                });
+            });
+
+            // Install hote hi button hamesha ke liye gayab.
+            window.addEventListener('appinstalled', function () {
+                if (bar) { bar.style.display = 'none'; }
+            });
+
+            // iPhone/iPad: wahan beforeinstallprompt hota hi nahi, par
+            // "Add to Home Screen" chalta hai — sirf raasta batana padta hai.
+            // Naya iPad khud ko "Macintosh" batata hai, isliye touch points bhi dekhte hain.
+            var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+                     || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+            // iPhone/iPad par Apple kisi website ko ek-click install karne nahi
+            // deta — `beforeinstallprompt` wahan hota hi nahi. Pehle yahan sirf
+            // ek line dikhati thi aur button gayab rehta tha, jisse lagta tha ki
+            // iPhone par ye suvidha hai hi nahi.
+            //
+            // Ab button wahan bhi dikhta hai — bas dabane par install ke bajaye
+            // tarika khulta hai. Jhooth nahi bola ja raha: "Add to Home Screen"
+            // se app usi tarah lagti hai, bas do tap zyada lagte hain.
+            if (isIos && !installed && hint && bar) {
+                bar.style.display = 'block';
+                btn.style.display = '';
+                btn.addEventListener('click', function () {
+                    hint.style.display = hint.style.display === 'block' ? 'none' : 'block';
+                });
+            }
+        })();
+</script>
+</body>
+</html>

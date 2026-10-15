@@ -1,0 +1,123 @@
+@model PPMS.Client.Web.Models.DayBookViewModel
+@{
+    ViewData["Title"] = "Day Book";
+    var totalDebit = Model.Entries.Sum(x => x.Debit);
+    var totalCredit = Model.Entries.Sum(x => x.Credit);
+}
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="DayBook" asp-controller="Operations" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">@L["Pump"]</label>
+                <select class="form-select" name="pumpId">
+                    @foreach (var p in Model.Pumps)
+                    {
+                        <option value="@p.Id" selected="@(p.Id == Model.Filter.PumpId)">@p.Name (@p.City)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">@L["From"]</label>
+                <input class="form-control" type="date" name="dateFrom" value="@Model.Filter.DateFrom.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">@L["To"]</label>
+                <input class="form-control" type="date" name="dateTo" value="@Model.Filter.DateTo.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-3 d-grid">
+                <button class="btn btn-primary" type="submit">@L["Load Day Book"]</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <h5 class="card-title mb-2">@L["Shift Summary (Meter + Operator)"]</h5>
+        <div class="table-responsive mb-3">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>@L["Shift"]</th>
+                        <th>@L["Date"]</th>
+                        <th>@L["Operator"]</th>
+                        <th class="text-end">@L["Sold Qty"]</th>
+                        <th class="text-end">@L["Meter Sales"]</th>
+                        <th class="text-end">@L["Open Cash"]</th>
+                        <th class="text-end">@L["Close Cash"]</th>
+                        <th class="text-end">@L["Cash Delta"]</th>
+                        <th class="text-end">@L["Variance"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.ShiftSummaries.Count == 0)
+                    {
+                        <tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">&#9201;</div><div class="empty-state-title">@L["No shifts in this date range"]</div><div class="empty-state-hint">@L["Pick a different date range above, or open a new shift from the Shift page."]</div></div></td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var s in Model.ShiftSummaries)
+                        {
+                            <tr>
+                                <td data-label="@L["Shift"]">@s.ShiftCode (#@s.ShiftId)</td>
+                                <td data-label="@L["Date"]">@s.ShiftDate</td>
+                                <td data-label="@L["Operator"]">@s.OperatorName</td>
+                                <td class="text-end" data-label="@L["Sold Qty"]">@s.SoldQty.ToString("0.000")</td>
+                                <td class="text-end" data-label="@L["Meter Sales"]">@s.SoldAmount.ToString("0.00")</td>
+                                <td class="text-end" data-label="@L["Open Cash"]">@s.OpeningCash.ToString("0.00")</td>
+                                @* Shift abhi khuli hai to closing cash aaya hi nahi — "0.00" ya
+                                   bada negative variance dikhana galat sandesh deta hai. *@
+                                <td class="text-end" data-label="@L["Close Cash"]">@(s.ClosingCash.HasValue ? s.ClosingCash.Value.ToString("0.00") : "—")</td>
+                                <td class="text-end" data-label="@L["Cash Delta"]">@(s.ClosingCash.HasValue ? s.CashDelta.ToString("0.00") : "—")</td>
+                                <td class="text-end" data-label="@L["Variance"]">@(s.ClosingCash.HasValue ? s.CashVsMeterVariance.ToString("0.00") : "—")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">@L["Day Book Entries"]</h5>
+            <div class="d-flex gap-3 align-items-center">
+                <a href="/Operations/ExportDayBookCsv?pumpId=@Model.Filter.PumpId&dateFrom=@Model.Filter.DateFrom.ToString("yyyy-MM-dd")&dateTo=@Model.Filter.DateTo.ToString("yyyy-MM-dd")" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i>@L["Export to CSV"]</a>
+                <div class="small text-muted">Debit: <strong>@totalDebit.ToString("0.00")</strong> | Credit: <strong>@totalCredit.ToString("0.00")</strong></div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>@L["Date"]</th>
+                        <th>@L["Type"]</th>
+                        <th>@L["Ref"]</th>
+                        <th>@L["Description"]</th>
+                        <th class="text-end">@L["Debit"]</th>
+                        <th class="text-end">@L["Credit"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Entries.Count == 0)
+                    {
+                        <tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#128211;</div><div class="empty-state-title">@L["No entries in this range"]</div><div class="empty-state-hint">@L["Sales, expenses and cash entries appear here automatically."]</div></div></td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var e in Model.Entries)
+                        {
+                            <tr>
+                                <td data-label="@L["Date"]">@e.EntryDateTime.ToString("dd-MMM-yyyy hh:mm tt")</td>
+                                <td data-label="@L["Type"]">@e.EntryType</td>
+                                <td data-label="@L["Ref"]">@e.ReferenceNo</td>
+                                <td data-label="@L["Description"]">@e.Description</td>
+                                <td class="text-end" data-label="@L["Debit"]">@e.Debit.ToString("0.00")</td>
+                                <td class="text-end" data-label="@L["Credit"]">@e.Credit.ToString("0.00")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

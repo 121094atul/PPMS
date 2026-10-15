@@ -1,0 +1,509 @@
+﻿@using System.Text.Json
+@model PPMS.Client.Web.Models.PurchaseManagementViewModel
+@{
+    ViewData["Title"] = "Purchase Management";
+    var productOptions = Model.Products.Select(x => new { x.Id, Label = $"{x.Name} ({x.Category})", x.CurrentRate }).ToList();
+    var tankOptions = Model.Tanks.Select(x => new { x.Id, x.ProductId, Label = $"{x.Name} ({x.ProductName})" }).ToList();
+
+    // Har line ke neeche: nikla hua rate, chetavni, aur "mool + VAT + recovery" jodne ka
+    // chhota helper. Ek hi jagah banaya hai kyunki ise Razor ka loop (pehle se bani line)
+    // aur JS (nayi jodi gayi line) dono lete hain - do jagah likhne par ek chhoot jaata.
+    // Helper ke khaanon me `name` NAHI hai: wo post nahi hote, sirf rakam ke khaane me jod likhte hain.
+    // (Razor ka parser interpolated string ke andar ke quote nahi jhel paata, isliye
+    //  shabd pehle nikaal kar saada jod - aur HTML me single quote.)
+    var txtAddUp = L["Add up base + VAT + recovery"].Value;
+    var txtBase = L["Base Amount"].Value;   // resx me yahi case hai - lookup case-sensitive hota hai
+    var txtRecovery = L["Recovery / other"].Value;
+    var lineExtrasHtml =
+        "<div class='col-12 order-2 order-md-3'>" +
+          "<div class='d-flex flex-wrap align-items-center gap-2 small'>" +
+            "<span class='text-muted line-rate'></span>" +
+            "<button type='button' class='btn btn-link btn-sm p-0 text-decoration-none line-split-toggle'>\uFF0B " + txtAddUp + "</button>" +
+          "</div>" +
+          "<div class='alert alert-warning py-1 px-2 small mt-1 mb-0 line-rate-warn' hidden></div>" +
+          "<div class='row g-2 mt-0 line-split' hidden>" +
+            // Mobile par ek ke neeche ek - bill par bhi ye teen rakam aise hi likhi hoti hain,
+            // aur col-4 me 11,91,750.30 jaisi rakam kat jaati thi. Desktop par teeno saath.
+            "<div class='col-12 col-md-4'><div class='input-group input-group-sm'><span class='input-group-text'>" + txtBase + "</span>" +
+              "<input type='number' step='0.01' min='0' class='form-control text-end split-part' /></div></div>" +
+            "<div class='col-12 col-md-4'><div class='input-group input-group-sm'><span class='input-group-text'>VAT</span>" +
+              "<input type='number' step='0.01' min='0' class='form-control text-end split-part' /></div></div>" +
+            "<div class='col-12 col-md-4'><div class='input-group input-group-sm'><span class='input-group-text'>" + txtRecovery + "</span>" +
+              "<input type='number' step='0.01' min='0' class='form-control text-end split-part' /></div></div>" +
+          "</div>" +
+        "</div>";
+}
+
+<div class="row g-3">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Purchase Entry"]</h5>
+                <p class="text-muted small mb-3">@L["Fuel/stock purchase entry with invoice, vendor and item lines."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SavePurchase" asp-controller="Operations" method="post" id="purchaseForm">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.Id" type="hidden" />
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Pump"]</label>
+                            <select asp-for="Form.PumpId" class="form-select form-select-sm" onchange="window.location='/Operations/Purchase?pumpId='+this.value" required>
+                                @if (Model.Pumps.Count == 0)
+                                {
+                                    <option value="0">@L["No pump configured"]</option>
+                                }
+                                else
+                                {
+                                    @foreach (var p in Model.Pumps)
+                                    {
+                                        <option value="@p.Id">@p.Name (@p.City)</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0">@L["Vendor"]</label>
+                                <a href="/Operations/Vendors" class="small text-decoration-none" style="font-size: 0.75rem;">@L["+ Add Vendor"]</a>
+                            </div>
+                            <select asp-for="Form.VendorId" class="form-select form-select-sm" required>
+                                @if (Model.Vendors.Count == 0)
+                                {
+                                    <option value="0">@L["No vendor available"]</option>
+                                }
+                                else
+                                {
+                                    @foreach (var v in Model.Vendors)
+                                    {
+                                        <option value="@v.Id">@v.VendorName</option>
+                                    }
+                                }
+                                @* Purana bill jiska vendor baad me hata diya gaya (Section AJ ke baad wo list me
+                                   nahi aata): wahi chuna rahe. Iske bina browser pehla vendor chun leta aur
+                                   bill save karte hi uska vendor chupchaap badal jaata. *@
+                                @if (Model.Form.Id > 0 && Model.Form.VendorId > 0 && !Model.Vendors.Any(v => v.Id == Model.Form.VendorId))
+                                {
+                                    <option value="@Model.Form.VendorId" selected>@L["(removed vendor)"] #@Model.Form.VendorId</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-4">
+                            <label class="form-label">@L["Invoice No"]</label>
+                            <input asp-for="Form.InvoiceNo" class="form-control form-control-sm" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@L["Invoice Date"]</label>
+                            <input asp-for="Form.InvoiceDate" type="date" class="form-control form-control-sm" required />
+                            @* Stock isi tareekh par tank me judta hai (sp_Purchase_SaveDetail). Tanker
+                               bill ke agle din utre to DSR me ek din + aur agle din - dikhta hai. *@
+                            @* Tareekh poore shabdon me - "01-08-2026" aur "01-10-2026" dekhne me
+                               ek jaise lagte hain, par mahina padh kar galti turant pakdi jaati hai.
+                               03 Oct ko ek bill galti se 01 AUGUST ka ban gaya tha. *@
+                            <div id="invDateWords" class="fw-semibold small mt-1"></div>
+                            <div id="invDateWarn" class="alert alert-warning py-1 px-2 small mt-1 mb-0" hidden></div>
+                            <div class="form-text">@L["Tank stock is added on this date. Save it before closing that day's shift. If the tanker was unloaded on a different day than the bill, the DSR shows + on one day and - on the other (the total stays correct)."]</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@L["Vehicle No"]</label>
+                            <input asp-for="Form.VehicleNo" class="form-control form-control-sm" placeholder="@L["UP41XX1234"]" />
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Driver Name"]</label>
+                        <input asp-for="Form.DriverName" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@L["Notes"]</label>
+                        <textarea asp-for="Form.Notes" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">@L["Purchase Lines"]</h6>
+                        <button type="button" id="addPurchaseLineBtn" class="btn btn-sm btn-outline-primary">@L["Add line"]</button>
+                    </div>
+
+                    <div id="purchaseLinesBody" class="mb-3">
+                        @for (var i = 0; i < Model.Form.Items.Count; i++)
+                        {
+                            var line = Model.Form.Items[i];
+                            <div class="border rounded p-2 mb-2 purchase-line-row bg-light">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label small mb-1">@L["Product"]</label>
+                                        @* Product badalne par neeche tank ki list bhi badalti hai -
+                                           taaki diesel ka tel petrol ke tank me na chun liya jaye.
+                                           Server par bhi ye jaanch hai (THROW 50120), ye sirf pehli
+                                           deewar hai taaki galti ho hi na. *@
+                                        <select class="form-select form-select-sm" name="Form.Items[@i].ProductId" required>
+                                            @foreach (var p in Model.Products)
+                                            {
+                                                <option value="@p.Id" selected="@(p.Id == line.ProductId)">@p.Name (@p.Category)</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label small mb-1">@L["Tank"]</label>
+                                        <select class="form-select form-select-sm" name="Form.Items[@i].TankId">
+                                            <option value="">@L["-- Select tank --"]</option>
+                                            @foreach (var t in Model.Tanks)
+                                            {
+                                                <option value="@t.Id" data-product="@t.ProductId" selected="@(t.Id == line.TankId)">@t.Name (@t.ProductName)</option>
+                                            }
+                                            @* Purani line ka tank baad me hata diya gaya: wahi chuna rahe. Iske bina
+                                               "-- tank chuniye --" chun jaata, aur bill save karte hi us line ka stock
+                                               kisi tank me wapas nahi judta. *@
+                                            @if (line.TankId is > 0 && !Model.Tanks.Any(t => t.Id == line.TankId))
+                                            {
+                                                <option value="@line.TankId" data-product="@line.ProductId" data-removed="1" selected>@L["(removed tank)"] #@line.TankId</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small mb-1">@L["Qty (Litres)"]</label>
+                                        <input class="form-control form-control-sm" type="number" min="0.01" step="any" name="Form.Items[@i].Quantity"
+                                               value="@(line.Quantity > 0 ? line.Quantity.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) : "")" required />
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        @* Rate per litre ki jagah BILL KI RAKAM (Section AE). 13,98,250.70 jaisi
+                                           rakam ke liye chauda khaana - md-2 me aakhri ank kat jaate the. *@
+                                        <label class="form-label small mb-1">@L["Bill amount (Rs)"]</label>
+                                        <input class="form-control form-control-sm" type="number" min="0.01" step="0.01" name="Form.Items[@i].Amount"
+                                               value="@(line.Amount > 0 ? line.Amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : "")" required />
+                                    </div>
+                                    <div class="col-12 col-md-1 d-grid mt-2 mt-md-0 order-3 order-md-2">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-line-btn" title="@L["Remove"]">✕<span class="d-md-none"> @L["Remove"]</span></button>
+                                    </div>
+                                    @Html.Raw(lineExtrasHtml)
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="form-text mb-2">💡 @L["Write the amount for each product exactly as on the bill, including VAT and recovery. The rate per litre is worked out for you."]</div>
+
+                    <div class="d-flex justify-content-end mb-3">
+                        <div class="border rounded px-3 py-2 bg-light text-end">
+                            <span class="text-muted small me-2">@L["Bill total"]</span>
+                            <span class="fw-semibold fs-6" id="purchaseEstimatedTotal">0.00</span>
+                            <div class="form-text mt-0">@L["This should match the Total Value printed on the bill."]</div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">@(Model.Form.Id > 0 ? L["Update Purchase"].Value : L["Save Purchase"].Value)</button>
+                        @if (Model.Form.Id > 0)
+                        {
+                            <a href="/Operations/Purchase?pumpId=@Model.Form.PumpId" class="btn btn-sm btn-outline-secondary">@L["Cancel Edit"]</a>
+                        }
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-2">@L["Recent Purchases"]</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Invoice"]</th>
+                            <th>@L["Date"]</th>
+                            <th>@L["Vendor"]</th>
+                            <th>@L["Product / Qty"]</th>
+                            <th class="text-end">@L["Amount"]</th>
+                            <th class="text-center">@L["Action"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Purchases == null || Model.Purchases.Items.Count == 0)
+                        {
+                            <tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#128666;</div><div class="empty-state-title">@L["No purchase entries"]</div><div class="empty-state-hint">@L["When a tanker arrives, record the invoice, vendor and quantity above."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var p in Model.Purchases.Items)
+                            {
+                                <tr>
+                                    <td data-label="@L["Invoice"]">@p.InvoiceNo</td>
+                                    <td data-label="@L["Date"]">@p.InvoiceDate.ToString("dd-MMM")</td>
+                                    <td data-label="@L["Vendor"]">@p.VendorName</td>
+                                    <td data-label="@L["Product / Qty"]">
+                                        <div class="small">@p.ProductSummary</div>
+                                        <div class="text-muted small">Total: @p.TotalQty.ToString("0.##") L</div>
+                                    </td>
+                                    <td class="text-end fw-semibold" data-label="@L["Amount"]">₹@p.TotalAmount.ToString("0.00")</td>
+                                    <td class="text-center" data-label="@L["Action"]">
+                                        <a href="/Operations/Purchase?pumpId=@p.PumpId&editId=@p.Id" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">@L["Edit"]</a>
+                                        @* Galat ya dohri entry hatane ka raasta. sp_Purchase_Delete tank ka
+                                           stock bhi utna hi wapas ghata deta hai, isliye pehle pushti. *@
+                                        <form asp-action="DeletePurchase" asp-controller="Operations" method="post" style="display:inline"
+                                              onsubmit="return confirm('@L["Delete this purchase? The tanker's quantity will be removed from the tank stock as well."]');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@p.Id" />
+                                            <input type="hidden" name="pumpId" value="@p.PumpId" />
+                                            <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-2 ms-1" style="font-size: 0.75rem;">@L["Delete"]</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Purchases != null && Model.Purchases.TotalPages > 1)
+                {
+                    <div class="mt-3 d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Page @Model.Purchases.PageNumber of @Model.Purchases.TotalPages (Total: @Model.Purchases.TotalCount)</span>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary" @(Model.Purchases.HasPreviousPage ? "" : "disabled") onclick="changePage(@(Model.Purchases.PageNumber - 1))">@L["Previous"]</button>
+                            <button type="button" class="btn btn-outline-secondary" @(Model.Purchases.HasNextPage ? "" : "disabled") onclick="changePage(@(Model.Purchases.PageNumber + 1))">@L["Next"]</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+
+<script>
+    // Bill ki tareekh: shabdon me dikhao, aur aaj se door ho to tok do.
+    (function () {
+        const el = document.querySelector('[name="Form.InvoiceDate"]');
+        const words = document.getElementById('invDateWords');
+        const warn = document.getElementById('invDateWarn');
+        if (!el || !words || !warn) { return; }
+
+        // Page ka lang hamesha "en" hota hai; asli chuni hui bhasha server se lo,
+        // warna Hindi me bhi mahina English me dikhta hai.
+        const lang = '@System.Globalization.CultureInfo.CurrentUICulture.Name' || undefined;
+
+        function show() {
+            const v = el.value;
+            warn.hidden = true;
+            if (!v) { words.textContent = ''; return; }
+
+            const d = new Date(v + 'T00:00:00');
+            if (isNaN(d)) { words.textContent = ''; return; }
+
+            words.textContent = '\uD83D\uDCC5 ' + d.toLocaleDateString(lang, { day: '2-digit', month: 'long', year: 'numeric' });
+
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const days = Math.round((d - today) / 86400000);
+            if (days > 0) {
+                warn.textContent = '@L["This bill date is in the future. Please check the date."]';
+                warn.hidden = false;
+            } else if (days < -30) {
+                warn.textContent = '@L["This bill date is more than a month old. Check the month - the stock will be added on that old date."]';
+                warn.hidden = false;
+            }
+        }
+
+        el.addEventListener('change', show);
+        el.addEventListener('input', show);
+        show();
+    })();
+</script>
+
+<script>
+(() => {
+    const products = @Html.Raw(JsonSerializer.Serialize(productOptions));
+    const tanks = @Html.Raw(JsonSerializer.Serialize(tankOptions));
+    const lineExtras = @Html.Raw(JsonSerializer.Serialize(lineExtrasHtml));
+    const body = document.getElementById("purchaseLinesBody");
+    const addBtn = document.getElementById("addPurchaseLineBtn");
+    const totalEl = document.getElementById("purchaseEstimatedTotal");
+
+    const T = {
+        perLitre: '@L["per litre"]',
+        rateOdd: '@L["This rate is very different from the selling rate. Check the quantity and the amount."]',
+        selling: '@L["Selling rate"]'
+    };
+    const inr = (n, d) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+    const buildProductOptions = () => products.map(p => `<option value="${p.Id}">${p.Label}</option>`).join("");
+    const buildTankOptions = (productId, selectedId) => {
+        const list = ['<option value="">@L["-- Select tank --"]</option>'];
+        for (const t of tanks.filter(x => !productId || x.ProductId === productId)) {
+            const isSel = selectedId && Number(t.Id) === Number(selectedId) ? "selected" : "";
+            list.push(`<option value="${t.Id}" ${isSel}>${t.Label}</option>`);
+        }
+        return list.join("");
+    };
+
+    // Product ka BIKRI rate - sirf milaan ke liye (khareed ka rate isse bahut door ho to tok do).
+    const sellingRate = (productId) => {
+        const p = products.find(x => x.Id === productId);
+        return p ? Number(p.CurrentRate || 0) : 0;
+    };
+
+    const reindex = () => {
+        body.querySelectorAll(".purchase-line-row").forEach((row, idx) => {
+            row.querySelectorAll("input,select").forEach(ctrl => {
+                const name = ctrl.getAttribute("name");
+                if (name) {
+                    ctrl.setAttribute("name", name.replace(/Form\.Items\[\d+\]/, `Form.Items[${idx}]`));
+                }
+            });
+        });
+    };
+
+    // Ek line: rakam / matra = rate. Rate user nahi bharta - bas dikhta hai.
+    const calcRow = (row) => {
+        const qty = Number(row.querySelector('input[name$=".Quantity"]')?.value || 0);
+        const amt = Number(row.querySelector('input[name$=".Amount"]')?.value || 0);
+        const rateEl = row.querySelector('.line-rate');
+        const warnEl = row.querySelector('.line-rate-warn');
+        if (!rateEl || !warnEl) { return; }
+
+        warnEl.hidden = true;
+        if (qty <= 0 || amt <= 0) { rateEl.textContent = ''; return; }
+
+        const rate = amt / qty;
+        rateEl.textContent = '= ₹' + inr(rate, 4) + ' ' + T.perLitre;
+
+        // Ek ank chhoot jaaye ya galat product chun liya jaaye to rate bikri ke rate
+        // se bahut door chala jaata hai. 25% se zyada farak par tok do (rokna nahi).
+        const sell = sellingRate(Number(row.querySelector('select[name$=".ProductId"]')?.value || 0));
+        if (sell > 0 && (rate > sell * 1.25 || rate < sell * 0.75)) {
+            warnEl.textContent = '⚠ ' + T.rateOdd + ' (' + T.selling + ': ₹' + inr(sell, 2) + ')';
+            warnEl.hidden = false;
+        }
+    };
+
+    const calcTotal = () => {
+        let total = 0;
+        body.querySelectorAll(".purchase-line-row").forEach(row => {
+            total += Number(row.querySelector('input[name$=".Amount"]')?.value || 0);
+            calcRow(row);
+        });
+        if (totalEl) totalEl.textContent = '₹' + inr(total, 2);
+    };
+
+    // Purana bill badalte waqt jo line jaisi save thi waisi hi dikhe - uska tank
+    // apne aap na badle. Apne aap chunna sirf NAYI line / naye bill ke liye.
+    const isEditingBill = @(Model.Form.Id > 0 ? "true" : "false");
+
+    const wireRow = (row, isNewRow) => {
+        const productCtrl = row.querySelector('select[name$=".ProductId"]');
+        const tankCtrl = row.querySelector('select[name$=".TankId"]');
+        const amountCtrl = row.querySelector('input[name$=".Amount"]');
+        const initialTankId = tankCtrl?.value;
+        // Purani line ka tank jo baad me hata diya gaya (server ne "(hataya hua tank)" likh kar
+        // diya). `tanks` me wo nahi hai, isliye neeche dobara banate waqt use wapas jodna hai —
+        // warna line khaali tank ke saath save hoti aur uska stock kisi tank me na judta.
+        const removedTankOpt = tankCtrl?.querySelector('option[data-removed]') || null;
+
+        const refreshTankOptions = (selectedId, autoPick) => {
+            const pid = Number(productCtrl?.value || "0");
+            if (!tankCtrl) { return; }
+            tankCtrl.innerHTML = buildTankOptions(pid, selectedId);
+            if (removedTankOpt && selectedId && String(selectedId) === removedTankOpt.value) {
+                tankCtrl.appendChild(removedTankOpt);
+                tankCtrl.value = removedTankOpt.value;
+            }
+
+            // Is product ka EK hi tank ho to wahi chun lo. Tank khaali reh jaaye to
+            // bill to save ho jaata hai par tel kisi tank me nahi judta - DSR me
+            // Receipt hi nahi aati (UAT ke bill 5 ki ek line aisi hi hai, TankId NULL).
+            if (!selectedId && autoPick) {
+                const mine = tanks.filter(x => x.ProductId === pid);
+                if (mine.length === 1) { tankCtrl.value = String(mine[0].Id); }
+            }
+        };
+
+        productCtrl?.addEventListener("change", () => { refreshTankOptions(null, true); calcTotal(); });
+        row.querySelectorAll('input[name$=".Quantity"], input[name$=".Amount"]')
+           .forEach(ctrl => ctrl.addEventListener("input", calcTotal));
+
+        // "mool + VAT + recovery" - chhota sa jodne wala. Jod seedha rakam ke khaane me.
+        const split = row.querySelector('.line-split');
+        row.querySelector('.line-split-toggle')?.addEventListener('click', () => {
+            if (!split) { return; }
+            split.hidden = !split.hidden;
+            if (!split.hidden) { split.querySelector('.split-part')?.focus(); }
+        });
+        row.querySelectorAll('.split-part').forEach(part => part.addEventListener('input', () => {
+            const sum = Array.from(row.querySelectorAll('.split-part'))
+                             .reduce((a, x) => a + Number(x.value || 0), 0);
+            if (amountCtrl) { amountCtrl.value = sum > 0 ? sum.toFixed(2) : ''; }
+            calcTotal();
+        }));
+
+        refreshTankOptions(initialTankId, isNewRow || !isEditingBill);
+    };
+
+    const addRow = () => {
+        const idx = body.querySelectorAll(".purchase-line-row").length;
+        const defaultProductId = products.length > 0 ? products[0].Id : 0;
+        const div = document.createElement("div");
+        div.className = "border rounded p-2 mb-2 purchase-line-row bg-light";
+        div.innerHTML = `
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label small mb-1">@L["Product"]</label>
+                    <select class="form-select form-select-sm" name="Form.Items[${idx}].ProductId" required>${buildProductOptions()}</select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label small mb-1">@L["Tank"]</label>
+                    <select class="form-select form-select-sm" name="Form.Items[${idx}].TankId">${buildTankOptions(defaultProductId)}</select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1">@L["Qty (Litres)"]</label>
+                    <input class="form-control form-control-sm" type="number" min="0.01" step="any" name="Form.Items[${idx}].Quantity" required />
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">@L["Bill amount (Rs)"]</label>
+                    <input class="form-control form-control-sm" type="number" min="0.01" step="0.01" name="Form.Items[${idx}].Amount" required />
+                </div>
+                <div class="col-12 col-md-1 d-grid mt-2 mt-md-0 order-3 order-md-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-line-btn" title="@L["Remove"]">✕<span class="d-md-none"> @L["Remove"]</span></button>
+                </div>
+                ${lineExtras}
+            </div>`;
+        body.appendChild(div);
+        wireRow(div, true);
+        reindex();
+        calcTotal();
+    };
+
+    addBtn?.addEventListener("click", addRow);
+
+    body?.addEventListener("click", (e) => {
+        // Button ke andar ab shabd wala <span> bhi hai - us par click ho to bhi
+        // button hi pakadna hai (closest), warna mobile par "hataiye" kaam nahi karta.
+        const target = e.target;
+        const btn = target instanceof Element ? target.closest(".remove-line-btn") : null;
+        if (!btn) return;
+        btn.closest(".purchase-line-row")?.remove();
+        if (body.querySelectorAll(".purchase-line-row").length === 0) addRow();
+        reindex();
+        calcTotal();
+    });
+
+    body.querySelectorAll(".purchase-line-row").forEach(row => wireRow(row, false));
+    calcTotal();
+})();
+
+function changePage(page) {
+    const pumpId = document.getElementById('Form_PumpId').value;
+    window.location = '/Operations/Purchase?pumpId=' + pumpId + '&pageNumber=' + page;
+}
+</script>
+}

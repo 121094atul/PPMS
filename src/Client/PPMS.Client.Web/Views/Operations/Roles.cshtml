@@ -1,0 +1,81 @@
+@model PPMS.Client.Web.Models.RoleManagementViewModel
+@{
+    ViewData["Title"] = "Role Management";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">@L["Role Form"]</h5>
+                <p class="text-muted small mb-3">@L["Create and update role definitions."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveRole" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.Id" type="hidden" />
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Role Name"]</label>
+                        <input asp-for="Form.Name" class="form-control" required />
+                    </div>
+                    <div class="form-check mb-3">
+                        <input asp-for="Form.IsSystem" class="form-check-input" type="checkbox" />
+                        <label asp-for="Form.IsSystem" class="form-check-label">@L["System Role"]</label>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@((Model.Form.Id is null) ? "Create Role" : "Update Role")</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">@L["Role List"]</h5>
+                <div class="table-responsive">
+                    <table data-pager="25" class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>@L["Name"]</th>
+                            <th>@L["Type"]</th>
+                            <th>@L["Status"]</th>
+                            <th class="text-end">@L["Action"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model.Roles.Count == 0)
+                        {
+                            <tr><td colspan="4"><div class="empty-state"><div class="empty-state-icon">&#128272;</div><div class="empty-state-title">@L["No roles created"]</div><div class="empty-state-hint">@L["Create roles like Manager or Cashier and give them menu-wise permissions."]</div></div></td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var role in Model.Roles)
+                            {
+                                <tr>
+                                    <td data-label="@L["Name"]">@role.Name</td>
+                                    <td data-label="@L["Type"]">@(role.IsSystem ? L["System"].Value : L["Custom"].Value)</td>
+                                    <td data-label="@L["Status"]">@(role.IsActive ? L["Active"].Value : L["Inactive"].Value)</td>
+                                    <td class="text-end" data-label="@L["Action"]">
+                                        <div class="btn-group">
+                                            <a class="btn btn-sm btn-outline-primary" href="/Operations/Roles?editId=@role.Id">@L["Edit"]</a>
+                                            <a class="btn btn-sm btn-outline-secondary" asp-action="RolePermissions" asp-controller="Operations" asp-route-roleId="@role.Id">@L["Permissions"]</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

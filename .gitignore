@@ -1,0 +1,26 @@
+# Build ka kachra
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+app_build.log
+publish/
+publish_output/
+artifacts/
+.dotnet/
+*.log
+build-log.txt
+*.bak
+
+# RAAZ — repo PUBLIC hai. Asli config server / laptop par hi rehti hai.
+# Naya clone: appsettings.example.json ko appsettings.json naam se copy karke bharein.
+src/API/PPMS.Api/appsettings.json
+src/API/PPMS.Api/appsettings.Development.json
+*.pubxml.user
+
+# Asli pump ka data (grahakon ke naam, baki, user ke password hash)
+.claude/backups/
+PPMS-LOCAL-DATA.sql
+HANDOFF.md

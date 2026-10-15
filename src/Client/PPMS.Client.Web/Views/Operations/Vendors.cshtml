@@ -1,0 +1,154 @@
+﻿@model PPMS.Client.Web.Models.VendorManagementViewModel
+@{
+    ViewData["Title"] = "Vendor Management";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Vendor Form"]</h5>
+                <p class="text-muted small mb-3">@L["Manage fuel suppliers and vendors for purchase entries."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveVendor" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.Id" type="hidden" />
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select form-select-sm" required onchange="window.location='/Operations/Vendors?pumpId='+this.value">
+                            @if (Model.Pumps.Count == 0)
+                            {
+                                <option value="0">@L["No pump configured"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var p in Model.Pumps)
+                                {
+                                    <option value="@p.Id">@p.Name (@p.City)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">Vendor Name <span class="text-danger">*</span></label>
+                        <input asp-for="Form.VendorName" class="form-control form-control-sm" placeholder="@L["e.g. BPCL, HPCL, Indian Oil"]" required />
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Contact No"]</label>
+                            <input asp-for="Form.ContactNo" class="form-control form-control-sm" placeholder="9876543210" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["GSTIN"]</label>
+                            <input asp-for="Form.GSTIN" class="form-control form-control-sm" placeholder="@L["27AABCU9603R1ZX"]" />
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Address"]</label>
+                        <input asp-for="Form.Address" class="form-control form-control-sm" placeholder="@L["Full address"]" />
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="Form.IsActive" class="form-check-input" type="checkbox" />
+                        <label asp-for="Form.IsActive" class="form-check-label">@L["Active"]</label>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm flex-grow-1">@(Model.Form.Id == 0 ? L["Add Vendor"].Value : L["Update Vendor"].Value)</button>
+                        @if (Model.Form.Id != 0)
+                        {
+                            <a href="/Operations/Vendors?pumpId=@Model.Form.PumpId" class="btn btn-outline-secondary btn-sm">@L["Cancel"]</a>
+                        }
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="card-title mb-0">@L["Vendor List"]</h5>
+                    <span class="badge bg-secondary">@Model.Vendors.Count vendor(s)</span>
+                </div>
+
+                @if (Model.Vendors.Count == 0)
+                {
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#127978;</div>
+                        <div class="empty-state-title">@L["No vendors added"]</div>
+                        <div class="empty-state-hint">@L["Add suppliers like HPCL, BPCL or IOCL — you will pick them on purchase entries."]</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table data-pager="25" class="table table-sm align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>@L["Vendor Name"]</th>
+                                    <th>@L["Contact"]</th>
+                                    <th>@L["GSTIN"]</th>
+                                    <th>@L["Status"]</th>
+                                    <th class="text-end">@L["Actions"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var v in Model.Vendors)
+                                {
+                                    <tr>
+                                        <td data-label="@L["Vendor Name"]">
+                                            <div class="fw-semibold">@v.VendorName</div>
+                                            @if (!string.IsNullOrWhiteSpace(v.Address))
+                                            {
+                                                <div class="text-muted small">@v.Address</div>
+                                            }
+                                        </td>
+                                        <td data-label="@L["Contact"]">@(v.ContactNo ?? "—")</td>
+                                        <td data-label="@L["GSTIN"]"><span class="font-monospace small">@(v.GSTIN ?? "—")</span></td>
+                                        <td data-label="@L["Status"]">
+                                            @if (v.IsActive)
+                                            {
+                                                <span class="badge bg-success-subtle text-success">@L["Active"]</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary-subtle text-secondary">@L["Inactive"]</span>
+                                            }
+                                        </td>
+                                        <td class="text-end" data-label="@L["Actions"]">
+                                            <div class="d-flex justify-content-end gap-1">
+                                                <a class="btn btn-sm btn-outline-primary" href="/Operations/Vendors?pumpId=@Model.Form.PumpId&editId=@v.Id">@L["Edit"]</a>
+                                                <form method="post" asp-action="DeleteVendor" asp-controller="Operations" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@v.Id" />
+                                                    <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                            data-confirm="@L["Delete vendor"] @v.VendorName? @L["This cannot be undone."]"
+                                                            data-confirm-title="@L["Delete vendor"]"
+                                                            data-confirm-ok="@L["Delete"]"
+                                                            data-confirm-danger="true">@L["Delete"]</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

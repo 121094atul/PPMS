@@ -1,0 +1,288 @@
+@{
+    ViewData["Title"] = "Party / Customer Master";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 mb-0 text-primary"><i class="fas fa-users me-2"></i>@ViewData["Title"]</h2>
+    <button class="btn btn-primary btn-sm" onclick="openPartyModal()"><i class="fas fa-plus me-1"></i> @L["Add New Party"]</button>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div id="partyAlert" class="alert d-none py-2 small mb-3"></div>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <input type="text" id="searchBox" class="form-control form-control-sm" placeholder="@L["Search by name or mobile..."]" onkeyup="if(event.keyCode === 13) searchParties()" />
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-secondary btn-sm" onclick="searchParties()"><i class="fas fa-search"></i> @L["Search"]</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table id="partiesTable" class="table table-hover table-bordered table-sm align-middle" style="width:100%; font-size: 0.85rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th>@L["ID"]</th>
+                        <th>@L["Party Name"]</th>
+                        <th>@L["Type"]</th>
+                        <th>@L["Contact"]</th>
+                        <th>@L["Mobile"]</th>
+                        <th>@L["Credit Limit"]</th>
+                        <th>@L["Balance"]</th>
+                        <th>@L["Status"]</th>
+                        <th class="text-center">@L["Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody id="partiesTbody">
+                    <tr><td colspan="9" class="text-center">@L["Loading data..."]</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <!-- Pagination -->
+        <div class="d-flex justify-content-between align-items-center mt-3" style="font-size: 0.85rem;">
+            <div>
+                <span id="pageInfo">@L["Showing Page 1"]</span>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary btn-sm" id="btnPrevPage" onclick="changePage(-1)">@L["Previous"]</button>
+                <button class="btn btn-outline-secondary btn-sm" id="btnNextPage" onclick="changePage(1)">@L["Next"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Party Modal -->
+<div class="modal fade" id="partyModal" tabindex="-1" aria-labelledby="partyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fs-6" id="partyModalLabel"><i class="fas fa-edit me-2"></i> @L["Party Details"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@L["Close"]"></button>
+            </div>
+            <div class="modal-body" style="font-size: 0.85rem;">
+                <form id="partyForm">
+                    <input type="hidden" id="PartyId" value="0" />
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="PartyName" class="form-label fw-bold">Party Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm" id="PartyName" required placeholder="@L["e.g. Acme Fleet Transports"]">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="PartyType" class="form-label fw-bold">Type <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" id="PartyType" required>
+                                <option value="">@L["Select Type..."]</option>
+                                <option value="Fleet">@L["Fleet Customer"]</option>
+                                <option value="B2B">@L["B2B (Corporate)"]</option>
+                                <option value="Credit">@L["Credit Customer"]</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="Mobile" class="form-label fw-bold">@L["Mobile"]</label>
+                            <input type="text" class="form-control form-control-sm" id="Mobile" maxlength="15" placeholder="e.g. +91 9876543210">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="Email" class="form-label fw-bold">@L["Email"]</label>
+                            <input type="email" class="form-control form-control-sm" id="Email" placeholder="e.g. billing@acmefleet.com">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="Address" class="form-label fw-bold">@L["Address"]</label>
+                        <textarea class="form-control form-control-sm" id="Address" rows="2"></textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="GSTIN" class="form-label fw-bold">@L["GSTIN"]</label>
+                            <input type="text" class="form-control form-control-sm" id="GSTIN" maxlength="15" placeholder="@L["15-digit GST Code"]">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="CreditLimit" class="form-label fw-bold">Credit Limit (₹)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" id="CreditLimit" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="CurrentBalance" class="form-label fw-bold">Opening Balance (₹)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" id="CurrentBalance" value="0">
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox" id="IsActive" checked>
+                        <label class="form-check-label" for="IsActive">@L["Active Status"]</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light p-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">@L["Cancel"]</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveParty()"><i class="fas fa-save me-1"></i> @L["Save Changes"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentModal = null;
+        let currentPage = 1;
+        const pageSize = 10;
+        let hasNext = false;
+        let currentSearch = '';
+
+        $(document).ready(function() {
+            currentModal = new bootstrap.Modal(document.getElementById('partyModal'));
+            loadParties();
+        });
+
+        function showMessage(msg, isSuccess) {
+            const alertDiv = $('#partyAlert');
+            alertDiv.removeClass('d-none alert-success alert-danger');
+            alertDiv.addClass(isSuccess ? 'alert-success' : 'alert-danger');
+            alertDiv.text(msg);
+            setTimeout(() => alertDiv.addClass('d-none'), 5000);
+        }
+
+        function searchParties() {
+            currentSearch = $('#searchBox').val() || '';
+            currentPage = 1;
+            loadParties();
+        }
+
+        function loadParties() {
+            $('#partiesTbody').html('<tr><td colspan="9" class="text-center">@L["Loading data..."]</td></tr>');
+            
+            $.get('/Masters/GetParties', { searchTerm: currentSearch, pageNumber: currentPage, pageSize: pageSize }, function(res) {
+                if(res && res.success && res.data) {
+                    const pageData = res.data;
+                    renderTable(pageData.items);
+                    
+                    hasNext = pageData.hasNextPage;
+                    $('#btnPrevPage').prop('disabled', !pageData.hasPreviousPage);
+                    $('#btnNextPage').prop('disabled', !pageData.hasNextPage);
+                    $('#pageInfo').text(`Showing Page ${pageData.pageNumber} of ${pageData.totalPages || 1} (Total: ${pageData.totalCount})`);
+                } else {
+                    $('#partiesTbody').html('<tr><td colspan="9" class="text-center text-danger">@L["Failed to load data."]</td></tr>');
+                }
+            }).fail(function() {
+                $('#partiesTbody').html('<tr><td colspan="9" class="text-center text-danger">@L["Server error while loading data."]</td></tr>');
+            });
+        }
+
+        function renderTable(items) {
+            const tbody = $('#partiesTbody');
+            tbody.empty();
+            
+            if(!items || items.length === 0) {
+                tbody.html('<tr><td colspan="9" class="text-center">@L["No parties found."]</td></tr>');
+                return;
+            }
+
+            items.forEach(p => {
+                const statusBadge = p.isActive 
+                    ? '<span class="badge bg-success">@L["Active"]</span>' 
+                    : '<span class="badge bg-secondary">@L["Inactive"]</span>';
+                
+                const tr = `
+                    <tr>
+                        <td data-label="ID">${p.id}</td>
+                        <td class="fw-bold" data-label="Party Name">${p.partyName}</td>
+                        <td data-label="Type"><span class="badge bg-info text-dark">${p.partyType}</span></td>
+                        <td data-label="Contact">${p.email || '-'}</td>
+                        <td data-label="Mobile">${p.mobile || '-'}</td>
+                        <td class="text-end" data-label="Credit Limit">₹${p.creditLimit.toFixed(2)}</td>
+                        <td class="text-end fw-bold ${p.currentBalance < 0 ? 'text-danger' : 'text-success'}" data-label="Balance">₹${p.currentBalance.toFixed(2)}</td>
+                        <td data-label="Status">${statusBadge}</td>
+                        <td class="text-center" data-label="Actions">
+                            <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick='editParty(${JSON.stringify(p).replace(/'/g, "&#39;")})'><i class="fas fa-edit"></i> Edit</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(tr);
+            });
+        }
+
+        function changePage(delta) {
+            if(delta === 1 && !hasNext) return;
+            if(delta === -1 && currentPage <= 1) return;
+            
+            currentPage += delta;
+            loadParties();
+        }
+
+        function openPartyModal() {
+            document.getElementById('partyForm').reset();
+            $('#PartyId').val(0);
+            $('#IsActive').prop('checked', true);
+            $('#partyModalLabel').html('<i class="fas fa-plus me-2"></i> Add New Party');
+            currentModal.show();
+        }
+
+        function editParty(party) {
+            document.getElementById('partyForm').reset();
+            
+            $('#PartyId').val(party.id);
+            $('#PartyName').val(party.partyName);
+            $('#PartyType').val(party.partyType);
+            $('#Mobile').val(party.mobile);
+            $('#Email').val(party.email);
+            $('#Address').val(party.address);
+            $('#GSTIN').val(party.gstin);
+            $('#CreditLimit').val(party.creditLimit);
+            $('#CurrentBalance').val(party.currentBalance);
+            $('#IsActive').prop('checked', party.isActive);
+            
+            $('#partyModalLabel').html('<i class="fas fa-edit me-2"></i> Edit Party');
+            currentModal.show();
+        }
+
+        function saveParty() {
+            const form = document.getElementById('partyForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const payload = {
+                id: parseInt($('#PartyId').val() || "0"),
+                partyName: $('#PartyName').val(),
+                partyType: $('#PartyType').val(),
+                mobile: $('#Mobile').val(),
+                email: $('#Email').val(),
+                address: $('#Address').val(),
+                gstin: $('#GSTIN').val(),
+                creditLimit: parseFloat($('#CreditLimit').val() || "0"),
+                currentBalance: parseFloat($('#CurrentBalance').val() || "0"),
+                isActive: $('#IsActive').is(':checked')
+            };
+
+            const btn = $(event.currentTarget);
+            const originalText = btn.html();
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+
+            $.ajax({
+                type: "POST",
+                url: "/Masters/SaveParty",
+                contentType: "application/json",
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res && res.success) {
+                        currentModal.hide();
+                        loadParties(); // Refresh grid
+                        showMessage('Party saved successfully!', true);
+                    } else {
+                        showMessage('Failed to save party: ' + (res.message || 'Check console'), false);
+                    }
+                },
+                error: function () {
+                    showMessage('An error occurred while saving the party.', false);
+                },
+                complete: function () {
+                    btn.prop('disabled', false).html(originalText);
+                }
+            });
+        }
+    </script>
+}

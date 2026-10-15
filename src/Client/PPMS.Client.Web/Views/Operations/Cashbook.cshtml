@@ -1,0 +1,170 @@
+@model PPMS.Client.Web.Models.CashbookViewModel
+@{
+    ViewData["Title"] = "Cashbook";
+}
+
+<div class="row g-3">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">@L["Cash Transaction"]</h5>
+                <p class="text-muted small mb-3">@L["Record manual cash in/out entries for day cashbook."]</p>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Message))
+                {
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                }
+
+                <form asp-action="SaveCashbook" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Form.OwnerId" type="hidden" />
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Pump"]</label>
+                        <select asp-for="Form.PumpId" class="form-select" onchange="window.location='/Operations/Cashbook?pumpId='+this.value">
+                            @if (Model.Pumps.Count == 0)
+                            {
+                                <option value="0">@L["No pump configured"]</option>
+                            }
+                            else
+                            {
+                                @foreach (var p in Model.Pumps)
+                                {
+                                    <option value="@p.Id">@p.Name (@p.City)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">@L["Shift"]</label>
+                        <select asp-for="Form.ShiftId" class="form-select">
+                            <option value="">@L["-- Not linked to a shift --"]</option>
+                            @* Band ho chuki shift bhi dikhti hai, warna purane din ki
+                               entry us din ki shift se jud hi nahi paati thi. *@
+                            @foreach (var s in Model.LinkableShifts)
+                            {
+                                <option value="@s.Id">
+                                    @s.ShiftDate.ToString("dd-MMM-yyyy") &mdash; @s.ShiftCode
+                                    @(s.Status == "OPEN" ? L["(open)"].Value : L["(closed)"].Value)
+                                </option>
+                            }
+                        </select>
+                        <div class="form-text">
+                            @if (Model.LinkableShifts.Count == 0)
+                            {
+                                <text>@L["No shift found yet. Open a shift first if you want to link this entry."]</text>
+                            }
+                            else
+                            {
+                                <text>@L["Pick the shift of the day this belongs to - closed days are listed too. Only linked entries count towards that shift's cash."]</text>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Type"]</label>
+                            <select asp-for="Form.TxnType" class="form-select">
+                                <option value="IN">@L["IN"]</option>
+                                <option value="OUT">@L["OUT"]</option>
+                                <option value="BANK_DEPOSIT">@L["BANK DEPOSIT"]</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Amount"]</label>
+                            <input asp-for="Form.Amount" class="form-control" type="number" min="0.01" step="0.01" required />
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Reference No"]</label>
+                            <input asp-for="Form.ReferenceNo" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Date"]</label>
+                            <input asp-for="Form.TxnDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@L["Narration"]</label>
+                        <textarea asp-for="Form.Narration" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">@L["Save Cash Entry"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-2">@L["Cashbook Entries"]</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>@L["Date"]</th>
+                                <th>@L["Type"]</th>
+                                <th>@L["Ref"]</th>
+                                <th>@L["Narration"]</th>
+                                <th class="text-end">@L["Amount"]</th>
+                                <th class="text-end" style="width: 80px;">@L["Action"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Transactions == null || Model.Transactions.Items.Count == 0)
+                            {
+                                <tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#128176;</div><div class="empty-state-title">@L["No cash entries yet"]</div><div class="empty-state-hint">@L["Record cash IN / OUT or a bank deposit using the form on the left."]</div></div></td></tr>
+                            }
+                            else
+                            {
+                                @foreach (var tx in Model.Transactions.Items)
+                                {
+                                    <tr>
+                                        <td data-label="@L["Date"]">@tx.TxnDateTime.ToString("dd-MMM-yyyy hh:mm tt")</td>
+                                        <td data-label="@L["Type"]"><span class="badge @(tx.TxnType == "IN" ? "text-bg-success" : (tx.TxnType == "BANK_DEPOSIT" ? "text-bg-info" : "text-bg-danger"))">@tx.TxnType</span></td>
+                                        <td data-label="@L["Ref"]">@tx.ReferenceNo</td>
+                                        <td data-label="@L["Narration"]">@tx.Narration</td>
+                                        <td class="text-end" data-label="@L["Amount"]">@tx.Amount.ToString("0.00")</td>
+                                        <td class="text-end" data-label="@L["Action"]">
+                                            <form asp-action="DeleteCashTransaction" asp-controller="Operations" method="post" style="display:inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@tx.Id" />
+                                                <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">@L["Del"]</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Transactions != null && Model.Transactions.TotalPages > 1)
+                {
+                    <div class="mt-3 d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Page @Model.Transactions.PageNumber of @Model.Transactions.TotalPages (Total: @Model.Transactions.TotalCount)</span>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary" @(Model.Transactions.HasPreviousPage ? "" : "disabled") onclick="changePage(@(Model.Transactions.PageNumber - 1))">@L["Previous"]</button>
+                            <button type="button" class="btn btn-outline-secondary" @(Model.Transactions.HasNextPage ? "" : "disabled") onclick="changePage(@(Model.Transactions.PageNumber + 1))">@L["Next"]</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function changePage(page) {
+        const pumpId = document.getElementById('Form_PumpId').value;
+        window.location = '/Operations/Cashbook?pumpId=' + pumpId + '&pageNumber=' + page;
+    }
+</script>
+}

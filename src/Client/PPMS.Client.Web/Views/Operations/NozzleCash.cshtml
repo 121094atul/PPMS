@@ -1,0 +1,374 @@
+﻿@model PPMS.Client.Web.Models.NozzleCashViewModel
+@{
+    ViewData["Title"] = "Nozzle Cash";
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    var selectedShift = Model.Shifts.FirstOrDefault(x => x.Id == Model.SelectedShiftId);
+}
+
+@section Styles {
+<style>
+    /* Ye amount wale box table ki tang cell me d-flex ke andar dabkar
+       ~30px ke reh jaate the — na placeholder dikhta tha, na type kiya hua
+       number. Wajah: inpar sirf max-width tha, min-width nahi; flex inhe
+       jitna chahe sikod sakta tha (select par min-width tha, isliye wo
+       theek dikhta tha).
+
+       Ab teen cheezein pakki hain: apni chaudai, kam se kam chaudai, aur
+       flex-shrink band. Jagah kam pade to form agli line me chala jaata
+       hai — dabta nahi. */
+    .cash-input {
+        width: 108px;
+        min-width: 92px;
+        flex: 0 0 auto;
+        text-align: right;
+        font-weight: 600;
+    }
+
+    .cash-form { flex-wrap: wrap; row-gap: .35rem; }
+    .cash-form .btn { flex: 0 0 auto; white-space: nowrap; }
+    .cash-form select { flex: 1 1 140px; min-width: 140px; }
+
+    /* Chhoti screen par ye poora form ek line me nahi aata — table wahan
+       card jaisa ho jaata hai, to box poori chaudai le lein. */
+    @@media screen and (max-width: 575.98px) {
+        .cash-input { width: 100%; min-width: 0; flex: 1 1 100%; }
+        .cash-form .btn { width: 100%; }
+    }
+
+    /* Kam/zyada turant aankh me chubhna chahiye - accountant isi ek number
+       ke liye ye screen kholta hai. */
+    .diff-short  { color: #dc2626; font-weight: 700; }
+    .diff-excess { color: #16a34a; font-weight: 700; }
+    .diff-ok     { color: #64748b; }
+
+    .pending-card { border-left: 4px solid #f59e0b; }
+</style>
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h4 class="mb-0">@L["Nozzle Cash"]</h4>
+        <div class="text-muted small">
+            @L["Each nozzle has its own attendant. Give float at shift start, collect cash later - even after all shifts are closed."]
+        </div>
+    </div>
+    <a asp-action="AttendantCash" asp-controller="Operations" asp-route-pumpId="@Model.PumpId"
+       class="btn btn-sm btn-outline-secondary">@L["Attendant Report"]</a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") py-2">@Model.Message</div>
+}
+
+@* Bahut se pump sirf shift ke opening/closing cash se chalte hain. Unhe saaf
+   pata hona chahiye ki ye screen zaroori nahi hai — warna log samajhte hain ki
+   roz yahan bhi kuch bharna padega. *@
+<div class="alert alert-light border py-2 small mb-3">
+    <strong>@L["Optional."]</strong>
+    @L["If you only track cash at shift level (opening and closing cash), you can skip this screen completely — nothing here is required. Use it only when each nozzle has its own attendant and you hand out float separately."]
+</div>
+
+@* ── Baaki cash: poore din ka cash raat me ek saath lene wala case ── *@
+@if (Model.Pending.Count > 0)
+{
+    <div class="card border-0 shadow-sm mb-3 pending-card">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
+                <div>
+                    <strong>@L["Cash still to collect"]</strong>
+                    <span class="badge bg-warning text-dark ms-1">@Model.Pending.Count</span>
+                </div>
+                <div class="fw-bold">&#8377;@Model.PendingTotal.ToString("N2")</div>
+            </div>
+            <div class="table-responsive">
+                <table data-pager="25" class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>@L["Date"]</th>
+                            <th>@L["Shift"]</th>
+                            <th>@L["Nozzle"]</th>
+                            <th>@L["Attendant"]</th>
+                            <th class="text-end">@L["To Collect"]</th>
+                            <th class="text-end">@L["Action"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var p in Model.Pending)
+                    {
+                        <tr>
+                            <td data-label="@L["Date"]">
+                                @p.ShiftDate.ToString("dd MMM")
+                                @if (p.DaysPending > 1)
+                                {
+                                    <span class="badge bg-danger ms-1">@p.DaysPending @L["days"]</span>
+                                }
+                            </td>
+                            <td data-label="@L["Shift"]">@p.ShiftCode</td>
+                            <td data-label="@L["Nozzle"]">@p.NozzleCode <span class="text-muted small">@p.ProductName</span></td>
+                            <td data-label="@L["Attendant"]">
+                                @p.EmployeeName
+                                @if (!string.IsNullOrWhiteSpace(p.EmployeeMobile))
+                                {
+                                    <a class="small d-block" href="tel:@p.EmployeeMobile">@p.EmployeeMobile</a>
+                                }
+                            </td>
+                            <td class="text-end fw-bold" data-label="@L["To Collect"]">&#8377;@p.ExpectedCash.ToString("N2")</td>
+                            <td class="text-end" data-label="@L["Action"]">
+                                <a class="btn btn-sm btn-outline-primary"
+                                   asp-action="NozzleCash" asp-route-pumpId="@Model.PumpId" asp-route-shiftId="@p.ShiftId">
+                                    @L["Open"]
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" asp-action="NozzleCash" class="row g-2 align-items-end">
+            <div class="col-sm-6 col-md-4">
+                <label class="form-label mb-1">@L["Pump"]</label>
+                <select class="form-select" name="pumpId" onchange="this.form.submit()">
+                    @foreach (var pump in Model.Pumps)
+                    {
+                        if (pump.Id == Model.PumpId)
+                        {
+                            <option value="@pump.Id" selected>@pump.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@pump.Id">@pump.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-sm-6 col-md-5">
+                <label class="form-label mb-1">@L["Shift"]</label>
+                <select class="form-select" name="shiftId" onchange="this.form.submit()">
+                    <option value="0">@L["-- Select a shift --"]</option>
+                    @foreach (var sh in Model.Shifts)
+                    {
+                        var label = $"{sh.ShiftDate:dd MMM yyyy} — {sh.ShiftCode} ({sh.Status})";
+                        if (sh.Id == Model.SelectedShiftId)
+                        {
+                            <option value="@sh.Id" selected>@label</option>
+                        }
+                        else
+                        {
+                            <option value="@sh.Id">@label</option>
+                        }
+                    }
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.SelectedShiftId <= 0)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="empty-state">
+                <div class="empty-state-icon">&#128176;</div>
+                <div class="empty-state-title">@L["Pick a shift"]</div>
+                <div class="empty-state-hint">@L["Choose a shift above to set attendants, give float, and collect cash nozzle by nozzle."]</div>
+            </div>
+        </div>
+    </div>
+}
+else if (Model.ShiftRows.Count == 0)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="empty-state">
+                <div class="empty-state-icon">&#9881;</div>
+                <div class="empty-state-title">@L["No nozzles in this shift"]</div>
+                <div class="empty-state-hint">@L["This shift was opened without any nozzle readings."]</div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    var totalExpected = Model.ShiftRows.Sum(x => x.ExpectedCash);
+    var totalReturned = Model.ShiftRows.Where(x => x.CashReturned.HasValue).Sum(x => x.CashReturned!.Value);
+    var totalDiff = Model.ShiftRows.Where(x => x.ShortExcess.HasValue).Sum(x => x.ShortExcess!.Value);
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light">
+            <strong>@selectedShift?.ShiftCode</strong>
+            <span class="text-muted small ms-2">@selectedShift?.ShiftDate.ToString("dd MMM yyyy")</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>@L["Nozzle"]</th>
+                            <th>@L["Attendant"]</th>
+                            <th class="text-end">@L["Meter Sale"]</th>
+                            <th class="text-end">@L["Float"]</th>
+                            <th class="text-end">@L["Slips"]</th>
+                            <th class="text-end">@L["Should Receive"]</th>
+                            <th class="text-end">@L["Received"]</th>
+                            <th class="text-end">@L["Short / Excess"]</th>
+                            <th class="text-end">@L["Action"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var r in Model.ShiftRows)
+                    {
+                        <tr>
+                            <td data-label="@L["Nozzle"]">
+                                <div class="fw-semibold">@r.NozzleCode</div>
+                                <div class="text-muted small">@r.ProductName &middot; @r.SoldQty.ToString("0.##") L</div>
+                            </td>
+                            <td data-label="@L["Attendant"]">
+                                @if (r.IsCollected)
+                                {
+                                    @* Cash le liya - ab aadmi/float badalna hisaab ulta kar dega. *@
+                                    <span>@r.EmployeeName</span>
+                                }
+                                else
+                                {
+                                    <form asp-action="SaveNozzleAttendant" method="post" class="d-flex gap-1 align-items-center cash-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="shiftId" value="@r.ShiftId" />
+                                        <input type="hidden" name="nozzleId" value="@r.NozzleId" />
+                                        <input type="hidden" name="pumpId" value="@Model.PumpId" />
+                                        <select name="employeeId" class="form-select form-select-sm" style="min-width:130px;">
+                                            <option value="0">@L["-- none --"]</option>
+                                            @foreach (var e in Model.Employees)
+                                            {
+                                                if (e.Id == r.EmployeeId)
+                                                {
+                                                    <option value="@e.Id" selected>@e.FullName</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@e.Id">@e.FullName</option>
+                                                }
+                                            }
+                                            @* Is shift ka attendant baad me hata diya gaya (Section AJ ke baad list me
+                                               nahi): wahi chuna rahe — warna cash bharte hi attendant "-- none --" ho jaata. *@
+                                            @if (r.EmployeeId is > 0 && !Model.Employees.Any(e => e.Id == r.EmployeeId))
+                                            {
+                                                <option value="@r.EmployeeId" selected>@r.EmployeeName @L["(removed)"]</option>
+                                            }
+                                        </select>
+                                        @* Pehle yahan sirf title tha — box khaali dikhta tha aur
+                                           kisi ko pata hi nahi chalta tha ki isme kya bharna hai. *@
+                                        <input type="number" step="0.01" min="0" name="floatGiven"
+                                               class="form-control form-control-sm cash-input"
+                                               placeholder="@L["Float"]" aria-label="@L["Float given"]"
+                                               value="@r.FloatGiven.ToString("0.00", inv)" title="@L["Float given"]" />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">@L["Set"]</button>
+                                    </form>
+                                }
+                            </td>
+                            <td class="text-end" data-label="@L["Meter Sale"]">&#8377;@r.MeterSale.ToString("N2")</td>
+                            <td class="text-end" data-label="@L["Float"]">&#8377;@r.FloatGiven.ToString("N2")</td>
+                            <td class="text-end" data-label="@L["Slips"]">
+                                @(r.SlipsAmount > 0 ? "₹" + r.SlipsAmount.ToString("N2") : "-")
+                            </td>
+                            <td class="text-end fw-bold" data-label="@L["Should Receive"]">&#8377;@r.ExpectedCash.ToString("N2")</td>
+                            <td class="text-end" data-label="@L["Received"]">
+                                @if (r.IsCollected)
+                                {
+                                    <span>&#8377;@r.CashReturned!.Value.ToString("N2")</span>
+                                    <div class="text-muted small">@r.CashCollectedOn?.ToString("dd MMM, HH:mm")</div>
+                                }
+                                else
+                                {
+                                    <form asp-action="CollectNozzleCash" method="post" class="d-flex gap-1 justify-content-end align-items-center cash-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="shiftId" value="@r.ShiftId" />
+                                        <input type="hidden" name="nozzleId" value="@r.NozzleId" />
+                                        <input type="hidden" name="pumpId" value="@Model.PumpId" />
+                                        @* Parchi = udhaar/UPI jo is aadmi ne banayi - uska cash
+                                           uske paas aata hi nahi, isliye usse maangna bhi nahi. *@
+                                        <input type="number" step="0.01" min="0" name="slipsAmount"
+                                               class="form-control form-control-sm cash-input"
+                                               placeholder="@L["Slips"]" aria-label="@L["Slips"]"
+                                               value="@(r.SlipsAmount > 0 ? r.SlipsAmount.ToString("0.00", inv) : "")" />
+                                        <input type="number" step="0.01" min="0" name="cashReturned" required
+                                               class="form-control form-control-sm cash-input"
+                                               placeholder="@L["Cash"]" aria-label="@L["Cash received"]" />
+                                        <button type="submit" class="btn btn-sm btn-primary">@L["Collect"]</button>
+                                    </form>
+                                }
+                            </td>
+                            <td class="text-end" data-label="@L["Short / Excess"]">
+                                @if (r.ShortExcess is null)
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                                else if (r.ShortExcess < 0)
+                                {
+                                    <span class="diff-short">&#8377;@Math.Abs(r.ShortExcess.Value).ToString("N2") @L["short"]</span>
+                                }
+                                else if (r.ShortExcess > 0)
+                                {
+                                    <span class="diff-excess">&#8377;@r.ShortExcess.Value.ToString("N2") @L["excess"]</span>
+                                }
+                                else
+                                {
+                                    <span class="diff-ok">@L["Exact"]</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(r.CashNotes))
+                                {
+                                    <div class="text-muted small fst-italic">@r.CashNotes</div>
+                                }
+                            </td>
+                            <td class="text-end" data-label="@L["Action"]">
+                                @if (r.IsCollected)
+                                {
+                                    <form asp-action="UndoNozzleCash" method="post" style="display:inline"
+                                          data-confirm="@L["Remove this cash entry?"]"
+                                          data-confirm-title="@L["Remove entry"]"
+                                          data-confirm-ok="@L["Remove"]"
+                                          data-confirm-danger="true">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="shiftId" value="@r.ShiftId" />
+                                        <input type="hidden" name="nozzleId" value="@r.NozzleId" />
+                                        <input type="hidden" name="pumpId" value="@Model.PumpId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">@L["Undo"]</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                    <tfoot class="table-group-divider fw-bold">
+                        <tr>
+                            <td colspan="5" class="text-end">@L["Total"]</td>
+                            <td class="text-end" data-label="@L["Should Receive"]">&#8377;@totalExpected.ToString("N2")</td>
+                            <td class="text-end" data-label="@L["Received"]">&#8377;@totalReturned.ToString("N2")</td>
+                            <td class="text-end" data-label="@L["Short / Excess"]">
+                                @if (totalDiff < 0)
+                                {
+                                    <span class="diff-short">&#8377;@Math.Abs(totalDiff).ToString("N2") @L["short"]</span>
+                                }
+                                else if (totalDiff > 0)
+                                {
+                                    <span class="diff-excess">&#8377;@totalDiff.ToString("N2") @L["excess"]</span>
+                                }
+                                else
+                                {
+                                    <span class="diff-ok">-</span>
+                                }
+                            </td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+}
