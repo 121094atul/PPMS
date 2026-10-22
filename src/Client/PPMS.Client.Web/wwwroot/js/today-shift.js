@@ -44,6 +44,15 @@
                 if (first) { first.focus(); }
             });
         }
+        var editCash = document.getElementById('tsEditOpenCash');
+        if (editCash) {
+            editCash.addEventListener('click', function () {
+                var inp = document.getElementById('tsOpenCash');
+                inp.readOnly = false;
+                inp.focus();
+                editCash.hidden = true;
+            });
+        }
         return;
     }
 
@@ -91,6 +100,7 @@
     var slipBox = $('#tsSlips');
     var slipTpl = $('#tsSlipTpl');
     var expTpl = $('#tsExpTpl');
+    var hoTpl = $('#tsHoTpl');
     var cashEl = $('#tsCash');
     var upiEl = $('#tsUpi');
     var cardEl = $('#tsCard');
@@ -222,6 +232,24 @@
         $('#tsExpTotal').textContent = rs(total);
     }
 
+    // ── 3. Paisa: galle se nikala nakad (malik ko diya / bank me jama), seedha server par ──
+    function renderHandovers(list) {
+        var box = $('#tsHoList');
+        if (!box) { return; }
+        box.innerHTML = '';
+        var total = 0;
+        (list || []).forEach(function (h) {
+            var node = hoTpl.content.firstElementChild.cloneNode(true);
+            $('.ts-h-kind', node).textContent = h.kind === 'BANK' ? T.kindBank : T.kindOwner;
+            $('.ts-h-note', node).textContent = h.note || '';
+            $('.ts-h-amt', node).textContent = rs(h.amount);
+            $('.ts-h-del', node).dataset.id = h.id;
+            box.appendChild(node);
+            total += h.amount;
+        });
+        $('#tsHoTotal').textContent = rs(total);
+    }
+
     // ── Hisaab ─────────────────────────────────────────────────────────────
     function totals() {
         var noz = allNoz();
@@ -233,9 +261,17 @@
         var card = num(cardEl) || 0;
         var expected = sale - slipTotal - upi - card - (cash.otherCredit || 0) - (cash.otherDigital || 0) + (cash.adjust || 0);
         var got = num(cashEl);
+        // Galle me = shuru ka + ginaa hua - malik ko diya - bank me jama. Band hote hi isme se B.keepInDrawer
+        // chhod kar baaki apne aap malik ko (Section AN); wahi bacha hua agli shift ki opening.
+        var handed = (cash.handoverOwner || 0) + (cash.handoverBank || 0);
+        var left = got === null ? null : (cash.openingCash || 0) + got - handed;
+        var keep = B.keepInDrawer || 0;
         return {
             noz: noz, sale: sale, litres: litres, slips: sl, slipTotal: slipTotal, upi: upi, card: card,
-            expected: expected, cash: got, diff: got === null ? null : got - expected
+            expected: expected, cash: got, diff: got === null ? null : got - expected,
+            handed: handed, left: left,
+            auto: left === null ? null : Math.max(0, left - keep),
+            drawer: left === null ? null : Math.min(left, keep)
         };
     }
 
@@ -266,6 +302,12 @@
 
         $('#tsSlipTotal').textContent = rs(t.slipTotal);
         $('#tsExpected').textContent = rs(t.expected);
+        var leftEl = $('#tsLeft');
+        if (leftEl) {
+            // Nikala hua galle se zyada ho to wahi minus dikhao (band karna rukta hai), warna malik ko jaane wala.
+            leftEl.textContent = t.left === null ? '—' : rs(t.left < 0 ? t.left : t.auto);
+            leftEl.className = t.left !== null && t.left < 0 ? 'ts-short' : '';
+        }
 
         $('#tsBarSale').textContent = rs(t.sale);
         $('#tsBarExp').textContent = rs(t.expected);
@@ -334,6 +376,12 @@
         row(L.came, t.cash === null ? '—' : rs(t.cash));
         var dr = row(L.diff, t.diff === null ? '—' : (t.diff > 0 ? '+' : '') + rs(t.diff) + '  ' + diffWord(t.diff), 'total');
         dr.children[1].className = 'text-end ' + diffClass(t.diff);
+
+        // Ginne ke baad: kitna nikala, kitna apne aap malik ko, kitna galle me bacha (wahi agli shift ki shuruaat).
+        if ((cash.handoverOwner || 0) > 0) { row(L.hoOwner, '−' + rs(cash.handoverOwner)); }
+        if ((cash.handoverBank || 0) > 0) { row(L.hoBank, '−' + rs(cash.handoverBank)); }
+        if (t.auto) { row(L.autoOwner, '−' + rs(t.auto)); }
+        row(L.left, t.drawer === null ? '—' : rs(t.drawer), 'total');
     }
 
     // ── Draft ──────────────────────────────────────────────────────────────
@@ -442,7 +490,7 @@
             var r = await ppmsFetch(B.urls.money, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ shiftId: B.shiftId, upi: t.upi, card: t.card, slips: t.slips })
+                body: JSON.stringify({ shiftId: B.shiftId, pumpId: B.pumpId, upi: t.upi, card: t.card, slips: t.slips })
             });
             var j = await r.json();
             if (!j.success) { moneyError(j.message || T.serverError); return false; }
@@ -487,6 +535,13 @@
             show(3);
             moneyError(T.cashNeeded);
             cashEl.focus();
+            return;
+        }
+
+        // Nikala hua nakad galle me jitna tha usse zyada nahi ho sakta.
+        if (t.left !== null && t.left < 0) {
+            show(3);
+            moneyError(T.hoTooMuch);
             return;
         }
 
@@ -572,6 +627,31 @@
         }
     }
 
+    async function handoverCall(url, body) {
+        var err = $('#tsHoErr');
+        if (err) { err.hidden = true; }
+        try {
+            var r = await ppmsFetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            var j = await r.json();
+            if (!j.success) {
+                if (err) { err.textContent = j.message || T.serverError; err.hidden = false; }
+                return false;
+            }
+            renderHandovers(j.handovers);
+            cash = j.cash || cash;
+            ack.warn = false;
+            render();
+            return true;
+        } catch (e) {
+            if (err) { err.textContent = T.serverError; err.hidden = false; }
+            return false;
+        }
+    }
+
     // ── Events ─────────────────────────────────────────────────────────────
     document.addEventListener('input', function (e) {
         var el = e.target;
@@ -618,6 +698,14 @@
             del.closest('.ts-slip').remove();
             moneyDirty = true;
             render(); saveDraft();
+            return;
+        }
+
+        var hdel = el.closest('.ts-h-del');
+        if (hdel) {
+            ppmsConfirm(T.deleteHandover, { danger: true, okText: T.delete }).then(function (ok) {
+                if (ok) { handoverCall(B.urls.deleteHandover, { id: +hdel.dataset.id, shiftId: B.shiftId, pumpId: B.pumpId }); }
+            });
             return;
         }
 
@@ -687,11 +775,34 @@
         });
     }
 
+    var hoAdd = $('#tsHoAdd');
+    if (hoAdd) {
+        hoAdd.addEventListener('click', async function () {
+            var amt = num($('#tsHoAmt')) || 0;
+            if (amt <= 0) {
+                var err = $('#tsHoErr');
+                err.textContent = T.hoNeedAmount;
+                err.hidden = false;
+                return;
+            }
+            hoAdd.disabled = true;
+            var ok = await handoverCall(B.urls.addHandover, {
+                shiftId: B.shiftId, pumpId: B.pumpId, kind: $('#tsHoKind').value, amount: amt, note: $('#tsHoNote').value
+            });
+            hoAdd.disabled = false;
+            if (ok) {
+                $('#tsHoAmt').value = '';
+                $('#tsHoNote').value = '';
+            }
+        });
+    }
+
     $('#tsFinish').addEventListener('click', finish);
 
     // ── Shuru ──────────────────────────────────────────────────────────────
     renderExpenses(B.expenses);
     if (B.expenses && B.expenses.length) { $('#tsExpBox').open = true; }
+    renderHandovers(B.handovers);
     var startStep = loadDraft();
     render();
     show(startStep);

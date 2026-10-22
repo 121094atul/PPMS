@@ -227,7 +227,7 @@ else
                         <tr>
                             <td data-label="@L["Nozzle"]">
                                 <div class="fw-semibold">@r.NozzleCode</div>
-                                <div class="text-muted small">@r.ProductName &middot; @r.SoldQty.ToString("0.##") L</div>
+                                <div class="text-muted small">@r.ProductName &middot; @r.SoldQty.ToString("0.##") @(Model.UnitByProduct.TryGetValue(r.ProductName ?? "", out var qu) ? qu : "L")</div>
                             </td>
                             <td data-label="@L["Attendant"]">
                                 @if (r.IsCollected)

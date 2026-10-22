@@ -44,6 +44,48 @@ public sealed record ApiMenuItem(
 
 public sealed record MenuGroup(string GroupName, IReadOnlyList<ApiMenuItem> Items);
 
+/// <summary>Munafa report ki line (Section AO1): SALE / EXPENSE / SALARY. CostSource: PERIOD / LAST / NONE.</summary>
+public sealed record ApiProfitLossLineDto(
+    string Section,
+    int SortOrder,
+    long? ItemId,
+    string Name,
+    string? Unit,
+    decimal Qty,
+    decimal Amount,
+    decimal? CostRate,
+    decimal? CostAmount,
+    string CostSource
+);
+
+/// <summary>Financials ki line (Section AP): POSITION / FLOW (Name = code), STOCK, RECEIVABLE_TOP.</summary>
+public sealed record ApiFinancialLineDto(
+    string Section,
+    int SortOrder,
+    string Name,
+    decimal? Qty,
+    decimal? Rate,
+    decimal Amount,
+    string? Note
+);
+
+/// <summary>Activity Log ki line (Section AO2).</summary>
+public sealed record ApiAuditLogEntryDto(
+    long Id,
+    DateTime CreatedOn,
+    long? PumpId,
+    string? UserName,
+    string EntityName,
+    long? EntityId,
+    string Action,
+    string? Reason,
+    string? OldValues,
+    string? NewValues,
+    string? Detail,
+    string Area,
+    int TotalCount
+);
+
 public sealed record ApiPagedResponse<T>(
     IReadOnlyList<T> Items,
     int TotalCount,
@@ -75,7 +117,10 @@ public sealed record ApiShiftDto(
     DateTime? ClosedOn,
     string Status,
     // Pump + din ke hisaab se shift ka number (1, 2, 3). Screen par yahi dikhta hai.
-    int ShiftNo
+    int ShiftNo,
+    // Section AN: asli short / excess aur shift band par apne aap malik ko gaya nakad. Purani API se null.
+    decimal? CashShortExcess = null,
+    decimal? CashToOwner = null
 );
 
 public sealed record ApiShiftCollectionSummaryDto(

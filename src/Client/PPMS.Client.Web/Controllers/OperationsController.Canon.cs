@@ -18,7 +18,21 @@ public partial class OperationsController
     private static readonly string[] SalePaymentModes = { "Cash", "Card", "UPI", "Credit" };
     private static readonly string[] CashPaymentModes = { "Cash", "UPI", "Card", "Bank" };
 
+    /// <summary>
+    /// Shift band hone ke baad galle me kitna nakad bachta hai. Baaki sp_Shift_Close khud Cashbook me
+    /// "malik ko diya" likh deta hai (Section AN, @KeepInDrawer) - dono jagah ek hi rakam honi chahiye.
+    /// Isi se agli shift ki opening banti hai.
+    /// </summary>
+    private const decimal CashKeptInDrawer = 0m;
+
     private static string UnitAbbr(string? unit) => PPMS.Client.Web.Services.ProductUnit.Abbr(unit);
+
+    /// <summary>Ek product ki chhoti ikai (CSV header ke liye). Product na mile to "L".</summary>
+    private async Task<string> ProductUnitAbbrAsync(string token, long pumpId, long productId, CancellationToken cancellationToken)
+    {
+        var products = await Api.GetProductsAsync(token, GetOwnerId(), pumpId, cancellationToken);
+        return UnitAbbr(products.FirstOrDefault(p => p.Id == productId)?.Unit);
+    }
 
     private static bool IsOneOf(string? value, string[] allowed) =>
         value is not null && allowed.Contains(value, StringComparer.OrdinalIgnoreCase);

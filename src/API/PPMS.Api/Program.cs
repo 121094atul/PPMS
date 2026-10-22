@@ -1136,6 +1136,41 @@ app.MapGet("/api/reports/sale-purchase-register", async (long pumpId, long produ
     return Results.Ok(items);
 }).RequireAuthorization();
 
+// Munafa (P&L) - Section AO1. Owner hamesha claim se; pump usi owner ka ho.
+app.MapGet("/api/reports/profit-loss", async (long pumpId, DateOnly dateFrom, DateOnly dateTo, ClaimsPrincipal user, ITenantGuard guard, IReportInsightsService service, CancellationToken cancellationToken) =>
+{
+    var ownerId = ResolveOwnerId(user, null);
+    if (!await guard.OwnsAsync(ownerId, TenantEntities.Pump, pumpId, cancellationToken))
+    {
+        return Results.NotFound();
+    }
+
+    var items = await service.GetProfitLossAsync(ownerId, pumpId, dateFrom, dateTo, cancellationToken);
+    return Results.Ok(items);
+}).RequireAuthorization();
+
+// Financials - Section AP. Paisa kahan hai: stock, udhaar, galla, aur chuni tareekh ka len-den.
+app.MapGet("/api/reports/financials", async (long pumpId, DateOnly dateFrom, DateOnly dateTo, ClaimsPrincipal user, ITenantGuard guard, IReportInsightsService service, CancellationToken cancellationToken) =>
+{
+    var ownerId = ResolveOwnerId(user, null);
+    if (!await guard.OwnsAsync(ownerId, TenantEntities.Pump, pumpId, cancellationToken))
+    {
+        return Results.NotFound();
+    }
+
+    var items = await service.GetFinancialsAsync(ownerId, pumpId, dateFrom, dateTo, cancellationToken);
+    return Results.Ok(items);
+}).RequireAuthorization();
+
+// Activity Log - Section AO2. Sirf apne owner ka AuditLog.
+app.MapGet("/api/activity-log", async (DateOnly dateFrom, DateOnly dateTo, string? area, int? pageNumber, int? pageSize, ClaimsPrincipal user, IReportInsightsService service, CancellationToken cancellationToken) =>
+{
+    var ownerId = ResolveOwnerId(user, null);
+    var size = Math.Clamp(pageSize ?? 100, 1, 500);
+    var items = await service.GetActivityLogAsync(ownerId, dateFrom, dateTo, area, Math.Max(1, pageNumber ?? 1), size, cancellationToken);
+    return Results.Ok(items);
+}).RequireAuthorization();
+
 app.MapGet("/api/fleet-contracts", async (ClaimsPrincipal user, long? ownerId, long pumpId, IFleetCouponService service, CancellationToken cancellationToken) =>
 {
     var resolvedOwnerId = ResolveOwnerId(user, ownerId);

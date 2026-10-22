@@ -128,6 +128,8 @@
                     const ddl = $('#ProductId');
                     ddl.empty().append('<option value="">@L["Select Product..."]</option>');
                     productsCache.forEach(p => {
+                        // Gas (CNG) / charging ka tank hota hi nahi.
+                        if (p.category === 'CNG' || p.category === 'ElectricCharging') return;
                         ddl.append($('<option></option>').val(p.id).text(p.name + ' (' + p.category + ')'));
                     });
                 }

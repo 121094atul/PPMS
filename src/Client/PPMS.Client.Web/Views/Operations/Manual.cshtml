@@ -452,6 +452,17 @@
                 </tr>
             </table>
 
+            <h2>11. CNG (gas) pump</h2>
+            <p>CNG is sold in <strong>kg</strong>, it comes through the pipeline and compressor (not a tanker), and it has no tank to dip and no testing. The software handles it like this:</p>
+            <ul>
+                <li><strong>Product:</strong> Category <em>CNG</em>, Unit <em>Kg</em>. Change the rate per kg in Today's Rates, like petrol.</li>
+                <li><strong>No tank:</strong> do not make a tank for CNG. On the Nozzles page, pick CNG and the tank box disappears &mdash; save the nozzle without a tank.</li>
+                <li><strong>Shift:</strong> fill the closing meter reading (kg) like petrol. There is no testing box and no dip for CNG. Petrol/diesel litres and CNG kg are shown separately, never added together.</li>
+                <li><strong>Gas company bill:</strong> enter it in Purchase &mdash; vendor = the gas company, quantity in kg and the bill amount. No tank to pick.</li>
+                <li><strong>Reports:</strong> CNG sale shows in kg. In the Daily Stock Register the stock columns stay 0 (&ldquo;Stock not tracked (gas)&rdquo;) &mdash; only the sale and its value count.</li>
+                <li><strong>Gas loss:</strong> the software does not work out compressor loss. Compare the kg you sold with the kg on the gas company's meter in their bill.</li>
+            </ul>
+
             <p class="text-muted mt-4" style="font-size:0.85rem;">
                 Support: 6394389973
             </p>
@@ -813,6 +824,17 @@
                     <td>एक बार में एक ही शिफ़्ट खुली रह सकती है। पहले चालू वाली बंद कीजिए।</td>
                 </tr>
             </table>
+
+            <h2>11. CNG (गैस) पंप</h2>
+            <p>CNG <strong>किलो (kg)</strong> में बिकती है, पाइपलाइन और कंप्रेसर से आती है (टैंकर से नहीं), और इसका न टैंक नपता है, न जाँच (टेस्टिंग) होती है। सॉफ़्टवेयर इसे ऐसे चलाता है:</p>
+            <ul>
+                <li><strong>प्रोडक्ट:</strong> कैटेगरी <em>सीएनजी</em>, यूनिट <em>किलो</em>। रेट (प्रति kg) पेट्रोल की तरह “आज के रेट” में बदलिए।</li>
+                <li><strong>टैंक नहीं:</strong> CNG का टैंक मत बनाइए। Nozzles पेज पर CNG चुनते ही टैंक का खाना हट जाता है — नोज़ल बिना टैंक के सेव कीजिए।</li>
+                <li><strong>शिफ़्ट:</strong> आख़िरी मीटर रीडिंग (kg) पेट्रोल की तरह भरिए। CNG के लिए न जाँच का खाना है, न डिप। पेट्रोल-डीज़ल के लीटर और CNG के kg अलग-अलग दिखते हैं, कभी जुड़ते नहीं।</li>
+                <li><strong>गैस कंपनी का बिल:</strong> Purchase में डालिए — वेंडर = गैस कंपनी, मात्रा kg में और बिल की रक़म। टैंक नहीं चुनना।</li>
+                <li><strong>रिपोर्ट:</strong> CNG की बिक्री kg में दिखती है। Daily Stock Register में स्टॉक के खाने 0 रहते हैं (“Stock not tracked (gas)”) — सिर्फ़ बिक्री और उसकी रक़म गिनी जाती है।</li>
+                <li><strong>गैस का घाटा:</strong> कंप्रेसर का घाटा सॉफ़्टवेयर नहीं निकालता। अपनी बेची kg को गैस कंपनी के बिल में उनके मीटर की kg से मिलाइए।</li>
+            </ul>
 
             <p class="text-muted mt-4" style="font-size:0.85rem;">
                 सहायता: 6394389973

@@ -122,6 +122,7 @@
                     <div class="mb-2">
                         <label class="form-label">@L["Opening Cash"]</label>
                         <input asp-for="OpenShift.OpeningCash" type="number" min="0" step="0.01" class="form-control form-control-sm" />
+                        <div class="form-text">@L["The drawer cash goes to the owner after every shift, so this starts at ₹0. Change it only if there really is cash in the drawer."]</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">@L["Notes"]</label>
@@ -334,8 +335,11 @@
                             {
                                 var pumpName = Model.Pumps.FirstOrDefault(x => x.Id == shift.PumpId)?.Name ?? $"Pump #{shift.PumpId}";
                                 var closeCash = shift.ClosingCash ?? 0;
-                                var cashDelta = closeCash - shift.OpeningCash;
-                                var variance = cashDelta - shift.TotalSoldAmount;
+                                // Section AN: band hote hi nakad malik ko chala jaata hai (galle me 0), isliye "Cash Delta"
+                                // me wo bhi jodte hain - shift me kitna nakad aaya. Farak wahi jo band karte waqt SP ne
+                                // nikala (UPI / udhaar / kharcha sab gin kar); purani API par purana jod.
+                                var cashDelta = closeCash - shift.OpeningCash + (shift.CashToOwner ?? 0);
+                                var variance = shift.CashShortExcess ?? (cashDelta - shift.TotalSoldAmount);
                                 var isOpen = string.Equals(shift.Status, "OPEN", StringComparison.OrdinalIgnoreCase);
                                 <tr class="@(isOpen ? "table-success" : "table-secondary text-muted")" style="@(isOpen ? "" : "opacity:0.6")">
                                     @* Pehle yahan ShiftHeaders.Id chhapta tha — poore system ka chalta hua
@@ -486,6 +490,8 @@
                     <div class="mb-3">
                         <label class="form-label">@L["Closing Cash"]</label>
                         <input asp-for="CloseShift.ClosingCash" type="number" min="0" step="0.01" class="form-control form-control-sm" required />
+                        @* Section AN: sp_Shift_Close isme se baaki nakad khud "malik ko diya" likhta hai. *@
+                        <div class="form-text">@L["Write all the cash in the drawer, before giving it to the owner. When the shift closes it is written as given to the owner by itself, and the next shift starts from ₹0."]</div>
                     </div>
                     <div class="small mb-2 p-2 bg-light border rounded" id="closeShiftPreview">
                         <div class="row g-1">
@@ -539,7 +545,16 @@
                                             <input asp-for="CloseShift.NozzleReadings[@i].ClosingReading" type="number" min="0" step="0.001" class="form-control form-control-sm text-end" required />
                                         </td>
                                         <td data-label="@L["Testing (Ltr)"]">
-                                            <input asp-for="CloseShift.NozzleReadings[@i].TestingLoss" type="number" min="0" step="0.001" class="form-control form-control-sm text-end" title="@L["Liters taken out for testing"]" />
+                                            @if (Model.CloseShift.NozzleReadings[i].IsLiquid)
+                                            {
+                                                <input asp-for="CloseShift.NozzleReadings[@i].TestingLoss" type="number" min="0" step="0.001" class="form-control form-control-sm text-end" title="@L["Liters taken out for testing"]" />
+                                            }
+                                            else
+                                            {
+                                                @* Gas (CNG) ki testing nahi hoti - 0 hi jaata hai. *@
+                                                <input type="hidden" name="CloseShift.NozzleReadings[@i].TestingLoss" value="0" />
+                                                <span class="text-muted">—</span>
+                                            }
                                         </td>
                                     </tr>
                                 }

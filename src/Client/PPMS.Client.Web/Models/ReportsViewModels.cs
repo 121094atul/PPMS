@@ -8,6 +8,10 @@ public sealed class ReportsHomeViewModel
     public long PumpId { get; set; }
     public DateOnly DateFrom { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddDays(-7));
     public DateOnly DateTo { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    /// <summary>Munafa ka card sirf usko jise "/profit-loss" menu mila hai (Section AO).</summary>
+    public bool ShowProfitLoss { get; set; }
+    /// <summary>Financials ka card - "/financials" menu wale ko (Section AP).</summary>
+    public bool ShowFinancials { get; set; }
 }
 
 public sealed class OutstandingReportViewModel

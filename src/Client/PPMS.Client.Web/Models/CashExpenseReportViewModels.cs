@@ -109,6 +109,10 @@ public sealed class DayBookShiftSummaryRow
     public decimal? ClosingCash { get; set; }
     public decimal SoldQty { get; set; }
     public decimal SoldAmount { get; set; }
-    public decimal CashDelta => (ClosingCash ?? 0) - OpeningCash;
-    public decimal CashVsMeterVariance => (ClosingCash ?? 0) - OpeningCash - SoldAmount;
+    /// <summary>Section AN: shift band par apne aap malik ko gaya nakad (galle me 0 bachta hai).</summary>
+    public decimal? CashToOwner { get; set; }
+    /// <summary>Band karte waqt SP ka nikala asli farak. Purani API se null.</summary>
+    public decimal? CashShortExcess { get; set; }
+    public decimal CashDelta => (ClosingCash ?? 0) - OpeningCash + (CashToOwner ?? 0);
+    public decimal CashVsMeterVariance => CashShortExcess ?? ((ClosingCash ?? 0) - OpeningCash - SoldAmount);
 }

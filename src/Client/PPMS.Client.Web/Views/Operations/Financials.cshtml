@@ -1,0 +1,182 @@
+@model PPMS.Client.Web.Models.FinancialsViewModel
+@{
+    ViewData["Title"] = "Financials";
+    string Rs(decimal v) => (v < 0 ? "−₹" : "₹") + Math.Abs(v).ToString("N0");
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var thisMonth = new DateOnly(today.Year, today.Month, 1);
+    var lastMonth = thisMonth.AddMonths(-1);
+    var shortExcess = Model.Flow("SHORT_EXCESS");
+}
+
+<style>
+    .fin-kpi { border-radius: .5rem; padding: .75rem 1rem; background: var(--bs-light, #f8f9fa); height: 100%; }
+    .fin-kpi .lbl { font-size: .8rem; color: #6c757d; }
+    .fin-kpi .val { font-size: 1.25rem; font-weight: 700; }
+    .fin-kpi .sub { font-size: .75rem; color: #6c757d; }
+    .fin-tbl td:last-child { text-align: right; white-space: nowrap; }
+    .fin-tbl tr.total td { font-weight: 700; border-top: 2px solid #dee2e6; }
+    @@media print {
+        .no-print, .side-accordion, nav, header, footer { display: none !important; }
+        .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+    }
+</style>
+
+<div class="card border-0 shadow-sm mb-3 no-print">
+    <div class="card-body">
+        <form method="get" asp-action="Financials" asp-controller="Operations" class="row g-2 align-items-end">
+            @if (Model.Pumps.Count > 1)
+            {
+                <div class="col-12 col-md-3">
+                    <label class="form-label">@L["Pump"]</label>
+                    <select class="form-select" name="pumpId" data-no-search>
+                        @foreach (var p in Model.Pumps)
+                        {
+                            <option value="@p.Id" selected="@(p.Id == Model.PumpId)">@p.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="col-6 col-md-3">
+                <label class="form-label">@L["From"]</label>
+                <input class="form-control" type="date" name="dateFrom" value="@Model.DateFrom.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label">@L["To"]</label>
+                <input class="form-control" type="date" name="dateTo" value="@Model.DateTo.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-12 col-md-3 d-flex gap-2">
+                <button class="btn btn-primary flex-grow-1" type="submit">@L["Load Report"]</button>
+                <button class="btn btn-outline-secondary" type="button" onclick="window.print()">🖨 @L["Print / PDF"]</button>
+            </div>
+        </form>
+        <div class="small mt-2">
+            <a asp-action="Financials" asp-route-pumpId="@Model.PumpId" asp-route-dateFrom="@thisMonth.ToString("yyyy-MM-dd")" asp-route-dateTo="@today.ToString("yyyy-MM-dd")">@L["This month"]</a>
+            ·
+            <a asp-action="Financials" asp-route-pumpId="@Model.PumpId" asp-route-dateFrom="@lastMonth.ToString("yyyy-MM-dd")" asp-route-dateTo="@thisMonth.AddDays(-1).ToString("yyyy-MM-dd")">@L["Last month"]</a>
+        </div>
+    </div>
+</div>
+
+<h5 class="mb-2">@L["Where the money is - today"]</h5>
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3"><div class="fin-kpi"><div class="lbl">@L["Fuel in the tanks (value)"]</div><div class="val">@Rs(Model.Position("STOCK_VALUE"))</div><div class="sub">@L["at the last purchase rate"]</div></div></div>
+    <div class="col-6 col-md-3"><div class="fin-kpi"><div class="lbl">@L["Credit to collect"]</div><div class="val">@Rs(Model.Position("RECEIVABLE"))</div><div class="sub">@L["{0} parties", Model.ReceivableParties]</div></div></div>
+    <div class="col-6 col-md-3"><div class="fin-kpi"><div class="lbl">@L["Advance from parties"]</div><div class="val">@Rs(Model.Position("ADVANCE"))</div><div class="sub">@L["money parties paid ahead"]</div></div></div>
+    <div class="col-6 col-md-3"><div class="fin-kpi"><div class="lbl">@L["Cash in the drawer"]</div><div class="val">@Rs(Model.Position("DRAWER_CASH"))</div><div class="sub">@L["after the last shift"]</div></div></div>
+</div>
+
+<h5 class="mb-2">@L["Money in this period"] — @Model.DateFrom.ToString("dd MMM yyyy") – @Model.DateTo.ToString("dd MMM yyyy")</h5>
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <h6 class="card-title">@L["Where the sale went"]</h6>
+            <table class="table table-sm fin-tbl mb-0">
+                <tbody>
+                    <tr><td>@L["Meter sale"]</td><td>@Rs(Model.Flow("METER_SALE"))</td></tr>
+                    @if (Model.Flow("COUNTER_SALE") != 0)
+                    {
+                        <tr><td>@L["Mobil / other items sold"]</td><td>@Rs(Model.Flow("COUNTER_SALE"))</td></tr>
+                    }
+                    <tr class="total"><td>@L["Total sale"]</td><td>@Rs(Model.TotalSale)</td></tr>
+                    <tr><td>@L["Given on credit (to collect later)"]</td><td>@Rs(-Model.Flow("CREDIT_GIVEN"))</td></tr>
+                    <tr><td>@L["UPI / card (goes to the bank)"]</td><td>@Rs(-Model.Flow("DIGITAL"))</td></tr>
+                    <tr class="total"><td>@L["Came in cash"]</td><td>@Rs(Model.CashSale)</td></tr>
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <h6 class="card-title">@L["Where the cash went"]</h6>
+            <table class="table table-sm fin-tbl mb-0">
+                <tbody>
+                    <tr><td>@L["Given to owner"]</td><td>@Rs(Model.Flow("TO_OWNER"))</td></tr>
+                    <tr><td>@L["Deposited in bank"]</td><td>@Rs(Model.Flow("BANK_DEPOSIT"))</td></tr>
+                    <tr><td>@L["Expenses paid in cash"]</td><td>@Rs(Model.Flow("CASH_EXPENSE"))</td></tr>
+                    @if (Model.Flow("OTHER_CASH_OUT") != 0)
+                    {
+                        <tr><td>@L["Other cash taken out (Cashbook)"]</td><td>@Rs(Model.Flow("OTHER_CASH_OUT"))</td></tr>
+                    }
+                    @if (Model.Flow("CASH_IN") != 0)
+                    {
+                        <tr><td>@L["Cash put in (Cashbook)"]</td><td>@Rs(Model.Flow("CASH_IN"))</td></tr>
+                    }
+                    <tr><td>@L["Old credit received in cash"]</td><td>@Rs(Model.Flow("DUES_IN_CASH"))</td></tr>
+                    <tr class="total">
+                        <td>@L["Cash short / excess (all shifts)"]</td>
+                        <td class="@(shortExcess < 0 ? "text-danger" : shortExcess > 0 ? "text-success" : "")">@(shortExcess > 0 ? "+" : "")@Rs(shortExcess)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+    <div class="col-12">
+        <div class="card border-0 shadow-sm"><div class="card-body">
+            <h6 class="card-title">@L["Other money in this period"]</h6>
+            <table class="table table-sm fin-tbl mb-0">
+                <tbody>
+                    <tr><td>@L["Old credit received in bank / UPI"]</td><td>@Rs(Model.Flow("DUES_IN_BANK"))</td></tr>
+                    <tr><td>@L["Purchase bills (tanker etc.)"]</td><td>@Rs(Model.Flow("PURCHASE_BILLS"))</td></tr>
+                    <tr><td>@L["Salary paid"]</td><td>@Rs(Model.Flow("SALARY"))</td></tr>
+                    @if (Model.Flow("OTHER_EXPENSE") != 0)
+                    {
+                        <tr><td>@L["Expenses paid by bank / UPI"]</td><td>@Rs(Model.Flow("OTHER_EXPENSE"))</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <h6 class="card-title">@L["Fuel in the tanks"]</h6>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>@L["Tank"]</th><th class="text-end">@L["Stock"]</th><th class="text-end">@L["Rate"]</th><th class="text-end">@L["Value"]</th></tr></thead>
+                    <tbody>
+                        @if (Model.Stock.Count == 0)
+                        {
+                            <tr><td colspan="4" class="text-muted">@L["No tank on this pump."]</td></tr>
+                        }
+                        @foreach (var s in Model.Stock)
+                        {
+                            <tr>
+                                <td>@s.Name</td>
+                                <td class="text-end">@((s.Qty ?? 0).ToString("N0")) L</td>
+                                <td class="text-end">₹@((s.Rate ?? 0).ToString("N2"))@if (s.Note == "SALE_RATE") {<div class="text-muted small">@L["sale rate - no purchase bill"]</div>}</td>
+                                <td class="text-end">@Rs(s.Amount)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div></div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <h6 class="card-title">@L["Biggest credit to collect"]</h6>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <tbody>
+                        @if (Model.TopDues.Count == 0)
+                        {
+                            <tr><td class="text-muted">@L["No credit to collect."]</td></tr>
+                        }
+                        @foreach (var d in Model.TopDues)
+                        {
+                            <tr><td>@d.Name</td><td class="text-end">@Rs(d.Amount)</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <a class="small no-print" asp-action="Outstanding" asp-route-pumpId="@Model.PumpId">@L["All parties"] →</a>
+        </div></div>
+    </div>
+</div>
+
+<div class="small text-muted">
+    <div>• @L["Bank balance and how much is still to be paid to the oil company are not shown - payments to the bank / oil company are not entered in the software yet."]</div>
+    <div>• @L["Sale and cash are by shift date; other entries by their own date."]</div>
+</div>

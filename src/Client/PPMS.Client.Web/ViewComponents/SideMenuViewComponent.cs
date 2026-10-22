@@ -54,7 +54,9 @@ public sealed class SideMenuViewComponent(PPMSApiClient apiClient) : ViewCompone
         if (route.StartsWith("/user", StringComparison.OrdinalIgnoreCase) ||
             route.StartsWith("/role", StringComparison.OrdinalIgnoreCase) ||
             route.StartsWith("/employee", StringComparison.OrdinalIgnoreCase) ||
-            route.StartsWith("/salary", StringComparison.OrdinalIgnoreCase))
+            route.StartsWith("/salary", StringComparison.OrdinalIgnoreCase) ||
+            // Kisne kya kiya (Section AO) - owner ka kaam, Users / Roles ke saath.
+            route.StartsWith("/activity-log", StringComparison.OrdinalIgnoreCase))
         {
             return "Management";
         }
@@ -67,7 +69,9 @@ public sealed class SideMenuViewComponent(PPMSApiClient apiClient) : ViewCompone
             // Naya maahwar register bhi report hi hai. Iske bina ye "General" me
             // chala jaata tha - "/sale-purchase-register" upar ki kisi shart se
             // milta hi nahi (Operations wali shart "/sales" dhoondhti hai).
-            route.StartsWith("/sale-purchase-register", StringComparison.OrdinalIgnoreCase))
+            route.StartsWith("/sale-purchase-register", StringComparison.OrdinalIgnoreCase) ||
+            route.StartsWith("/profit-loss", StringComparison.OrdinalIgnoreCase) ||
+            route.StartsWith("/financials", StringComparison.OrdinalIgnoreCase))
         {
             return "Reports";
         }

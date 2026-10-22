@@ -36,7 +36,8 @@ public partial class OperationsController
             Pumps = pumps,
             Today = today,
             Message = TempData["TodayShiftMessage"] as string,
-            IsError = TempData["TodayShiftIsError"] is true
+            IsError = TempData["TodayShiftIsError"] is true,
+            KeepInDrawer = CashKeptInDrawer
         };
 
         if (TempData[TodayShiftClosedKey] is string closedJson)
@@ -111,11 +112,17 @@ public partial class OperationsController
         // In-charge aksar wahi rehta hai — pichhli shift wala pehle se chuna.
         var lastOperator = model.LastShift?.OperatorEmployeeId;
 
+        // Galle me shuru ka nakad = jitna har shift ke baad bachta hai. Baaki shift band hote hi malik ko
+        // chala jaata hai (Section AN), isliye pichhla ClosingCash nahi - wo purane din jud-jud kar crore ho gaya tha.
+        // User ise badal sakta hai.
+        model.SuggestedOpeningCash = CashKeptInDrawer;
+
         model.Employees = employees;
         model.Start = new TodayShiftStartForm
         {
             PumpId = model.PumpId,
             ShiftDate = day,
+            OpeningCash = model.SuggestedOpeningCash,
             OperatorEmployeeId = employees.Any(e => e.Id == lastOperator) ? lastOperator : null,
             Readings = nozzles
                 .OrderBy(n => n.NozzleCode)
@@ -144,7 +151,8 @@ public partial class OperationsController
         var headsTask = Api.GetExpenseHeadsAsync(token, ownerId, model.PumpId, cancellationToken);
         var expensesTask = GetShiftExpensesAsync(token, ownerId, model.PumpId, shift, cancellationToken);
         var productsTask = Api.GetProductsAsync(token, ownerId, model.PumpId, cancellationToken);
-        await Task.WhenAll(readingsTask, lastTask, tanksTask, collectionTask, summaryTask, partiesTask, headsTask, expensesTask, productsTask);
+        var handoversTask = GetShiftHandoversAsync(token, ownerId, model.PumpId, shift, cancellationToken);
+        await Task.WhenAll(readingsTask, lastTask, tanksTask, collectionTask, summaryTask, partiesTask, headsTask, expensesTask, productsTask, handoversTask);
 
         // Naam se ikai; do product ka naam ek ho to pehla (ek pump par aisa hota nahi).
         model.ProductUnits = productsTask.Result
@@ -158,7 +166,8 @@ public partial class OperationsController
         model.Parties = partiesTask.Result.Where(p => p.IsActive).OrderBy(p => p.PartyName).ToList();
         model.ExpenseHeads = headsTask.Result.Where(h => h.IsActive).OrderBy(h => h.HeadName).ToList();
         model.Expenses = expensesTask.Result;
-        model.Cash = BuildCashParts(summaryTask.Result, model.Collection, shift.OpeningCash);
+        model.Handovers = handoversTask.Result;
+        model.Cash = BuildCashParts(summaryTask.Result, model.Collection, shift.OpeningCash, model.Handovers);
         model.ToleranceRs = summaryTask.Result?.ToleranceRs is > 0 ? summaryTask.Result.ToleranceRs : 100;
     }
 
@@ -174,25 +183,54 @@ public partial class OperationsController
         return page.Items.Where(e => e.ShiftId == shift.Id).OrderBy(e => e.Id).ToList();
     }
 
-    /// <summary>
-    /// Summary me is screen ka apna UPI / card / udhaar bhi juda hota hai. Screen use
-    /// khud jodti hai (likhte-likhte), isliye yahan se nikaal kar baaki hissa dete hain.
-    /// </summary>
-    private static TodayShiftCashParts BuildCashParts(ApiShiftCollectionSummaryDto? s, ApiShiftCollection c, decimal openingCash)
+    // Galle se nikala nakad Cashbook ke wahi do prakaar me jaata hai jo shift ka hisaab pehle se ginta hai
+    // (OUT, BANK_DEPOSIT) — alag se kuch naya nahi. ReferenceNo ke "HANDOVER-" se pehchaante hain, taaki
+    // Cashbook se haath se daali OUT / BANK_DEPOSIT entry is screen ke "nikala hua" me na mil jaye.
+    private const string HandoverOwnerRef = "HANDOVER-OWNER";
+    private const string HandoverBankRef = "HANDOVER-BANK";
+
+    /// <summary>Is shift me galle se nikala nakad. Cashbook list tareekh se chhanti hai, isliye shift ke din ke aas-paas maang kar ShiftId se chhaant lete hain.</summary>
+    private async Task<IReadOnlyList<TodayShiftHandover>> GetShiftHandoversAsync(string token, long ownerId, long pumpId, ApiShiftDto shift, CancellationToken cancellationToken)
     {
-        if (s is null) return new TodayShiftCashParts { OpeningCash = openingCash };
+        var from = shift.ShiftDate.AddDays(-1).ToDateTime(TimeOnly.MinValue);
+        var to = shift.ShiftDate.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        var page = await Api.GetPagedCashTransactionsAsync(token, ownerId, pumpId, from, to, "HANDOVER-", 1, 200, cancellationToken);
+        return page.Items
+            .Where(t => t.ShiftId == shift.Id && t.ReferenceNo is not null && t.ReferenceNo.StartsWith("HANDOVER-", StringComparison.Ordinal))
+            .OrderBy(t => t.Id)
+            .Select(t => new TodayShiftHandover(
+                t.Id,
+                string.Equals(t.ReferenceNo, HandoverBankRef, StringComparison.Ordinal) ? "BANK" : "OWNER",
+                t.Amount,
+                t.Narration))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Summary me is screen ka apna UPI / card / udhaar bhi juda hota hai, aur galle se nikala nakad bhi
+    /// (OUT / BANK_DEPOSIT me). Screen ye sab khud jodti hai (likhte-likhte), isliye yahan se nikaal kar
+    /// baaki hissa dete hain. Nikala nakad ginne ke BAAD nikalta hai, isliye "kitna aana chahiye" me nahi ghatta.
+    /// </summary>
+    private static TodayShiftCashParts BuildCashParts(ApiShiftCollectionSummaryDto? s, ApiShiftCollection c, decimal openingCash, IReadOnlyList<TodayShiftHandover> handovers)
+    {
+        var handedOwner = handovers.Where(h => h.Kind == "OWNER").Sum(h => h.Amount);
+        var handedBank = handovers.Where(h => h.Kind == "BANK").Sum(h => h.Amount);
+
+        if (s is null) return new TodayShiftCashParts { OpeningCash = openingCash, HandoverOwner = handedOwner, HandoverBank = handedBank };
 
         var ownCredit = c.Credits.Sum(x => x.Amount);
         return new TodayShiftCashParts
         {
+            HandoverOwner = handedOwner,
+            HandoverBank = handedBank,
             OpeningCash = s.OpeningCash,
             OtherCredit = Math.Max(0, s.TotalCreditSales - ownCredit),
             OtherDigital = Math.Max(0, s.TotalDigitalSales - c.UpiAmount - c.CardAmount),
             ReceiptsCash = s.PartyReceiptsCash,
             CashIn = s.CashIn,
-            CashOut = s.CashOut,
+            CashOut = Math.Max(0, s.CashOut - handedOwner),
             CashExpenses = s.TotalCashExpenses,
-            BankDeposits = s.TotalBankDeposits
+            BankDeposits = Math.Max(0, s.TotalBankDeposits - handedBank)
         };
     }
 
@@ -227,10 +265,15 @@ public partial class OperationsController
             .Select(s => s.ShiftCode?.Trim().ToUpperInvariant())
             .ToHashSet();
         var code = new[] { "A", "B", "C", "D", "E", "F" }.FirstOrDefault(c => !usedCodes.Contains(c)) ?? $"S{usedCodes.Count + 1}";
-        var openingCash = shifts
+        var lastClosing = shifts
             .Where(s => s.Status == "CLOSED" && s.ShiftDate <= start.ShiftDate)
             .OrderByDescending(s => s.ShiftDate).ThenByDescending(s => s.Id)
             .FirstOrDefault()?.ClosingCash ?? 0;
+
+        // User ne galle ka asli nakad alag likha ho to wahi. Pichhla closing aur ye farak shift ke Notes me
+        // rehta hai - baad me poochhne par saaf dikhe.
+        var openingCash = start.OpeningCash is >= 0 ? start.OpeningCash.Value : CashKeptInDrawer;
+        var openingNote = OpeningCashNote(openingCash, lastClosing);
 
         var operatorId = start.OperatorEmployeeId is > 0 ? start.OperatorEmployeeId : null;
         var result = await Api.OpenShiftAsync(token,
@@ -241,7 +284,7 @@ public partial class OperationsController
                 start.ShiftDate,
                 code,
                 openingCash,
-                null,
+                openingNote,
                 readings.Select(r => new ApiShiftNozzleOpenReading(r.NozzleId, r.ProductId, r.OpeningReading)).ToList(),
                 operatorId,
                 start.AllowMeterGap),
@@ -267,12 +310,16 @@ public partial class OperationsController
         var check = ValidateMoney(input.Upi, input.Card, input.Slips);
         if (check is not null) return Json(new { success = false, message = check });
 
+        var ownerId = GetOwnerId();
+        var shift = await FindPumpShiftAsync(token, ownerId, input.PumpId, input.ShiftId, cancellationToken);
+        if (shift is null) return Json(new { success = false, message = Loc["That shift was not found."].Value });
+
         var save = await Api.SaveShiftCollectionAsync(token,
             new ApiSaveShiftCollectionRequest(input.ShiftId, input.Upi, input.Card, ToCreditLines(input.Slips)),
             cancellationToken);
         if (!save.Success) return Json(new { success = false, message = save.ErrorMessage });
 
-        var cash = await ReloadCashPartsAsync(token, input.ShiftId, cancellationToken);
+        var cash = await ReloadCashPartsAsync(token, ownerId, shift, cancellationToken);
         return Json(new { success = true, cash });
     }
 
@@ -330,6 +377,81 @@ public partial class OperationsController
         return Json(await ExpenseStateAsync(token, ownerId, input.PumpId, shift, cancellationToken));
     }
 
+    /// <summary>Galle se nakad nikala: malik ko diya (Cashbook OUT) ya bank me jama (BANK_DEPOSIT). Turant server par.</summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddTodayShiftHandover([FromBody] TodayShiftHandoverInput input, CancellationToken cancellationToken)
+    {
+        var token = GetToken();
+        if (token is null) return Unauthorized();
+
+        var isBank = string.Equals(input.Kind, "BANK", StringComparison.OrdinalIgnoreCase);
+        if (!isBank && !string.Equals(input.Kind, "OWNER", StringComparison.OrdinalIgnoreCase))
+        {
+            return Json(new { success = false, message = Loc["Pick who the cash was given to."].Value });
+        }
+        if (input.Amount <= 0)
+        {
+            return Json(new { success = false, message = Loc["Enter the amount."].Value });
+        }
+
+        var ownerId = GetOwnerId();
+        var shift = await FindPumpShiftAsync(token, ownerId, input.PumpId, input.ShiftId, cancellationToken);
+        if (shift is null) return Json(new { success = false, message = Loc["That shift was not found."].Value });
+        if (!string.Equals(shift.Status, "OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return Json(new { success = false, message = Loc["This shift is already closed."].Value });
+        }
+
+        // Purana din bhar rahe hain to entry bhi usi din ki (kharche jaisa), warna Cashbook me "aaj" par dikhti.
+        DateTime? when = shift.ShiftDate == DateOnly.FromDateTime(DateTime.Today)
+            ? null
+            : shift.ShiftDate.ToDateTime(new TimeOnly(12, 0));
+
+        var label = isBank ? "Cash deposited in bank" : "Cash given to owner";
+        var note = string.IsNullOrWhiteSpace(input.Note) ? label : $"{label} - {input.Note.Trim()}";
+        var save = await Api.SaveCashTransactionAsync(token,
+            new ApiSaveCashTransactionRequest(
+                ownerId, input.PumpId, input.ShiftId,
+                isBank ? "BANK_DEPOSIT" : "OUT",
+                input.Amount,
+                isBank ? HandoverBankRef : HandoverOwnerRef,
+                note.Length > 240 ? note[..240] : note,
+                when),
+            cancellationToken);
+        if (!save.Success) return Json(new { success = false, message = save.ErrorMessage });
+
+        return Json(await HandoverStateAsync(token, ownerId, shift, cancellationToken));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteTodayShiftHandover([FromBody] TodayShiftExpenseDeleteInput input, CancellationToken cancellationToken)
+    {
+        var token = GetToken();
+        if (token is null) return Unauthorized();
+
+        var ownerId = GetOwnerId();
+        var shift = await FindPumpShiftAsync(token, ownerId, input.PumpId, input.ShiftId, cancellationToken);
+        if (shift is null) return Json(new { success = false, message = Loc["That shift was not found."].Value });
+        if (!string.Equals(shift.Status, "OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return Json(new { success = false, message = Loc["This shift is already closed."].Value });
+        }
+
+        // Sirf isi shift ki is screen se bani entry yahan se mite — Cashbook ki haath se daali entry ya koi aur id nahi.
+        var mine = await GetShiftHandoversAsync(token, ownerId, input.PumpId, shift, cancellationToken);
+        if (mine.All(h => h.Id != input.Id))
+        {
+            return Json(new { success = false, message = Loc["That entry is not part of this shift."].Value });
+        }
+
+        var del = await Api.DeleteCashTransactionAsync(token, input.Id, cancellationToken);
+        if (!del.Success) return Json(new { success = false, message = del.ErrorMessage });
+
+        return Json(await HandoverStateAsync(token, ownerId, shift, cancellationToken));
+    }
+
     /// <summary>
     /// Shift band. Kram jaanbujh kar:
     ///   1. paisa (UPI / card / udhaar) — taaki band hote waqt ka "expected cash" sahi bane
@@ -374,6 +496,18 @@ public partial class OperationsController
         var check = ValidateMoney(input.Upi, input.Card, input.Slips);
         if (check is not null) return Json(new { success = false, message = check });
 
+        // Galle me nakad = shuru ka + aaj ginaa hua - malik ko diya - bank me jama. Yahi ClosingCash bhejte hain;
+        // sp_Shift_Close isme se CashKeptInDrawer chhod kar baaki "malik ko diya" likhta hai (Section AN).
+        // Server khud DB ki entry se jodta hai — screen ka bheja hua jod nahi maanta.
+        var handovers = await GetShiftHandoversAsync(token, ownerId, input.PumpId, shift, cancellationToken);
+        var handedOwner = handovers.Where(h => h.Kind == "OWNER").Sum(h => h.Amount);
+        var handedBank = handovers.Where(h => h.Kind == "BANK").Sum(h => h.Amount);
+        var closingCash = shift.OpeningCash + input.CashToday - handedOwner - handedBank;
+        if (closingCash < 0)
+        {
+            return Json(new { success = false, message = Loc["The cash handed over is more than the cash in the drawer."].Value });
+        }
+
         var money = await Api.SaveShiftCollectionAsync(token,
             new ApiSaveShiftCollectionRequest(shift.Id, input.Upi, input.Card, ToCreditLines(input.Slips)),
             cancellationToken);
@@ -382,7 +516,7 @@ public partial class OperationsController
         var close = await Api.CloseShiftAsync(token, shift.Id,
             new ApiCloseShiftRequest(
                 shift.Id,
-                shift.OpeningCash + input.CashToday,
+                closingCash,
                 string.IsNullOrWhiteSpace(input.Notes) ? null : input.Notes.Trim(),
                 readings.Select(r => new ApiShiftNozzleCloseReading(r.NozzleId, r.ClosingReading, r.TestingLoss)).ToList()),
             cancellationToken);
@@ -404,6 +538,11 @@ public partial class OperationsController
 
         var s = await Api.GetShiftCollectionSummaryAsync(token, shift.Id, cancellationToken);
 
+        // Band hote hi SP ne baaki nakad "malik ko diya" likh diya (Section AN) - wo bhi ab is shift ka nikala hua hai.
+        var handedAfter = await GetShiftHandoversAsync(token, ownerId, input.PumpId, shift, cancellationToken);
+        handedOwner = handedAfter.Where(h => h.Kind == "OWNER").Sum(h => h.Amount);
+        handedBank = handedAfter.Where(h => h.Kind == "BANK").Sum(h => h.Amount);
+
         // Matra ikai ke hisaab se — CNG ke kg aur petrol-diesel ke litre ek me nahi jodte.
         var soldRows = await Api.GetShiftNozzleReadingsAsync(token, shift.Id, cancellationToken);
         var unitByProduct = (await Api.GetProductsAsync(token, ownerId, input.PumpId, cancellationToken))
@@ -420,8 +559,13 @@ public partial class OperationsController
             MeterSale = s?.TotalMeterSale ?? 0,
             MeterQty = s?.TotalMeterQty ?? 0,
             QtyText = qtyText,
-            CashExpectedToday = (s?.ExpectedCash ?? 0) - (s?.OpeningCash ?? 0),
+            // Summary ka expected nikala hua nakad pehle hi ghata chuka hai; ginne se pehle wala (kitna gina jaana
+            // chahiye) wapas jodkar. Fark = ginaa hua - itna, yani nikalne se bilkul alag.
+            CashExpectedToday = (s?.ExpectedCash ?? 0) - (s?.OpeningCash ?? 0) + handedOwner + handedBank,
             CashToday = input.CashToday,
+            HandedOwner = handedOwner,
+            HandedBank = handedBank,
+            LeftInDrawer = shift.OpeningCash + input.CashToday - handedOwner - handedBank,
             ShortExcess = s?.ShortExcess ?? 0,
             ToleranceRs = s?.ToleranceRs is > 0 ? s.ToleranceRs : 100,
             DipNote = dipNote
@@ -453,6 +597,23 @@ public partial class OperationsController
                 string.IsNullOrWhiteSpace(x.SlipNote) ? null : x.SlipNote.Trim()))
             .ToList();
 
+    /// <summary>Us din tak ki aakhri band shift ka closing cash (galle me jitna chhoda gaya). Koi band shift na ho to null.</summary>
+    private async Task<decimal?> LastClosingCashAsync(string token, long ownerId, long pumpId, DateOnly day, CancellationToken cancellationToken)
+    {
+        if (pumpId <= 0) return null;
+        var shifts = await Api.GetShiftsAsync(token, ownerId, pumpId, day.AddDays(-60), day, 500, cancellationToken);
+        return shifts
+            .Where(s => string.Equals(s.Status, "CLOSED", StringComparison.OrdinalIgnoreCase) && s.ShiftDate <= day)
+            .OrderByDescending(s => s.ShiftDate).ThenByDescending(s => s.Id)
+            .FirstOrDefault()?.ClosingCash;
+    }
+
+    /// <summary>Opening pichhle closing se alag ho to shift ke Notes ke liye ek line, warna null.</summary>
+    private static string? OpeningCashNote(decimal openingCash, decimal? lastClosing) =>
+        lastClosing is decimal last && last != openingCash
+            ? $"Opening cash {openingCash:N2} (last shift closed with {last:N2} in the drawer)"
+            : null;
+
     /// <summary>Shift sirf usi pump ki honi chahiye jo screen bhej rahi hai. API apni taraf se owner bhi jaanchta hai.</summary>
     private async Task<ApiShiftDto?> FindPumpShiftAsync(string token, long ownerId, long pumpId, long shiftId, CancellationToken cancellationToken)
     {
@@ -461,18 +622,27 @@ public partial class OperationsController
         return shifts.FirstOrDefault(s => s.Id == shiftId);
     }
 
-    private async Task<TodayShiftCashParts> ReloadCashPartsAsync(string token, long shiftId, CancellationToken cancellationToken)
+    private async Task<TodayShiftCashParts> ReloadCashPartsAsync(string token, long ownerId, ApiShiftDto shift, CancellationToken cancellationToken)
     {
-        var summaryTask = Api.GetShiftCollectionSummaryAsync(token, shiftId, cancellationToken);
-        var collectionTask = Api.GetShiftCollectionAsync(token, shiftId, cancellationToken);
-        await Task.WhenAll(summaryTask, collectionTask);
-        return BuildCashParts(summaryTask.Result, collectionTask.Result, summaryTask.Result?.OpeningCash ?? 0);
+        var summaryTask = Api.GetShiftCollectionSummaryAsync(token, shift.Id, cancellationToken);
+        var collectionTask = Api.GetShiftCollectionAsync(token, shift.Id, cancellationToken);
+        var handoversTask = GetShiftHandoversAsync(token, ownerId, shift.PumpId, shift, cancellationToken);
+        await Task.WhenAll(summaryTask, collectionTask, handoversTask);
+        return BuildCashParts(summaryTask.Result, collectionTask.Result, summaryTask.Result?.OpeningCash ?? 0, handoversTask.Result);
+    }
+
+    private async Task<object> HandoverStateAsync(string token, long ownerId, ApiShiftDto shift, CancellationToken cancellationToken)
+    {
+        var listTask = GetShiftHandoversAsync(token, ownerId, shift.PumpId, shift, cancellationToken);
+        var cashTask = ReloadCashPartsAsync(token, ownerId, shift, cancellationToken);
+        await Task.WhenAll(listTask, cashTask);
+        return new { success = true, handovers = listTask.Result, cash = cashTask.Result };
     }
 
     private async Task<object> ExpenseStateAsync(string token, long ownerId, long pumpId, ApiShiftDto shift, CancellationToken cancellationToken)
     {
         var listTask = GetShiftExpensesAsync(token, ownerId, pumpId, shift, cancellationToken);
-        var cashTask = ReloadCashPartsAsync(token, shift.Id, cancellationToken);
+        var cashTask = ReloadCashPartsAsync(token, ownerId, shift, cancellationToken);
         await Task.WhenAll(listTask, cashTask);
         return new
         {

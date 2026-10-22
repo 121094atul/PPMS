@@ -45,4 +45,28 @@
             </div>
         </div>
     </div>
+    @if (Model.ShowProfitLoss)
+    {
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">📈 @L["Profit & Loss"]</h5>
+                    <p class="text-muted small">@L["Sale minus purchase cost of the fuel sold, expenses and salary - the real profit of the pump."]</p>
+                    <a class="btn btn-primary" asp-action="ProfitLoss" asp-route-pumpId="@Model.PumpId">@L["Open Profit & Loss"]</a>
+                </div>
+            </div>
+        </div>
+    }
+    @if (Model.ShowFinancials)
+    {
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">🏦 @L["Financials"]</h5>
+                    <p class="text-muted small">@L["Where the money is: fuel in the tanks, credit to collect, cash given to the owner, money that went to the bank."]</p>
+                    <a class="btn btn-primary" asp-action="Financials" asp-route-pumpId="@Model.PumpId">@L["Open Financials"]</a>
+                </div>
+            </div>
+        </div>
+    }
 </div>

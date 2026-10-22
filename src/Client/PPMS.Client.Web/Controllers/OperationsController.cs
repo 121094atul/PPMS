@@ -170,6 +170,17 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
             return RedirectToAction(nameof(Tanks), new { pumpId = model.Form.PumpId });
         }
 
+        if (model.Form.Id <= 0)
+        {
+            var products = await apiClient.GetProductsAsync(token, GetOwnerId(), model.Form.PumpId, cancellationToken);
+            var chosen = products.FirstOrDefault(p => p.Id == model.Form.ProductId);
+            if (chosen is not null && !PPMS.Client.Web.Services.ProductUnit.TracksStock(chosen.Category))
+            {
+                TempData["TankMessage"] = "CNG / charging has no tank. Add its nozzle without a tank.";
+                return RedirectToAction(nameof(Tanks), new { pumpId = model.Form.PumpId });
+            }
+        }
+
         var request = new ApiSaveTankRequest(
             model.Form.Id,
             model.Form.OwnerId,
@@ -898,11 +909,13 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
         if (token is null) return Unauthorized();
 
         var rows = await apiClient.GetDailyStockRegisterAsync(token, pumpId, productId, month, year, cancellationToken);
+        // Gas (CNG) kilo me - "(L)" pakka likhna galat.
+        var unit = await ProductUnitAbbrAsync(token, pumpId, productId, cancellationToken);
 
         var b = new System.Text.StringBuilder();
         // CA ko yahi file jaati hai, isliye jo screen par dikhta hai wo poora
         // yahan bhi aana chahiye - khaas kar Book vs Physical closing aur rate.
-        b.AppendLine("Date,Opening Stock,Receipt,Total Stock,Sales by Meter,Pump Test,Net Sales by Meter,Cumulative Sales,Sales by Dip,Book Closing,Physical Closing (Dip),Stock Checked,Register Closing,Variation (L),Variation Value,Variation Cumulative,Rate,Sale Amount,Cumulative Sale Amount,Remarks");
+        b.AppendLine($"Date,Opening Stock,Receipt,Total Stock,Sales by Meter,Pump Test,Net Sales by Meter,Cumulative Sales,Sales by Dip,Book Closing,Physical Closing (Dip),Stock Checked,Register Closing,Variation ({unit}),Variation Value,Variation Cumulative,Rate,Sale Amount,Cumulative Sale Amount,Remarks");
         foreach (var r in rows)
         {
             b.AppendLine(string.Join(",",
@@ -1211,9 +1224,10 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
         if (token is null) return Unauthorized();
 
         var rows = await apiClient.GetSalePurchaseRegisterAsync(token, pumpId, productId, month, year, cancellationToken);
+        var unit = await ProductUnitAbbrAsync(token, pumpId, productId, cancellationToken);
 
         var b = new System.Text.StringBuilder();
-        b.AppendLine("Date,Sale (L),Rate,Sale Amount,Purchase (L),Purchase Amount");
+        b.AppendLine($"Date,Sale ({unit}),Rate,Sale Amount,Purchase ({unit}),Purchase Amount");
         foreach (var r in rows)
         {
             b.AppendLine(string.Join(",",
@@ -1647,6 +1661,15 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
             ? model.OpenShift.OperatorEmployeeId
             : null;
 
+        // Pichhli shift ka closing alag tha (jaise Section AN se pehle jud-jud kar bana nakad) to farak
+        // shift ke Notes me - baad me poochhne par saaf dikhe ki wo rakam kahan gayi.
+        var lastClosing = await LastClosingCashAsync(token, GetOwnerId(), model.OpenShift.PumpId, model.OpenShift.ShiftDate, cancellationToken);
+        var openingNote = OpeningCashNote(model.OpenShift.OpeningCash, lastClosing);
+        var openNotes = string.IsNullOrWhiteSpace(model.OpenShift.Notes)
+            ? openingNote
+            : openingNote is null ? model.OpenShift.Notes : $"{model.OpenShift.Notes.Trim()} | {openingNote}";
+        if (openNotes is { Length: > 500 }) openNotes = openNotes[..500];
+
         var result = await apiClient.OpenShiftAsync(
             token,
             new ApiOpenShiftRequest(
@@ -1656,7 +1679,7 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
                 model.OpenShift.ShiftDate,
                 model.OpenShift.ShiftCode,
                 model.OpenShift.OpeningCash,
-                model.OpenShift.Notes,
+                openNotes,
                 model.OpenShift.NozzleReadings
                     .Where(x => x.NozzleId > 0)
                     // Aadmi aur chhutta bhi saath hi bhejte hain — form me ye khaane
@@ -2610,6 +2633,11 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
 
         var pending = await apiClient.GetPendingNozzleCashAsync(token, selectedPumpId, null, null, cancellationToken);
 
+        // Har line ki matra apni ikai me - gas (CNG) "kg", tel "L".
+        var products = selectedPumpId > 0
+            ? await apiClient.GetProductsAsync(token, ownerId, selectedPumpId, cancellationToken)
+            : Array.Empty<ApiProductDto>();
+
         return new NozzleCashViewModel
         {
             OwnerId = ownerId,
@@ -2619,6 +2647,9 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
             SelectedShiftId = selectedShiftId,
             Shifts = shifts,
             ShiftRows = shiftRows,
+            UnitByProduct = products
+                .GroupBy(p => p.Name)
+                .ToDictionary(g => g.Key, g => PPMS.Client.Web.Services.ProductUnit.Abbr(g.First().Unit), StringComparer.OrdinalIgnoreCase),
             Pending = pending,
             Message = TempData["NozzleCashMessage"] as string,
             IsError = TempData["NozzleCashError"] is bool f && f
@@ -2731,7 +2762,8 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
                 OwnerId = ownerId,
                 PumpId = editItem?.PumpId ?? selectedPumpId,
                 Name = editItem?.Name ?? string.Empty,
-                ProductId = editItem?.ProductId ?? products.FirstOrDefault()?.Id ?? 0,
+                // Naye tank ka pehla product gas (CNG) na ho - uska tank hota hi nahi.
+                ProductId = editItem?.ProductId ?? products.FirstOrDefault(p => PPMS.Client.Web.Services.ProductUnit.TracksStock(p.Category))?.Id ?? 0,
                 Capacity = editItem?.Capacity ?? 0,
                 SafeFillLevel = editItem?.SafeFillLevel ?? 0,
                 CurrentStock = editItem?.CurrentStock ?? 0,
@@ -3280,7 +3312,9 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
             OpeningCash = x.OpeningCash,
             ClosingCash = x.ClosingCash,
             SoldQty = x.TotalSoldQty,
-            SoldAmount = x.TotalSoldAmount
+            SoldAmount = x.TotalSoldAmount,
+            CashToOwner = x.CashToOwner,
+            CashShortExcess = x.CashShortExcess
         }).ToList() ?? new List<DayBookShiftSummaryRow>();
 
         return new DayBookViewModel
@@ -3308,10 +3342,15 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
 
         var ownerId = GetOwnerId();
         var pumps = await apiClient.GetPumpsAsync(token, ownerId, cancellationToken);
+        // Owner wale card (Section AO / AP) sirf jinhe wo menu mila hai.
+        var menus = await apiClient.GetMenusAsync(token, cancellationToken);
+        bool HasMenu(string route) => menus.Any(m => m.CanView && string.Equals(m.Route, route, StringComparison.OrdinalIgnoreCase));
         return new ReportsHomeViewModel
         {
             Pumps = pumps,
-            PumpId = pumps.FirstOrDefault()?.Id ?? 0
+            PumpId = pumps.FirstOrDefault()?.Id ?? 0,
+            ShowProfitLoss = HasMenu("/profit-loss"),
+            ShowFinancials = HasMenu("/financials")
         };
     }
 
@@ -3568,6 +3607,10 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
         var nozzles = selectedPumpId > 0
             ? await apiClient.GetNozzlesAsync(token, ownerId, selectedPumpId, cancellationToken)
             : Array.Empty<ApiNozzleDto>();
+        // Product ki ikai - gas (CNG) ke nozzle par Close form me testing ka khaana nahi.
+        var pumpProducts = selectedPumpId > 0
+            ? await apiClient.GetProductsAsync(token, ownerId, selectedPumpId, cancellationToken)
+            : Array.Empty<ApiProductDto>();
         // Kis din ki shift khulne ja rahi hai — usi din (ya usse pehle) ki
         // aakhri band shift se opening reading aur cash aana chahiye.
         //
@@ -3624,10 +3667,9 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
                 OperatorEmployeeId = defaultOperatorId,
                 ShiftDate = DateOnly.FromDateTime(DateTime.Today),
                 ShiftCode = suggestedCode,
-                OpeningCash = shifts?.Items?
-                    .Where(x => x.PumpId == selectedPumpId && x.Status == "CLOSED" && x.ShiftDate <= forDate)
-                    .OrderByDescending(x => x.ShiftDate).ThenByDescending(x => x.Id)
-                    .FirstOrDefault()?.ClosingCash ?? 0,
+                // Pichhli shift band hote hi galle ka nakad malik ko chala gaya (Section AN), isliye
+                // utna hi bachta hai. Pehle yahan pichhla ClosingCash aata tha - wo jud-jud kar crore ho gaya.
+                OpeningCash = CashKeptInDrawer,
                 NozzleReadings = nozzles
                     .Select(x => new ShiftNozzleOpenReadingForm
                     {
@@ -3649,7 +3691,9 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
                         ProductName = x.ProductName,
                         OpeningReading = 0,
                         Rate = 0,
-                        ClosingReading = 0
+                        ClosingReading = 0,
+                        IsLiquid = PPMS.Client.Web.Services.ProductUnit.IsLiquid(
+                            pumpProducts.FirstOrDefault(p => p.Id == x.ProductId)?.Unit)
                     })
                     .ToList()
             },

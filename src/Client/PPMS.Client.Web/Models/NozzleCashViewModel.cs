@@ -20,6 +20,9 @@ public sealed class NozzleCashViewModel
     public IReadOnlyList<ApiShiftDto> Shifts { get; set; } = Array.Empty<ApiShiftDto>();
     public IReadOnlyList<ApiNozzleCashDto> ShiftRows { get; set; } = Array.Empty<ApiNozzleCashDto>();
 
+    /// <summary>Product ka naam → chhoti ikai ("L", "kg"). CNG kilo me bikti hai.</summary>
+    public IReadOnlyDictionary<string, string> UnitByProduct { get; set; } = new Dictionary<string, string>();
+
     /// <summary>Jitna cash abhi tak nahi liya — chahe shift kab ki bhi ho.</summary>
     public IReadOnlyList<ApiPendingCashDto> Pending { get; set; } = Array.Empty<ApiPendingCashDto>();
 

@@ -70,4 +70,57 @@ public sealed class ReportInsightsRepository(IOptions<DatabaseOptions> options) 
 
         return rows.AsList();
     }
+
+    public async Task<IReadOnlyList<ProfitLossLineDto>> GetProfitLossAsync(long ownerId, long pumpId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        var rows = await connection.QueryAsync<ProfitLossLineDto>(
+            sql: "PUMP.sp_Report_ProfitLoss",
+            param: new
+            {
+                OwnerId = ownerId,
+                PumpId = pumpId,
+                DateFrom = dateFrom.ToDateTime(TimeOnly.MinValue),
+                DateTo = dateTo.ToDateTime(TimeOnly.MinValue)
+            },
+            commandType: System.Data.CommandType.StoredProcedure);
+
+        return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<FinancialLineDto>> GetFinancialsAsync(long ownerId, long pumpId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        var rows = await connection.QueryAsync<FinancialLineDto>(
+            sql: "PUMP.sp_Report_Financials",
+            param: new
+            {
+                OwnerId = ownerId,
+                PumpId = pumpId,
+                DateFrom = dateFrom.ToDateTime(TimeOnly.MinValue),
+                DateTo = dateTo.ToDateTime(TimeOnly.MinValue)
+            },
+            commandType: System.Data.CommandType.StoredProcedure);
+
+        return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<AuditLogEntryDto>> GetActivityLogAsync(long ownerId, DateOnly dateFrom, DateOnly dateTo, string? area, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        var rows = await connection.QueryAsync<AuditLogEntryDto>(
+            sql: "PUMP.sp_AuditLog_List",
+            param: new
+            {
+                OwnerId = ownerId,
+                DateFrom = dateFrom.ToDateTime(TimeOnly.MinValue),
+                DateTo = dateTo.ToDateTime(TimeOnly.MinValue),
+                Area = string.IsNullOrWhiteSpace(area) ? null : area,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            },
+            commandType: System.Data.CommandType.StoredProcedure);
+
+        return rows.AsList();
+    }
 }

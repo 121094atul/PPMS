@@ -177,13 +177,17 @@ public class HomeController(PPMSApiClient apiClient) : Controller
         // Naya pump pehle din kya kare — iska raasta. Sab ho jaane par ye panel
         // apne aap gayab ho jaata hai (IsComplete).
         var fuelProducts = products.Where(x => x.CurrentRate > 0).ToList();
+        // Sirf CNG / charging wale pump par tank hota hi nahi (gas pipeline se aati hai) - tank aur
+        // opening stock ke kadam wahan apne aap poore maano, warna checklist kabhi khatam nahi hoti.
+        var needsTank = products.Count == 0
+            || products.Any(p => PPMS.Client.Web.Services.ProductUnit.TracksStock(p.Category));
         var setup = new SetupStatus
         {
             HasProducts     = products.Count > 0,
             HasRates        = fuelProducts.Count > 0,
-            HasTanks        = allTanks.Count > 0,
+            HasTanks        = !needsTank || allTanks.Count > 0,
             HasNozzles      = nozzles.Count > 0,
-            HasOpeningStock = allTanks.Any(t => t.CurrentStock > 0),
+            HasOpeningStock = !needsTank || allTanks.Any(t => t.CurrentStock > 0),
             HasAnyShift     = shifts.Count > 0
         };
 

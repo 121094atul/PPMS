@@ -22,5 +22,10 @@ public sealed record ShiftDto(
     // Us pump par us din ki kaunsi shift — 1, 2, 3 (Section X). Screen par yahi
     // dikhta hai; Id andar ka number hai, jo kuch mahine me 4-5 ank ka ho jaata
     // hai aur pump wale ke liye uska koi matlab nahi.
-    int ShiftNo
+    int ShiftNo,
+    // Section AN: band karte waqt nikla asli short / excess (ShiftHeaders.CashShortExcess), aur shift band par
+    // apne aap "malik ko diya" gaya nakad. Galle me ab 0 bachta hai, isliye list ye do khud nahi nikaal sakti.
+    // Purane SP se null.
+    decimal? CashShortExcess = null,
+    decimal? CashToOwner = null
 );

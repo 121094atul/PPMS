@@ -12354,7 +12354,9 @@ FROM PUMP.Nozzles n
 JOIN PUMP.Products p ON p.Id = n.ProductId
 WHERE n.TankId IS NULL
   AND n.IsActive = 1
-  AND ISNULL(n.IsDeleted, 0) = 0;
+  AND ISNULL(n.IsDeleted, 0) = 0
+  -- Gas (CNG) / charging ka tank hota hi nahi (Section AL) - wo galti nahi.
+  AND p.Category NOT IN (N'CNG', N'ElectricCharging');
 GO
 
 /* ---- H4. Nozzle ka product aur tank ka product alag to nahi? ----
@@ -13869,8 +13871,11 @@ GO
    Inhe hum khud theek NAHI kar sakte — kaunsa tank sahi hai ye sirf pump wala
    jaanta hai. Isliye sirf list kar rahe hain. Jab tak ye theek nahi honge,
    in par shift nahi khulegi (THROW 50003). */
-IF EXISTS (SELECT 1 FROM PUMP.Nozzles
-           WHERE TankId IS NULL AND IsActive = 1 AND ISNULL(IsDeleted, 0) = 0)
+-- Gas (CNG) / charging ka tank hota hi nahi (Section AL) - un nozzle ko yahan nahi ginte.
+IF EXISTS (SELECT 1 FROM PUMP.Nozzles n0
+           JOIN PUMP.Products p0 ON p0.Id = n0.ProductId
+           WHERE n0.TankId IS NULL AND n0.IsActive = 1 AND ISNULL(n0.IsDeleted, 0) = 0
+             AND p0.Category NOT IN (N'CNG', N'ElectricCharging'))
 BEGIN
     SELECT
         Problem  = 'Is nozzle ka tank set nahi hai — is par shift nahi khulegi',
@@ -13887,6 +13892,7 @@ BEGIN
     FROM PUMP.Nozzles n
     LEFT JOIN PUMP.Products p ON p.Id = n.ProductId
     WHERE n.TankId IS NULL AND n.IsActive = 1 AND ISNULL(n.IsDeleted, 0) = 0
+      AND ISNULL(p.Category, N'') NOT IN (N'CNG', N'ElectricCharging')
     ORDER BY n.PumpId, n.NozzleCode;
 
     PRINT '  ! O2: kuch nozzle bina tank ke hain — upar list hai, unhe Edit karke tank dein';
@@ -20721,4 +20727,1419 @@ PRINT '  + AL6: sp_Report_DailyStockRegister - gas ka stock khaana khaali';
 GO
 
 PRINT '=== Section AL done ===';
+GO
+
+
+/* ==========================================================================================
+   SECTION AM — shift band karte waqt Cashbook ka "bank me jama" bhi ginna (2026-10-22)
+   ------------------------------------------------------------------------------------------
+   "Aaj ki shift" me ab galle se nikala nakad darj hota hai: malik ko diya (Cashbook OUT) aur
+   bank me jama (BANK_DEPOSIT). Jo cheez sp_Shift_Collection_Summary pehle se ginta tha, wahi
+   sp_Shift_Close nahi ginta tha: uska @Deposit sirf BankDeposits table se aata tha. Nateeja:
+   Cashbook ya is screen se bank me jama nakad ShiftHeaders.ExpectedCash me ghatta nahi tha, aur
+   stored CashShortExcess utne se galat aata. Screen par dikhne wala farak (summary se) pehle
+   bhi sahi tha — ye sirf stored column ko uske barabar karta hai.
+
+   Sirf naye / dobara band hone wale shift par asar. Purani band shift ki rows nahi chhuti.
+   Baaki sp_Shift_Close hu-ba-hu AL wali.
+   ========================================================================================== */
+PRINT '=== Section AM: shift band me bank-jama (Cashbook) bhi ===';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_Shift_Close
+(
+    @Id                 BIGINT,
+    @ClosingCash        DECIMAL(18,2) = NULL,
+    @Notes              NVARCHAR(500) = NULL,
+    @NozzleReadingsJson NVARCHAR(MAX) = NULL,
+    @UserId             BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @OwnerId BIGINT, @PumpId BIGINT, @Status NVARCHAR(30),
+            @ShiftDate DATE, @OpeningCash DECIMAL(18,2), @WasClosed BIT = 0;
+
+    SELECT TOP 1
+        @OwnerId     = OwnerId,
+        @PumpId      = PumpId,
+        @Status      = Status,
+        @ShiftDate   = ShiftDate,
+        @OpeningCash = OpeningCash
+    FROM PUMP.ShiftHeaders
+    WHERE Id = @Id;
+
+    IF @OwnerId IS NULL BEGIN SELECT CAST(-1 AS BIGINT) AS Id; RETURN; END
+    IF ISNULL(@Status, '') NOT IN ('OPEN', 'CLOSED') BEGIN SELECT CAST(-2 AS BIGINT) AS Id; RETURN; END
+
+    SET @WasClosed = CASE WHEN @Status = 'CLOSED' THEN 1 ELSE 0 END;
+
+    /* FIX #4 — tank movement ki date shift ki date honi chahiye, aaj ki nahi.
+       Aaj ki shift hai to asli time, warna us din ka 23:00. */
+    DECLARE @TxnStamp DATETIME2(7) =
+        CASE WHEN @ShiftDate = CAST(SYSDATETIME() AS DATE)
+             THEN SYSDATETIME()
+             ELSE DATEADD(HOUR, 23, CAST(CAST(@ShiftDate AS DATETIME2(7)) AS DATETIME2(7)))
+        END;
+
+    DECLARE @ShiftRef NVARCHAR(30) = CONCAT('SHIFT-', @Id);
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        /* ---------- 1. Readings update ---------- */
+        IF @NozzleReadingsJson IS NOT NULL AND ISJSON(@NozzleReadingsJson) = 1
+        BEGIN
+            ;WITH cte AS
+            (
+                SELECT x.NozzleId, x.ClosingReading, ISNULL(x.TestingLoss, 0) AS TestingLoss
+                FROM OPENJSON(@NozzleReadingsJson)
+                WITH (NozzleId BIGINT '$.NozzleId',
+                      ClosingReading DECIMAL(18,3) '$.ClosingReading',
+                      TestingLoss DECIMAL(18,3) '$.TestingLoss') x
+                WHERE ISNULL(x.NozzleId, 0) > 0
+            )
+            UPDATE snr
+            SET snr.ClosingReading = cte.ClosingReading,
+                snr.TestingLoss    = cte.TestingLoss,
+                /* FIX #2 — meter rollover. Closing < Opening ka matlab totalizer
+                   ghoom gaya hai, galti nahi. Nozzle ke MeterDigits se wapas jodo. */
+                snr.IsRollover     = CASE WHEN cte.ClosingReading < snr.OpeningReading THEN 1 ELSE 0 END,
+                snr.SoldQty        =
+                    CASE
+                        WHEN cte.ClosingReading >= snr.OpeningReading
+                            THEN cte.ClosingReading - snr.OpeningReading
+                        ELSE POWER(CAST(10 AS DECIMAL(18,3)), n.MeterDigits) - snr.OpeningReading + cte.ClosingReading
+                    END
+                    - cte.TestingLoss,
+                snr.SoldAmount     =
+                    (
+                        CASE
+                            WHEN cte.ClosingReading >= snr.OpeningReading
+                                THEN cte.ClosingReading - snr.OpeningReading
+                            ELSE POWER(CAST(10 AS DECIMAL(18,3)), n.MeterDigits) - snr.OpeningReading + cte.ClosingReading
+                        END
+                        - cte.TestingLoss
+                    ) * snr.Rate,
+                snr.UpdatedOn      = SYSDATETIME(),
+                snr.ModifiedBy     = @UserId
+            FROM PUMP.ShiftNozzleReadings snr
+            INNER JOIN cte           ON cte.NozzleId = snr.NozzleId
+            INNER JOIN PUMP.Nozzles n ON n.Id = snr.NozzleId
+            WHERE snr.ShiftId = @Id;
+        END
+
+        /* ---------- 2. Validation ---------- */
+        IF EXISTS (SELECT 1 FROM PUMP.ShiftNozzleReadings WHERE ShiftId = @Id AND ClosingReading IS NULL)
+            THROW 50002, 'A closing reading is required for every nozzle.', 1;
+
+        IF EXISTS (SELECT 1 FROM PUMP.ShiftNozzleReadings WHERE ShiftId = @Id AND SoldQty < 0)
+            THROW 50004, 'Sold quantity is coming out negative. Check the readings or the testing loss.', 1;
+
+        /* Rollover ke naam par bakwas value na aa jaye — ek shift me ek nozzle se
+           50,000 litre se zyada realistic nahi hai. */
+        IF EXISTS (SELECT 1 FROM PUMP.ShiftNozzleReadings WHERE ShiftId = @Id AND SoldQty > 50000)
+            THROW 50005, 'Sold quantity is too high (over 50,000 L). Please re-check the readings.', 1;
+
+        /* FIX #1 — har nozzle ka apna tank. Pehle TankId, na ho to product ka
+           akela tank, aur agar do tank hain to saaf error. */
+        IF EXISTS
+        (
+            SELECT 1
+            FROM PUMP.ShiftNozzleReadings snr
+            JOIN PUMP.Nozzles n ON n.Id = snr.NozzleId
+            WHERE snr.ShiftId = @Id
+              AND snr.SoldQty > 0
+              AND n.TankId IS NULL
+              AND ISNULL((SELECT pr.TracksStock FROM PUMP.Products pr WHERE pr.Id = n.ProductId), 1) = 1
+              AND (SELECT COUNT(*) FROM PUMP.Tanks t
+                   WHERE t.PumpId = @PumpId AND t.ProductId = n.ProductId AND t.IsActive = 1) <> 1
+        )
+            THROW 50003, 'Some nozzles have no tank set (or the product has more than one tank). Pick a tank in the Nozzle master.', 1;
+
+        /* ---------- 3. Purani deduction reverse karo (FIX #3) ----------
+           Band shift dobara close ho rahi hai to pehle ka asar hata do, phir naya
+           daalo. Isse edit karne par stock hamesha sales ke barabar rehta hai. */
+        IF @WasClosed = 1
+        BEGIN
+            UPDATE t
+            SET t.CurrentStock = t.CurrentStock + x.Qty
+            FROM PUMP.Tanks t
+            INNER JOIN
+            (
+                SELECT TankId, SUM(CASE WHEN TxnType = 'OUT' THEN Quantity ELSE -Quantity END) AS Qty
+                FROM PUMP.TankTransactions
+                WHERE ReferenceNo = @ShiftRef
+                GROUP BY TankId
+            ) x ON x.TankId = t.Id;
+
+            DELETE FROM PUMP.TankTransactions WHERE ReferenceNo = @ShiftRef;
+
+            -- is shift ke auto testing-loss records bhi hata do, neeche naye banenge
+            DELETE FROM PUMP.TestingLosses WHERE ShiftId = @Id AND LossType = 'SHIFT_TEST';
+
+            EXEC PUMP.sp_Audit_Log
+                @OwnerId = @OwnerId, @PumpId = @PumpId, @UserId = @UserId,
+                @EntityName = 'ShiftHeaders', @EntityId = @Id, @Action = 'REOPEN_RECALC',
+                @Reason = 'Closed shift edited — purani tank deduction reverse karke dobara post ki gayi';
+        END
+
+        /* ---------- 4. Pump test ka tel ----------
+           Is pump par test ka tel naap kar WAPAS tank me daala jaata hai (user ne
+           2026-09-04 ko confirm kiya), isliye ye nuksaan hai hi nahi — na tank se
+           ghatega, na TestingLosses me darj hoga.
+
+           Pehle yahan 'SHIFT_TEST' ki row banti thi aur tank se sale+test dono
+           ghat jaate the. Us wajah se har test wale din tank me test jitna tel kam
+           dikhta tha aur DSR ka closing tank se nahi milta tha.
+
+           Kitna tel test me nikla — ye ab bhi poori tarah darj hai
+           (ShiftNozzleReadings.TestingLoss), aur DSR ke "Pump Test" column me
+           dikhta hai. TestingLosses table ab sirf ASLI nuksaan ke liye hai, jo
+           Testing Loss form se aata hai (sp_TestingLoss_Save khud stock ghatata
+           hai — wo theek hai, wahan tel wapas nahi jaata).
+
+           Upar wala DELETE (re-close ke waqt) jaanbujh ke rakha hai, taaki is
+           badlav se pehle bani hui SHIFT_TEST rows shift edit karte hi saaf ho jayen. */
+
+        /* ---------- 5. Tank se stock nikalo ----------
+           Sirf bikri (SoldQty). SoldQty pehle hi testing loss nikaal kar bana hai
+           (dekho upar: closing - opening - TestingLoss), isliye yahi wo tel hai jo
+           sach me tank se gaya. */
+        ;WITH resolved AS
+        (
+            SELECT
+                TankId = COALESCE(n.TankId, ft.TankId),
+                Qty    = snr.SoldQty
+            FROM PUMP.ShiftNozzleReadings snr
+            JOIN PUMP.Nozzles n ON n.Id = snr.NozzleId
+            OUTER APPLY
+            (
+                SELECT TankId = MIN(t.Id)
+                FROM PUMP.Tanks t
+                WHERE t.PumpId = @PumpId AND t.ProductId = n.ProductId AND t.IsActive = 1
+            ) ft
+            WHERE snr.ShiftId = @Id
+              AND snr.SoldQty > 0
+              /* Gas (CNG) / bijli ka stock tank me nahi naapa jaata - uska kuch ghatana nahi. */
+              AND ISNULL((SELECT pr.TracksStock FROM PUMP.Products pr WHERE pr.Id = n.ProductId), 1) = 1
+        ),
+        perTank AS
+        (
+            SELECT TankId, Qty = SUM(Qty)
+            FROM resolved
+            WHERE TankId IS NOT NULL
+            GROUP BY TankId
+        )
+        INSERT INTO PUMP.TankTransactions
+            (OwnerId, PumpId, TankId, TxnType, Quantity, TxnDateTime, ReferenceNo, Notes, CreatedBy)
+        SELECT @OwnerId, @PumpId, pt.TankId, 'OUT', pt.Qty, @TxnStamp, @ShiftRef,
+               'Shift meter sale (test ka tel wapas tank me gaya)', @UserId
+        FROM perTank pt
+        WHERE pt.TankId IS NOT NULL;
+
+        UPDATE t
+        SET t.CurrentStock = t.CurrentStock - x.Qty
+        FROM PUMP.Tanks t
+        INNER JOIN
+        (
+            SELECT TankId, SUM(Quantity) AS Qty
+            FROM PUMP.TankTransactions
+            WHERE ReferenceNo = @ShiftRef AND TxnType = 'OUT'
+            GROUP BY TankId
+        ) x ON x.TankId = t.Id;
+
+        /* Stock negative ho gaya to shift rokte nahi (warna operator fans jayega),
+           par audit me chillate zaroor hain — matlab opening stock galat tha,
+           ya purchase entry reh gayi, ya chori hui hai. */
+        INSERT INTO PUMP.AuditLog (OwnerId, PumpId, UserId, EntityName, EntityId, Action, Reason, NewValues)
+        SELECT @OwnerId, @PumpId, @UserId, 'Tanks', t.Id, 'NEGATIVE_STOCK',
+               CONCAT('Shift ', @Id, ' band hone ke baad tank stock negative hai — purchase entry ya opening stock check karein'),
+               CAST(t.CurrentStock AS NVARCHAR(50))
+        FROM PUMP.Tanks t
+        WHERE t.Id IN (SELECT TankId FROM PUMP.TankTransactions WHERE ReferenceNo = @ShiftRef)
+          AND t.CurrentStock < 0;
+
+        /* ---------- 6. Cash reconciliation (neeche G7 wala formula) ---------- */
+        DECLARE @MeterSale DECIMAL(18,2) =
+            ISNULL((SELECT SUM(SoldAmount) FROM PUMP.ShiftNozzleReadings WHERE ShiftId = @Id), 0);
+
+        DECLARE @Credit DECIMAL(18,2) =
+            ISNULL((SELECT SUM(TotalAmount) FROM PUMP.SalesHeaders
+                    WHERE ShiftId = @Id AND IsVoid = 0
+                      AND UPPER(ISNULL(PaymentMode,'')) = 'CREDIT'), 0);
+
+        DECLARE @Digital DECIMAL(18,2) =
+            ISNULL((SELECT SUM(TotalAmount) FROM PUMP.SalesHeaders
+                    WHERE ShiftId = @Id AND IsVoid = 0
+                      AND UPPER(ISNULL(PaymentMode,'')) IN ('UPI','CARD','DIGITAL','ONLINE','BANK','WALLET')), 0);
+
+        DECLARE @Receipts DECIMAL(18,2) =
+            ISNULL((SELECT SUM(Amount) FROM PUMP.PartyLedger
+                    WHERE ShiftId = @Id
+                      AND UPPER(EntryType) IN ('RECEIPT','PAYMENT_IN','CREDIT')
+                      AND UPPER(ISNULL(PaymentMode,'CASH')) = 'CASH'), 0);
+
+        DECLARE @CashIn DECIMAL(18,2) =
+            ISNULL((SELECT SUM(Amount) FROM PUMP.CashTransactions
+                    WHERE ShiftId = @Id AND UPPER(TxnType) = 'IN'), 0);
+
+        DECLARE @CashOut DECIMAL(18,2) =
+            ISNULL((SELECT SUM(Amount) FROM PUMP.CashTransactions
+                    WHERE ShiftId = @Id AND UPPER(TxnType) = 'OUT'), 0);
+
+        DECLARE @CashExp DECIMAL(18,2) =
+            ISNULL((SELECT SUM(Amount) FROM PUMP.ExpenseTransactions
+                    WHERE ShiftId = @Id AND UPPER(ISNULL(PaymentMode,'CASH')) = 'CASH'), 0);
+
+        /* Bank jama: BankDeposits table + Cashbook ki BANK_DEPOSIT entry (sp_Shift_Collection_Summary bhi dono
+           ginta hai). Pehle yahan sirf pehla tha, isliye Cashbook / "Aaj ki shift" se bank me jama kiya nakad
+           ExpectedCash me ghatta nahi tha aur stored CashShortExcess usi rakam se galat aata tha. */
+        DECLARE @Deposit DECIMAL(18,2) =
+            ISNULL((SELECT SUM(Amount) FROM PUMP.BankDeposits
+                    WHERE ShiftId = @Id AND IsDeleted = 0), 0)
+          + ISNULL((SELECT SUM(Amount) FROM PUMP.CashTransactions
+                    WHERE ShiftId = @Id AND UPPER(TxnType) = 'BANK_DEPOSIT'), 0);
+
+        DECLARE @Expected DECIMAL(18,2) =
+            @OpeningCash + @MeterSale - @Credit - @Digital + @Receipts + @CashIn - @CashOut - @CashExp - @Deposit;
+
+        UPDATE PUMP.ShiftHeaders
+        SET ClosedOn        = COALESCE(ClosedOn, SYSDATETIME()),
+            ClosingCash     = COALESCE(@ClosingCash, ClosingCash),
+            Notes           = COALESCE(@Notes, Notes),
+            Status          = 'CLOSED',
+            TotalMeterSale  = @MeterSale,
+            ExpectedCash    = @Expected,
+            CashShortExcess = ISNULL(COALESCE(@ClosingCash, ClosingCash), 0) - @Expected,
+            ClosedByUserId  = ISNULL(@UserId, ClosedByUserId),
+            ModifiedBy      = @UserId,
+            ModifiedOn      = SYSDATETIME()
+        WHERE Id = @Id;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+
+    EXEC PUMP.sp_Audit_Log
+        @OwnerId = @OwnerId, @PumpId = @PumpId, @UserId = @UserId,
+        @EntityName = 'ShiftHeaders', @EntityId = @Id, @Action = 'CLOSE';
+
+    SELECT @Id AS Id;
+END
+GO
+PRINT '  + AM1: sp_Shift_Close - Deposit me BANK_DEPOSIT bhi';
+PRINT '=== Section AM done ===';
+GO
+
+
+/* ==========================================================================================
+   SECTION AN — shift band hote hi galle ka nakad malik ko (2026-10-22)
+   ------------------------------------------------------------------------------------------
+   Owner: "galle ka nakad roz malik ke paas jaata hai, galle me Rs 0 rakho; opening = kal ki
+   closing aur closing apne aap bharna - ye automatic hi rehna chahiye."
+
+   Ab tak: closing apne aap = opening + aaj ka nakad, aur malik ko diya kahin darj nahi hota tha.
+   Live par OpeningCash jud-jud kar ~Rs 1.11 crore ho gaya (19 Oct 2026).
+
+   Ab: sp_Shift_Close khud Cashbook me "Cash given to owner (automatic at shift close)" (OUT,
+   ReferenceNo 'HANDOVER-AUTO') likhta hai aur ClosingCash = 0. Agli shift 0 se shuru. Short /
+   excess pehle jaisa (ExpectedCash bhi utna hi ghatta hai). sp_Shift_Reopen wo entry hatata hai.
+
+   Kis report par asar: Cashbook me har shift ki ek OUT line. Shift list me Close Cash 0.
+   Day Book se ye line bahar (AN3) - wahan shift ki bikri aati hi nahi, akela nikalna ulta dikhta.
+   Dashboard, DSR, Sale/Purchase, Outstanding, Pump Comparison Cashbook nahi padhte.
+   Purani band shift ki rows nahi chhuti. Baaki teeno SP hu-ba-hu pichhle jaise (AM / Y1 / Day Book).
+   ========================================================================================== */
+PRINT '=== Section AN: galle ka nakad malik ko (shift band par) ===';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_Shift_Close
+(
+    @Id                 BIGINT,
+    @ClosingCash        DECIMAL(18,2) = NULL,
+    @Notes              NVARCHAR(500) = NULL,
+    @NozzleReadingsJson NVARCHAR(MAX) = NULL,
+    @UserId             BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @OwnerId BIGINT, @PumpId BIGINT, @Status NVARCHAR(30),
+            @ShiftDate DATE, @OpeningCash DECIMAL(18,2), @WasClosed BIT = 0;
+
+    SELECT TOP 1
+        @OwnerId     = OwnerId,
+        @PumpId      = PumpId,
+        @Status      = Status,
+        @ShiftDate   = ShiftDate,
+        @OpeningCash = OpeningCash
+    FROM PUMP.ShiftHeaders
+    WHERE Id = @Id;
+
+    IF @OwnerId IS NULL BEGIN SELECT CAST(-1 AS BIGINT) AS Id; RETURN; END
+    IF ISNULL(@Status, '') NOT IN ('OPEN', 'CLOSED') BEGIN SELECT CAST(-2 AS BIGINT) AS Id; RETURN; END
+
+    SET @WasClosed = CASE WHEN @Status = 'CLOSED' THEN 1 ELSE 0 END;
+
+    /* FIX #4 — tank movement ki date shift ki date honi chahiye, aaj ki nahi.
+       Aaj ki shift hai to asli time, warna us din ka 23:00. */
+    DECLARE @TxnStamp DATETIME2(7) =
+        CASE WHEN @ShiftDate = CAST(SYSDATETIME() AS DATE)
+             THEN SYSDATETIME()
+             ELSE DATEADD(HOUR, 23, CAST(CAST(@ShiftDate AS DATETIME2(7)) AS DATETIME2(7)))
+        END;
+
+    DECLARE @ShiftRef NVARCHAR(30) = CONCAT('SHIFT-', @Id);
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        /* ---------- 1. Readings update ---------- */
+        IF @NozzleReadingsJson IS NOT NULL AND ISJSON(@NozzleReadingsJson) = 1
+        BEGIN
+            ;WITH cte AS
+            (
+                SELECT x.NozzleId, x.ClosingReading, ISNULL(x.TestingLoss, 0) AS TestingLoss
+                FROM OPENJSON(@NozzleReadingsJson)
+                WITH (NozzleId BIGINT '$.NozzleId',
+                      ClosingReading DECIMAL(18,3) '$.ClosingReading',
+                      TestingLoss DECIMAL(18,3) '$.TestingLoss') x
+                WHERE ISNULL(x.NozzleId, 0) > 0
+            )
+            UPDATE snr
+            SET snr.ClosingReading = cte.ClosingReading,
+                snr.TestingLoss    = cte.TestingLoss,
+                /* FIX #2 — meter rollover. Closing < Opening ka matlab totalizer
+                   ghoom gaya hai, galti nahi. Nozzle ke MeterDigits se wapas jodo. */
+                snr.IsRollover     = CASE WHEN cte.ClosingReading < snr.OpeningReading THEN 1 ELSE 0 END,
+                snr.SoldQty        =
+                    CASE
+                        WHEN cte.ClosingReading >= snr.OpeningReading
+                            THEN cte.ClosingReading - snr.OpeningReading
+                        ELSE POWER(CAST(10 AS DECIMAL(18,3)), n.MeterDigits) - snr.OpeningReading + cte.ClosingReading
+                    END
+                    - cte.TestingLoss,
+                snr.SoldAmount     =
+                    (
+                        CASE
+                            WHEN cte.ClosingReading >= snr.OpeningReading
+                                THEN cte.ClosingReading - snr.OpeningReading
+                            ELSE POWER(CAST(10 AS DECIMAL(18,3)), n.MeterDigits) - snr.OpeningReading + cte.ClosingReading
+                        END
+                        - cte.TestingLoss
+                    ) * snr.Rate,
+                snr.UpdatedOn      = SYSDATETIME(),
+                snr.ModifiedBy     = @UserId
+            FROM PUMP.ShiftNozzleReadings snr
+            INNER JOIN cte           ON cte.NozzleId = snr.NozzleId
+            INNER JOIN PUMP.Nozzles n ON n.Id = snr.NozzleId
+            WHERE snr.ShiftId = @Id;
+        END
+
+        /* ---------- 2. Validation ---------- */
+        IF EXISTS (SELECT 1 FROM PUMP.ShiftNozzleReadings WHERE ShiftId = @Id AND ClosingReading IS NULL)
+            THROW 50002, 'A closing reading is required for every nozzle.', 1;
+
+        IF EXISTS (SELECT 1 FROM PUMP.ShiftNozzleReadings WHERE ShiftId = @Id AND SoldQty < 0)
+            THROW 50004, 'Sold quantity is coming out negative. Check the readings or the testing loss.', 1;
+
+        /* Rollover ke naam par bakwas value na aa jaye — ek shift me ek nozzle se
+           50,000 litre se zyada realistic nahi hai. */
+        IF EXISTS (SELECT 1 FROM PUMP.ShiftNozzleReadings WHERE ShiftId = @Id AND SoldQty > 50000)
+            THROW 50005, 'Sold quantity is too high (over 50,000 L). Please re-check the readings.', 1;
+
+        /* FIX #1 — har nozzle ka apna tank. Pehle TankId, na ho to product ka
+           akela tank, aur agar do tank hain to saaf error. */
+        IF EXISTS
+        (
+            SELECT 1
+            FROM PUMP.ShiftNozzleReadings snr
+            JOIN PUMP.Nozzles n ON n.Id = snr.NozzleId
+            WHERE snr.ShiftId = @Id
+              AND snr.SoldQty > 0
+              AND n.TankId IS NULL
+              AND ISNULL((SELECT pr.TracksStock FROM PUMP.Products pr WHERE pr.Id = n.ProductId), 1) = 1
+              AND (SELECT COUNT(*) FROM PUMP.Tanks t
+                   WHERE t.PumpId = @PumpId AND t.ProductId = n.ProductId AND t.IsActive = 1) <> 1
+        )
+            THROW 50003, 'Some nozzles have no tank set (or the product has more than one tank). Pick a tank in the Nozzle master.', 1;
+
+        /* ---------- 3. Purani deduction reverse karo (FIX #3) ----------
+           Band shift dobara close ho rahi hai to pehle ka asar hata do, phir naya
+           daalo. Isse edit karne par stock hamesha sales ke barabar rehta hai. */
+        IF @WasClosed = 1
+        BEGIN
+            UPDATE t
+            SET t.CurrentStock = t.CurrentStock + x.Qty
+            FROM PUMP.Tanks t
+            INNER JOIN
+            (
+                SELECT TankId, SUM(CASE WHEN TxnType = 'OUT' THEN Quantity ELSE -Quantity END) AS Qty
+                FROM PUMP.TankTransactions
+                WHERE ReferenceNo = @ShiftRef
+                GROUP BY TankId
+            ) x ON x.TankId = t.Id;
+
+            DELETE FROM PUMP.TankTransactions WHERE ReferenceNo = @ShiftRef;
+
+            -- is shift ke auto testing-loss records bhi hata do, neeche naye banenge
+            DELETE FROM PUMP.TestingLosses WHERE ShiftId = @Id AND LossType = 'SHIFT_TEST';
+
+            EXEC PUMP.sp_Audit_Log
+                @OwnerId = @OwnerId, @PumpId = @PumpId, @UserId = @UserId,
+                @EntityName = 'ShiftHeaders', @EntityId = @Id, @Action = 'REOPEN_RECALC',
+                @Reason = 'Closed shift edited — purani tank deduction reverse karke dobara post ki gayi';
+        END
+
+        /* ---------- 4. Pump test ka tel ----------
+           Is pump par test ka tel naap kar WAPAS tank me daala jaata hai (user ne
+           2026-09-04 ko confirm kiya), isliye ye nuksaan hai hi nahi — na tank se
+           ghatega, na TestingLosses me darj hoga.
+
+           Pehle yahan 'SHIFT_TEST' ki row banti thi aur tank se sale+test dono
+           ghat jaate the. Us wajah se har test wale din tank me test jitna tel kam
+           dikhta tha aur DSR ka closing tank se nahi milta tha.
+
+           Kitna tel test me nikla — ye ab bhi poori tarah darj hai
+           (ShiftNozzleReadings.TestingLoss), aur DSR ke "Pump Test" column me
+           dikhta hai. TestingLosses table ab sirf ASLI nuksaan ke liye hai, jo
+           Testing Loss form se aata hai (sp_TestingLoss_Save khud stock ghatata
+           hai — wo theek hai, wahan tel wapas nahi jaata).
+
+           Upar wala DELETE (re-close ke waqt) jaanbujh ke rakha hai, taaki is
+           badlav se pehle bani hui SHIFT_TEST rows shift edit karte hi saaf ho jayen. */
+
+        /* ---------- 5. Tank se stock nikalo ----------
+           Sirf bikri (SoldQty). SoldQty pehle hi testing loss nikaal kar bana hai
+           (dekho upar: closing - opening - TestingLoss), isliye yahi wo tel hai jo
+           sach me tank se gaya. */
+        ;WITH resolved AS
+        (
+            SELECT
+                TankId = COALESCE(n.TankId, ft.TankId),
+                Qty    = snr.SoldQty
+            FROM PUMP.ShiftNozzleReadings snr
+            JOIN PUMP.Nozzles n ON n.Id = snr.NozzleId
+            OUTER APPLY
+            (
+                SELECT TankId = MIN(t.Id)
+                FROM PUMP.Tanks t
+                WHERE t.PumpId = @PumpId AND t.ProductId = n.ProductId AND t.IsActive = 1
+            ) ft
+            WHERE snr.ShiftId = @Id
+              AND snr.SoldQty > 0
+              /* Gas (CNG) / bijli ka stock tank me nahi naapa jaata - uska kuch ghatana nahi. */
+              AND ISNULL((SELECT pr.TracksStock FROM PUMP.Products pr WHERE pr.Id = n.ProductId), 1) = 1
+        ),
+        perTank AS
+        (
+            SELECT TankId, Qty = SUM(Qty)
+            FROM resolved
+            WHERE TankId IS NOT NULL
+            GROUP BY TankId
+        )
+        INSERT INTO PUMP.TankTransactions
+            (OwnerId, PumpId, TankId, TxnType, Quantity, TxnDateTime, ReferenceNo, Notes, CreatedBy)
+        SELECT @OwnerId, @PumpId, pt.TankId, 'OUT', pt.Qty, @TxnStamp, @ShiftRef,
+               'Shift meter sale (test ka tel wapas tank me gaya)', @UserId
+        FROM perTank pt
+        WHERE pt.TankId IS NOT NULL;
+
+        UPDATE t
+        SET t.CurrentStock = t.CurrentStock - x.Qty
+        FROM PUMP.Tanks t
+        INNER JOIN
+        (
+            SELECT TankId, SUM(Quantity) AS Qty
+            FROM PUMP.TankTransactions
+            WHERE ReferenceNo = @ShiftRef AND TxnType = 'OUT'
+            GROUP BY TankId
+        ) x ON x.TankId = t.Id;
+
+        /* Stock negative ho gaya to shift rokte nahi (warna operator fans jayega),
+           par audit me chillate zaroor hain — matlab opening stock galat tha,
+           ya purchase entry reh gayi, ya chori hui hai. */
+        INSERT INTO PUMP.AuditLog (OwnerId, PumpId, UserId, EntityName, EntityId, Action, Reason, NewValues)
+        SELECT @OwnerId, @PumpId, @UserId, 'Tanks', t.Id, 'NEGATIVE_STOCK',
+               CONCAT('Shift ', @Id, ' band hone ke baad tank stock negative hai — purchase entry ya opening stock check karein'),
+               CAST(t.CurrentStock AS NVARCHAR(50))
+        FROM PUMP.Tanks t
+        WHERE t.Id IN (SELECT TankId FROM PUMP.TankTransactions WHERE ReferenceNo = @ShiftRef)
+          AND t.CurrentStock < 0;
+
+        /* ---------- 5b. Galle ka nakad malik ko (Section AN) ----------
+           Pump ka niyam: shift band hote hi galle ka saara nakad malik le jaata hai, galle me
+           @KeepInDrawer (abhi Rs 0) bachta hai. Ye yahin Cashbook me OUT ki entry ban jaata hai
+           (ReferenceNo 'HANDOVER-AUTO', isi shift se juda) aur ClosingCash = @KeepInDrawer.
+           Neeche ka @CashOut is entry ko ginta hai, isliye ExpectedCash bhi utna hi ghatta hai -
+           short / excess pehle jitna hi rehta hai. Pehle ye entry kabhi nahi banti thi, isliye
+           OpeningCash roz pichhla ClosingCash hoke jud-jud kar crore tak pahunch gaya.
+
+           @ClosingCash = handover se PEHLE galle me jitna hai (dono screen yahi bhejti hain).
+           - Pehli baar band: hamesha (closing cash diya ho to).
+           - Band shift dobara band (edit): sirf tab jab uski auto entry pehle se thi - purani entry
+             hata kar naye hisaab se. Is section se pehle band hui shift edit ho to wahi purana
+             vyavhaar: purane din ka nakad yahan se nahi badalta.
+           Client me yahi rakam OperationsController.CashKeptInDrawer hai - dono saath badalna. */
+        DECLARE @KeepInDrawer DECIMAL(18,2) = 0;
+        DECLARE @HadAuto BIT =
+            CASE WHEN EXISTS (SELECT 1 FROM PUMP.CashTransactions
+                              WHERE ShiftId = @Id AND ReferenceNo = 'HANDOVER-AUTO') THEN 1 ELSE 0 END;
+
+        IF (@WasClosed = 0 AND @ClosingCash IS NOT NULL) OR @HadAuto = 1
+        BEGIN
+            DECLARE @Drawer DECIMAL(18,2) =
+                CASE WHEN @ClosingCash IS NOT NULL THEN @ClosingCash
+                     ELSE ISNULL((SELECT ClosingCash FROM PUMP.ShiftHeaders WHERE Id = @Id), 0)
+                        + ISNULL((SELECT SUM(Amount) FROM PUMP.CashTransactions
+                                  WHERE ShiftId = @Id AND ReferenceNo = 'HANDOVER-AUTO'), 0)
+                END;
+
+            DELETE FROM PUMP.CashTransactions WHERE ShiftId = @Id AND ReferenceNo = 'HANDOVER-AUTO';
+
+            IF @Drawer > @KeepInDrawer
+            BEGIN
+                INSERT INTO PUMP.CashTransactions
+                    (OwnerId, PumpId, ShiftId, TxnType, Amount, ReferenceNo, Narration, TxnDateTime)
+                VALUES
+                    (@OwnerId, @PumpId, @Id, 'OUT', @Drawer - @KeepInDrawer, 'HANDOVER-AUTO',
+                     'Cash given to owner (automatic at shift close)', @TxnStamp);
+                SET @ClosingCash = @KeepInDrawer;
+            END
+            ELSE
+                SET @ClosingCash = @Drawer;
+        END
+
+        /* ---------- 6. Cash reconciliation (neeche G7 wala formula) ---------- */
+        DECLARE @MeterSale DECIMAL(18,2) =
+            ISNULL((SELECT SUM(SoldAmount) FROM PUMP.ShiftNozzleReadings WHERE ShiftId = @Id), 0);
+
+        DECLARE @Credit DECIMAL(18,2) =
+            ISNULL((SELECT SUM(TotalAmount) FROM PUMP.SalesHeaders
+                    WHERE ShiftId = @Id AND IsVoid = 0
+                      AND UPPER(ISNULL(PaymentMode,'')) = 'CREDIT'), 0);
+
+        DECLARE @Digital DECIMAL(18,2) =
+            ISNULL((SELECT SUM(TotalAmount) FROM PUMP.SalesHeaders
+                    WHERE ShiftId = @Id AND IsVoid = 0
+                      AND UPPER(ISNULL(PaymentMode,'')) IN ('UPI','CARD','DIGITAL','ONLINE','BANK','WALLET')), 0);
+
+        DECLARE @Receipts DECIMAL(18,2) =
+            ISNULL((SELECT SUM(Amount) FROM PUMP.PartyLedger
+                    WHERE ShiftId = @Id
+                      AND UPPER(EntryType) IN ('RECEIPT','PAYMENT_IN','CREDIT')
+                      AND UPPER(ISNULL(PaymentMode,'CASH')) = 'CASH'), 0);
+
+        DECLARE @CashIn DECIMAL(18,2) =
+            ISNULL((SELECT SUM(Amount) FROM PUMP.CashTransactions
+                    WHERE ShiftId = @Id AND UPPER(TxnType) = 'IN'), 0);
+
+        DECLARE @CashOut DECIMAL(18,2) =
+            ISNULL((SELECT SUM(Amount) FROM PUMP.CashTransactions
+                    WHERE ShiftId = @Id AND UPPER(TxnType) = 'OUT'), 0);
+
+        DECLARE @CashExp DECIMAL(18,2) =
+            ISNULL((SELECT SUM(Amount) FROM PUMP.ExpenseTransactions
+                    WHERE ShiftId = @Id AND UPPER(ISNULL(PaymentMode,'CASH')) = 'CASH'), 0);
+
+        /* Bank jama: BankDeposits table + Cashbook ki BANK_DEPOSIT entry (sp_Shift_Collection_Summary bhi dono
+           ginta hai). Pehle yahan sirf pehla tha, isliye Cashbook / "Aaj ki shift" se bank me jama kiya nakad
+           ExpectedCash me ghatta nahi tha aur stored CashShortExcess usi rakam se galat aata tha. */
+        DECLARE @Deposit DECIMAL(18,2) =
+            ISNULL((SELECT SUM(Amount) FROM PUMP.BankDeposits
+                    WHERE ShiftId = @Id AND IsDeleted = 0), 0)
+          + ISNULL((SELECT SUM(Amount) FROM PUMP.CashTransactions
+                    WHERE ShiftId = @Id AND UPPER(TxnType) = 'BANK_DEPOSIT'), 0);
+
+        DECLARE @Expected DECIMAL(18,2) =
+            @OpeningCash + @MeterSale - @Credit - @Digital + @Receipts + @CashIn - @CashOut - @CashExp - @Deposit;
+
+        UPDATE PUMP.ShiftHeaders
+        SET ClosedOn        = COALESCE(ClosedOn, SYSDATETIME()),
+            ClosingCash     = COALESCE(@ClosingCash, ClosingCash),
+            Notes           = COALESCE(@Notes, Notes),
+            Status          = 'CLOSED',
+            TotalMeterSale  = @MeterSale,
+            ExpectedCash    = @Expected,
+            CashShortExcess = ISNULL(COALESCE(@ClosingCash, ClosingCash), 0) - @Expected,
+            ClosedByUserId  = ISNULL(@UserId, ClosedByUserId),
+            ModifiedBy      = @UserId,
+            ModifiedOn      = SYSDATETIME()
+        WHERE Id = @Id;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+
+    EXEC PUMP.sp_Audit_Log
+        @OwnerId = @OwnerId, @PumpId = @PumpId, @UserId = @UserId,
+        @EntityName = 'ShiftHeaders', @EntityId = @Id, @Action = 'CLOSE';
+
+    SELECT @Id AS Id;
+END
+GO
+PRINT '  + AN1: sp_Shift_Close - galle ka nakad malik ko (auto)';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_Shift_Reopen
+(
+    @ShiftId BIGINT,
+    @OwnerId BIGINT,
+    @UserId  BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @PumpId BIGINT, @Status NVARCHAR(20);
+
+    SELECT @PumpId = PumpId, @Status = Status
+    FROM PUMP.ShiftHeaders
+    WHERE Id = @ShiftId AND OwnerId = @OwnerId;
+
+    IF @PumpId IS NULL
+        THROW 50240, 'That shift was not found.', 1;
+
+    IF UPPER(@Status) = 'OPEN'
+        THROW 50241, 'This shift is already open.', 1;
+
+    /* Us pump par pehle se koi shift khuli ho to doosri nahi khul sakti —
+       sp_Shift_Open bhi yahi niyam maanta hai. */
+    IF EXISTS (SELECT 1 FROM PUMP.ShiftHeaders
+               WHERE OwnerId = @OwnerId AND PumpId = @PumpId
+                 AND Status = 'OPEN' AND Id <> @ShiftId)
+        THROW 50242, 'Another shift is already open for this pump. Close it first.', 1;
+
+    /* Stock hil chuka ho to yun hi mat kholo. */
+    IF EXISTS (SELECT 1 FROM PUMP.TankTransactions
+               WHERE OwnerId = @OwnerId
+                 AND ReferenceNo = CONCAT('SHIFT-', @ShiftId))
+        THROW 50243, 'This shift already moved stock. Use Edit to correct the readings instead of reopening it.', 1;
+
+    BEGIN TRANSACTION;
+
+        /* Section AN: band karte waqt bani 'malik ko diya' wali auto entry bhi hatao - shift
+           dobara band hogi to naye nakad se phir banegi. Warna wo do baar ghatti. */
+        DELETE FROM PUMP.CashTransactions WHERE ShiftId = @ShiftId AND ReferenceNo = 'HANDOVER-AUTO';
+
+        UPDATE PUMP.ShiftNozzleReadings
+        SET ClosingReading = NULL,
+            SoldQty        = 0,
+            SoldAmount     = 0,
+            /* Ye column NOT NULL hai, isliye 0 — NULL dene par Msg 515. */
+            VarianceQty    = 0,
+            TestingLoss    = 0,
+            UpdatedOn      = SYSDATETIME(),
+            ModifiedBy     = @UserId,
+            ModifiedOn     = SYSDATETIME()
+        WHERE ShiftId = @ShiftId;
+
+        UPDATE PUMP.ShiftHeaders
+        SET Status          = 'OPEN',
+            ClosedOn        = NULL,
+            ClosingCash     = NULL,
+            ClosedByUserId  = NULL,
+            /* Teenon NOT NULL hain — 0 kar dete hain, NULL nahi. */
+            TotalMeterSale  = 0,
+            ExpectedCash    = 0,
+            CashShortExcess = 0,
+            ModifiedBy      = @UserId,
+            ModifiedOn      = SYSDATETIME()
+        WHERE Id = @ShiftId AND OwnerId = @OwnerId;
+
+    COMMIT TRANSACTION;
+
+    /* Kisne kholi, kab — audit me nishaan chhod dete hain. */
+    EXEC PUMP.sp_Audit_Log
+        @OwnerId = @OwnerId, @PumpId = @PumpId, @UserId = @UserId,
+        @EntityName = 'ShiftHeaders', @EntityId = @ShiftId, @Action = 'REOPEN_SHIFT',
+        @Reason = N'Shift reopened (was closed without readings)';
+
+    SELECT Reopened = 1;
+END
+GO
+PRINT '  + AN2: sp_Shift_Reopen - auto entry bhi hatao';
+GO
+
+/* AN3: Day Book me auto "malik ko diya" nahi (upar dekho). Baaki SP hu-ba-hu pehle jaisa. */
+CREATE OR ALTER PROCEDURE [PUMP].[sp_Report_DayBook]
+(
+    @OwnerId BIGINT,
+    @PumpId BIGINT,
+    @DateFrom DATE,
+    @DateTo DATE
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        x.EntryDateTime,
+        x.EntryType,
+        x.ReferenceNo,
+        x.Description,
+        x.Debit,
+        x.Credit
+    FROM
+    (
+        SELECT
+            sh.BillDateTime AS EntryDateTime,
+            CAST('SALE' AS NVARCHAR(30)) AS EntryType,
+            sh.BillNo AS ReferenceNo,
+            CONCAT('Sale - ', ISNULL(sh.CustomerName, 'Walk-In')) AS Description,
+            CAST(0 AS DECIMAL(18,2)) AS Debit,
+            sh.TotalAmount AS Credit
+        FROM PUMP.SalesHeaders sh
+        WHERE sh.OwnerId = @OwnerId
+          AND sh.PumpId = @PumpId
+          AND CAST(sh.BillDateTime AS DATE) BETWEEN @DateFrom AND @DateTo
+          AND sh.IsVoid = 0
+
+        UNION ALL
+
+        SELECT
+            ph.CreatedOn,
+            CAST('PURCHASE' AS NVARCHAR(30)),
+            ph.InvoiceNo,
+            CONCAT('Purchase - ', v.VendorName),
+            ph.TotalAmount,
+            CAST(0 AS DECIMAL(18,2))
+        FROM PUMP.PurchaseHeaders ph
+        INNER JOIN PUMP.Vendors v ON v.Id = ph.VendorId
+        WHERE ph.OwnerId = @OwnerId
+          AND ph.PumpId = @PumpId
+          AND CAST(ph.CreatedOn AS DATE) BETWEEN @DateFrom AND @DateTo
+
+        UNION ALL
+
+        SELECT
+            et.TxnDateTime,
+            CAST('EXPENSE' AS NVARCHAR(30)),
+            et.ReferenceNo,
+            CONCAT('Expense - ', eh.HeadName),
+            et.Amount,
+            CAST(0 AS DECIMAL(18,2))
+        FROM PUMP.ExpenseTransactions et
+        INNER JOIN PUMP.ExpenseHeads eh ON eh.Id = et.ExpenseHeadId
+        WHERE et.OwnerId = @OwnerId
+          AND et.PumpId = @PumpId
+          AND CAST(et.TxnDateTime AS DATE) BETWEEN @DateFrom AND @DateTo
+
+        UNION ALL
+
+        SELECT
+            ct.TxnDateTime,
+            CAST('CASH' AS NVARCHAR(30)),
+            ct.ReferenceNo,
+            CONCAT('Cash ', UPPER(ct.TxnType), ' - ', ISNULL(ct.Narration, 'Manual')),
+            CASE WHEN UPPER(ct.TxnType) = 'OUT' THEN ct.Amount ELSE CAST(0 AS DECIMAL(18,2)) END,
+            CASE WHEN UPPER(ct.TxnType) = 'IN' THEN ct.Amount ELSE CAST(0 AS DECIMAL(18,2)) END
+        FROM PUMP.CashTransactions ct
+        WHERE ct.OwnerId = @OwnerId
+          AND ct.PumpId = @PumpId
+          AND CAST(ct.TxnDateTime AS DATE) BETWEEN @DateFrom AND @DateTo
+          /* Section AN: shift band par apne aap bana "malik ko diya" yahan nahi. Day Book me shift ki
+             meter bikri aati hi nahi (sirf bill), to akela ye nikalna Debit ko ulta bada dikhata. Cashbook me hai. */
+          AND ISNULL(ct.ReferenceNo, '') <> 'HANDOVER-AUTO'
+    ) x
+    ORDER BY x.EntryDateTime DESC;
+END
+GO
+PRINT '  + AN3: sp_Report_DayBook - auto handover Day Book me nahi';
+GO
+
+/* AN4: shift list me asli farak (CashShortExcess) aur apne aap malik ko gaya nakad - list ka "Variance"
+   pehle (closing - opening - bikri) se banta tha, jo galle me 0 bachne par poori bikri ko kam dikhata. */
+CREATE OR ALTER PROCEDURE [PUMP].[sp_Shift_List]
+(
+    @OwnerId BIGINT,
+    @PumpId BIGINT = NULL,
+    @FromDate DATE = NULL,
+    @ToDate DATE = NULL,
+    @SearchTerm NVARCHAR(100) = NULL,
+    @PageNumber INT = 1,
+    @PageSize INT = 50
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+
+    ;WITH ShiftBase AS
+    (
+        SELECT
+            sh.Id,
+            sh.OwnerId,
+            sh.PumpId,
+            sh.OperatorUserId,
+            sh.OperatorEmployeeId,
+            OperatorName = COALESCE(e.FullName, u.FullName),
+            sh.ShiftDate,
+            sh.ShiftCode,
+            sh.OpeningCash,
+            sh.ClosingCash,
+            sh.Notes,
+            sh.OpenedOn,
+            sh.ClosedOn,
+            sh.Status,
+            sh.CashShortExcess,
+            /* Us pump par us din ki kaunsi shift — 1, 2, 3...
+               Filter se pehle ginna zaroori hai: agar user ne tareekh ka filter
+               lagaya ho to bhi number wahi rehna chahiye jo asal me hai. */
+            /* CAST zaroori hai: ROW_NUMBER() BIGINT lautata hai, aur ShiftDto ka
+               param `int` hai. Bina CAST ke Dapper record bana hi nahi paata
+               aur POORI shift list 400 de deti hai (CLAUDE.md niyam 5). */
+            ShiftNo = CAST(ROW_NUMBER() OVER (
+                          PARTITION BY sh.PumpId, sh.ShiftDate
+                          ORDER BY sh.OpenedOn, sh.Id) AS INT)
+        FROM PUMP.ShiftHeaders sh
+        LEFT JOIN PUMP.Employees e ON e.Id = sh.OperatorEmployeeId
+        LEFT JOIN PUMP.Users     u ON u.Id = sh.OperatorUserId
+        WHERE sh.OwnerId = @OwnerId
+    )
+    SELECT
+        b.Id,
+        b.OwnerId,
+        b.PumpId,
+        b.OperatorUserId,
+        b.OperatorEmployeeId,
+        b.OperatorName,
+        b.ShiftDate,
+        b.ShiftCode,
+        b.OpeningCash,
+        b.ClosingCash,
+        TotalSoldQty = ISNULL(snr.TotalSoldQty, 0),
+        TotalSoldAmount = ISNULL(snr.TotalSoldAmount, 0),
+        b.Notes,
+        b.OpenedOn,
+        b.ClosedOn,
+        b.Status,
+        b.ShiftNo,
+        /* Section AN: galle me ab 0 bachta hai, isliye list khud farak / aaya nakad nahi nikaal sakti.
+           Ye dono aakhir me - ShiftDto / ShiftRow ka kram yahi hai (CLAUDE.md niyam 5). */
+        b.CashShortExcess,
+        CashToOwner = (SELECT SUM(ct.Amount) FROM PUMP.CashTransactions ct
+                       WHERE ct.ShiftId = b.Id AND ct.ReferenceNo = 'HANDOVER-AUTO')
+    FROM ShiftBase b
+    OUTER APPLY
+    (
+        SELECT
+            /* Sirf tel (litre): gas ke kg aur tel ke litre ka jod kisi kaam ka nahi. Rupaye (neeche) sab ke. */
+            SUM(CASE WHEN ISNULL(pr.TracksStock, 1) = 1 THEN ISNULL(x.SoldQty, 0) ELSE 0 END) AS TotalSoldQty,
+            SUM(ISNULL(x.SoldAmount, 0)) AS TotalSoldAmount
+        FROM PUMP.ShiftNozzleReadings x
+        LEFT JOIN PUMP.Products pr ON pr.Id = x.ProductId
+        WHERE x.ShiftId = b.Id
+    ) snr
+    WHERE (@PumpId IS NULL OR @PumpId <= 0 OR b.PumpId = @PumpId)
+      AND (@FromDate IS NULL OR b.ShiftDate >= @FromDate)
+      AND (@ToDate IS NULL OR b.ShiftDate <= @ToDate)
+      AND (@SearchTerm IS NULL OR @SearchTerm = '' OR b.ShiftCode LIKE '%' + @SearchTerm + '%' OR b.Notes LIKE '%' + @SearchTerm + '%')
+    ORDER BY b.Id DESC
+    OFFSET @Offset ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
+
+    SELECT COUNT(1)
+    FROM PUMP.ShiftHeaders sh
+    WHERE sh.OwnerId = @OwnerId
+      AND (@PumpId IS NULL OR @PumpId <= 0 OR sh.PumpId = @PumpId)
+      AND (@FromDate IS NULL OR sh.ShiftDate >= @FromDate)
+      AND (@ToDate IS NULL OR sh.ShiftDate <= @ToDate)
+      AND (@SearchTerm IS NULL OR @SearchTerm = '' OR sh.ShiftCode LIKE '%' + @SearchTerm + '%' OR sh.Notes LIKE '%' + @SearchTerm + '%');
+END
+GO
+PRINT '  + AN4: sp_Shift_List - CashShortExcess + CashToOwner';
+GO
+
+PRINT '=== Section AN done ===';
+GO
+
+
+/* ==========================================================================================
+   SECTION AO — Munafa (P&L) report aur Activity Log (2026-10-22)
+   ------------------------------------------------------------------------------------------
+   PetroPulse360 se milaan me do kami thi (owner: "ab bacha kya hai vo banao"):
+
+   AO1 sp_Report_ProfitLoss — dashboard ka "Net" sirf bikri - kharcha hai; tel ki kharid ghatti hi
+       nahi, isliye wo munafa nahi. Ye report product-wise:
+         bikri (meter, testing ke bina; bina nozzle wale product ke bill) - kharid (bechi matra x
+         tanker bill ka ausat rate) = asli margin, phir kharcha aur salary ghata kar shuddh munafa.
+       Kharid rate: us samay ke bill ka bhaarit ausat (Amount / Quantity). Us samay koi bill na ho to
+       us din tak ka aakhri bill ('LAST'); kabhi bill hi na ho to 'NONE' - client us product ka
+       margin nahi ginta aur saaf likhta hai. Dip ka ghata-badha isme nahi (DSR me hai).
+       Nozzle wale product ka Sales bill meter bikri ka hi hissa hai (paisa kaise aaya) - alag nahi.
+
+   AO2 sp_AuditLog_List — AuditLog me 2 mahine se sab likha ja raha hai (shift band / edit / hatana,
+       Cashbook, party, purchase, void...), par dekhne ki koi screen nahi thi. Sirf apne owner ki.
+
+   AO3 menu — "Profit & Loss" (Reports) aur "Activity Log" (Management). Jin role ko "Users" menu
+       milta hai (owner / admin), unhi ko. Naye owner ko sp_Owner_Create saare menu deta hai.
+
+   Sirf naye SP aur menu; koi table / purana SP nahi badla.
+   ========================================================================================== */
+PRINT '=== Section AO: P&L report + Activity Log ===';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_Report_ProfitLoss
+(
+    @OwnerId  BIGINT,
+    @PumpId   BIGINT,
+    @DateFrom DATE,
+    @DateTo   DATE
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    /* NOTE (CLAUDE.md niyam 5): ProfitLossLineDto ke param theek isi kram / type me hain. */
+    ;WITH meter AS
+    (
+        SELECT r.ProductId, Qty = SUM(ISNULL(r.SoldQty, 0)), Amount = SUM(ISNULL(r.SoldAmount, 0))
+        FROM PUMP.ShiftNozzleReadings r
+        JOIN PUMP.ShiftHeaders sh ON sh.Id = r.ShiftId
+        WHERE sh.OwnerId = @OwnerId AND sh.PumpId = @PumpId AND sh.Status = 'CLOSED'
+          AND sh.ShiftDate BETWEEN @DateFrom AND @DateTo
+        GROUP BY r.ProductId
+    ),
+    counterSale AS
+    (
+        /* Mobil / saaman: jis product ka koi nozzle hi nahi, uska bill hi uski bikri hai. */
+        SELECT d.ProductId, Qty = SUM(ISNULL(d.Quantity, 0)), Amount = SUM(ISNULL(d.Amount, 0))
+        FROM PUMP.SalesDetails d
+        JOIN PUMP.SalesHeaders h ON h.Id = d.SalesHeaderId
+        WHERE h.OwnerId = @OwnerId AND h.PumpId = @PumpId AND h.IsVoid = 0
+          AND CAST(h.BillDateTime AS DATE) BETWEEN @DateFrom AND @DateTo
+          AND NOT EXISTS (SELECT 1 FROM PUMP.Nozzles n WHERE n.ProductId = d.ProductId)
+        GROUP BY d.ProductId
+    ),
+    sold AS
+    (
+        SELECT x.ProductId, Qty = SUM(x.Qty), Amount = SUM(x.Amount)
+        FROM (SELECT ProductId, Qty, Amount FROM meter
+              UNION ALL
+              SELECT ProductId, Qty, Amount FROM counterSale) x
+        GROUP BY x.ProductId
+    ),
+    costed AS
+    (
+        SELECT s.ProductId, s.Qty, s.Amount,
+               PeriodRate = (SELECT SUM(d.Amount) / NULLIF(SUM(d.Quantity), 0)
+                             FROM PUMP.PurchaseDetails d
+                             JOIN PUMP.PurchaseHeaders h ON h.Id = d.PurchaseHeaderId
+                             WHERE h.OwnerId = @OwnerId AND h.PumpId = @PumpId AND d.ProductId = s.ProductId
+                               AND d.Quantity > 0
+                               AND h.InvoiceDate BETWEEN @DateFrom AND @DateTo),
+               LastRate   = (SELECT TOP 1 d.Amount / NULLIF(d.Quantity, 0)
+                             FROM PUMP.PurchaseDetails d
+                             JOIN PUMP.PurchaseHeaders h ON h.Id = d.PurchaseHeaderId
+                             WHERE h.OwnerId = @OwnerId AND h.PumpId = @PumpId AND d.ProductId = s.ProductId
+                               AND d.Quantity > 0
+                               AND h.InvoiceDate <= @DateTo
+                             ORDER BY h.InvoiceDate DESC, h.Id DESC)
+        FROM sold s
+        WHERE s.Qty <> 0 OR s.Amount <> 0
+    )
+    SELECT
+        Section    = CAST(N'SALE' AS NVARCHAR(20)),
+        SortOrder  = CAST(ROW_NUMBER() OVER (ORDER BY p.IsFuel DESC, p.Name) AS INT),
+        ItemId     = CAST(c.ProductId AS BIGINT),
+        Name       = CAST(p.Name AS NVARCHAR(200)),
+        Unit       = CAST(p.Unit AS NVARCHAR(20)),
+        Qty        = CAST(c.Qty AS DECIMAL(18,3)),
+        Amount     = CAST(c.Amount AS DECIMAL(18,2)),
+        CostRate   = CAST(COALESCE(c.PeriodRate, c.LastRate) AS DECIMAL(18,4)),
+        CostAmount = CAST(c.Qty * COALESCE(c.PeriodRate, c.LastRate) AS DECIMAL(18,2)),
+        CostSource = CAST(CASE WHEN c.PeriodRate IS NOT NULL THEN N'PERIOD'
+                               WHEN c.LastRate   IS NOT NULL THEN N'LAST'
+                               ELSE N'NONE' END AS NVARCHAR(10))
+    FROM costed c
+    JOIN PUMP.Products p ON p.Id = c.ProductId
+
+    UNION ALL
+
+    SELECT
+        CAST(N'EXPENSE' AS NVARCHAR(20)),
+        CAST(ROW_NUMBER() OVER (ORDER BY SUM(e.Amount) DESC) AS INT),
+        CAST(e.ExpenseHeadId AS BIGINT),
+        CAST(ISNULL(eh.HeadName, N'-') AS NVARCHAR(200)),
+        CAST(NULL AS NVARCHAR(20)),
+        CAST(COUNT(*) AS DECIMAL(18,3)),
+        CAST(SUM(e.Amount) AS DECIMAL(18,2)),
+        CAST(NULL AS DECIMAL(18,4)),
+        CAST(NULL AS DECIMAL(18,2)),
+        CAST(N'' AS NVARCHAR(10))
+    FROM PUMP.ExpenseTransactions e
+    LEFT JOIN PUMP.ExpenseHeads eh ON eh.Id = e.ExpenseHeadId
+    WHERE e.OwnerId = @OwnerId AND e.PumpId = @PumpId
+      AND CAST(e.TxnDateTime AS DATE) BETWEEN @DateFrom AND @DateTo
+    GROUP BY e.ExpenseHeadId, eh.HeadName
+
+    UNION ALL
+
+    SELECT
+        CAST(N'SALARY' AS NVARCHAR(20)),
+        CAST(1 AS INT),
+        CAST(NULL AS BIGINT),
+        CAST(N'Salary' AS NVARCHAR(200)),
+        CAST(NULL AS NVARCHAR(20)),
+        CAST(COUNT(*) AS DECIMAL(18,3)),
+        CAST(SUM(sp.Amount) AS DECIMAL(18,2)),
+        CAST(NULL AS DECIMAL(18,4)),
+        CAST(NULL AS DECIMAL(18,2)),
+        CAST(N'' AS NVARCHAR(10))
+    FROM PUMP.SalaryPayments sp
+    WHERE sp.OwnerId = @OwnerId AND sp.PumpId = @PumpId
+      AND sp.PaidOn BETWEEN @DateFrom AND @DateTo
+    HAVING COUNT(*) > 0;
+END
+GO
+PRINT '  + AO1: sp_Report_ProfitLoss';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_AuditLog_List
+(
+    @OwnerId    BIGINT,
+    @DateFrom   DATE,
+    @DateTo     DATE,
+    /* SHIFT / CASH / PARTY / STOCK / SALE / MASTER / USER - khaali = sab */
+    @Area       NVARCHAR(20) = NULL,
+    @PageNumber INT = 1,
+    @PageSize   INT = 100
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Offset INT = (CASE WHEN @PageNumber < 1 THEN 0 ELSE @PageNumber - 1 END) * @PageSize;
+
+    /* NOTE (CLAUDE.md niyam 5): AuditLogEntryDto ke param theek isi kram / type me hain. */
+    ;WITH a AS
+    (
+        SELECT a.*,
+               Area = CASE
+                   WHEN a.EntityName IN ('ShiftHeaders', 'Shift', 'ShiftNozzleReadings') THEN 'SHIFT'
+                   WHEN a.EntityName IN ('CashTransactions') THEN 'CASH'
+                   WHEN a.EntityName IN ('Parties', 'Party', 'PartyLedger') THEN 'PARTY'
+                   WHEN a.EntityName IN ('Tanks', 'Tank', 'TankTransactions', 'Purchase', 'StockReconciliations') THEN 'STOCK'
+                   WHEN a.EntityName IN ('Sale', 'SalesHeaders') THEN 'SALE'
+                   WHEN a.EntityName IN ('Users', 'Role', 'Owners', 'PaymentTransactions') THEN 'USER'
+                   ELSE 'MASTER' END
+        FROM PUMP.AuditLog a
+        WHERE a.OwnerId = @OwnerId
+          AND CAST(a.CreatedOn AS DATE) BETWEEN @DateFrom AND @DateTo
+    )
+    SELECT
+        Id         = a.Id,
+        CreatedOn  = a.CreatedOn,
+        PumpId     = a.PumpId,
+        UserName   = CAST(COALESCE(u.FullName, a.UserName, u.Username) AS NVARCHAR(150)),
+        EntityName = CAST(a.EntityName AS NVARCHAR(100)),
+        EntityId   = a.EntityId,
+        Action     = CAST(a.Action AS NVARCHAR(30)),
+        Reason     = CAST(LEFT(a.Reason, 500) AS NVARCHAR(500)),
+        OldValues  = CAST(LEFT(a.OldValues, 300) AS NVARCHAR(300)),
+        NewValues  = CAST(LEFT(a.NewValues, 300) AS NVARCHAR(300)),
+        /* Kis cheez par: shift ka din + code, party ka naam - id se aadmi kuch nahi samajhta. */
+        Detail     = CAST(CASE
+                         WHEN sh.Id IS NOT NULL THEN CONCAT(CONVERT(VARCHAR(10), sh.ShiftDate, 23), N' · ', sh.ShiftCode)
+                         WHEN pa.Id IS NOT NULL THEN pa.PartyName
+                         WHEN pl.Id IS NOT NULL THEN plp.PartyName
+                         ELSE NULL END AS NVARCHAR(200)),
+        Area       = CAST(a.Area AS NVARCHAR(20)),
+        TotalCount = COUNT(*) OVER ()
+    FROM a
+    LEFT JOIN PUMP.Users u         ON u.Id = a.UserId
+    LEFT JOIN PUMP.ShiftHeaders sh ON a.EntityName IN ('ShiftHeaders', 'Shift') AND sh.Id = a.EntityId AND sh.OwnerId = @OwnerId
+    LEFT JOIN PUMP.Parties pa      ON a.EntityName IN ('Parties', 'Party') AND pa.Id = a.EntityId AND pa.OwnerId = @OwnerId
+    LEFT JOIN PUMP.PartyLedger pl  ON a.EntityName = 'PartyLedger' AND pl.Id = a.EntityId AND pl.OwnerId = @OwnerId
+    LEFT JOIN PUMP.Parties plp     ON plp.Id = pl.PartyId
+    WHERE (@Area IS NULL OR @Area = '' OR a.Area = @Area)
+    ORDER BY a.Id DESC
+    OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END
+GO
+PRINT '  + AO2: sp_AuditLog_List';
+GO
+
+/* ---- AO3: menu ---- */
+DECLARE @UsersMenu BIGINT = (SELECT TOP 1 Id FROM PUMP.Menus WHERE Route = '/users');
+DECLARE @NewId BIGINT;
+
+IF NOT EXISTS (SELECT 1 FROM PUMP.Menus WHERE Route = '/profit-loss')
+BEGIN
+    INSERT INTO PUMP.Menus (ParentId, MenuName, Route, Icon, Sequence, IsVisible, IsActive)
+    VALUES (NULL, N'Profit & Loss', '/profit-loss', N'trending_up', 24, 1, 1);
+    SET @NewId = CAST(SCOPE_IDENTITY() AS BIGINT);
+
+    INSERT INTO PUMP.RoleMenus (RoleId, MenuId, CanView, CanCreate, CanEdit, CanDelete)
+    SELECT rm.RoleId, @NewId, rm.CanView, 0, 0, 0
+    FROM PUMP.RoleMenus rm
+    WHERE rm.MenuId = @UsersMenu
+      AND NOT EXISTS (SELECT 1 FROM PUMP.RoleMenus x WHERE x.RoleId = rm.RoleId AND x.MenuId = @NewId);
+    PRINT '  + AO3: Profit & Loss ka menu bana';
+END
+ELSE
+    PRINT '  = AO3: Profit & Loss ka menu pehle se hai';
+
+IF NOT EXISTS (SELECT 1 FROM PUMP.Menus WHERE Route = '/activity-log')
+BEGIN
+    INSERT INTO PUMP.Menus (ParentId, MenuName, Route, Icon, Sequence, IsVisible, IsActive)
+    VALUES (NULL, N'Activity Log', '/activity-log', N'history', 32, 1, 1);
+    SET @NewId = CAST(SCOPE_IDENTITY() AS BIGINT);
+
+    INSERT INTO PUMP.RoleMenus (RoleId, MenuId, CanView, CanCreate, CanEdit, CanDelete)
+    SELECT rm.RoleId, @NewId, rm.CanView, 0, 0, 0
+    FROM PUMP.RoleMenus rm
+    WHERE rm.MenuId = @UsersMenu
+      AND NOT EXISTS (SELECT 1 FROM PUMP.RoleMenus x WHERE x.RoleId = rm.RoleId AND x.MenuId = @NewId);
+    PRINT '  + AO3: Activity Log ka menu bana';
+END
+ELSE
+    PRINT '  = AO3: Activity Log ka menu pehle se hai';
+GO
+
+PRINT '=== Section AO done ===';
+GO
+
+
+/* ==========================================================================================
+   SECTION AP — Financials: paisa kahan hai (2026-10-22)
+   ------------------------------------------------------------------------------------------
+   PetroPulse360 ki "Financials" jaisi ek screen - owner ke liye, sirf jo data pehle se darj hai
+   usi se (koi nayi entry nahi maangti):
+
+   POSITION (aaj ki haalat, tareekh se nahi):
+     STOCK_VALUE      tank me pada tel x us product ka aakhri kharid rate (bill na ho to bikri rate)
+     RECEIVABLE       party par baaki udhaar (CurrentBalance > 0) + kitni party
+     ADVANCE          party ka hamare paas jama (CurrentBalance < 0)
+     DRAWER_CASH      har pump ki aakhri band shift ka ClosingCash (galle me)
+   FLOW (chuni tareekh me paisa kahan gaya; shift wali cheez shift ke din se, baaki apni tareekh se):
+     METER_SALE, COUNTER_SALE (bina nozzle wale bill), CREDIT_GIVEN, DIGITAL (UPI / card),
+     DUES_IN_CASH / DUES_IN_BANK (udhaar wapas - fn_PartyLedgerSigned ghataane wali entry, VOID nahi),
+     CASH_EXPENSE / OTHER_EXPENSE, BANK_DEPOSIT (BankDeposits + Cashbook BANK_DEPOSIT),
+     TO_OWNER (Cashbook OUT HANDOVER-AUTO / HANDOVER-OWNER), OTHER_CASH_OUT, CASH_IN,
+     SHORT_EXCESS, PURCHASE_BILLS, SALARY
+   STOCK  - har tank ki line.   RECEIVABLE_TOP - sabse zyada udhaar wali 10 party.
+
+   Bank ka balance aur OMC ko kitna dena baaki - ye nahi, kyunki OMC / bank ko kiya bhugtaan abhi
+   kahin darj hi nahi hota. Sirf naya SP aur menu; koi table / purana SP nahi badla.
+   ========================================================================================== */
+PRINT '=== Section AP: Financials ===';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_Report_Financials
+(
+    @OwnerId  BIGINT,
+    @PumpId   BIGINT,
+    @DateFrom DATE,
+    @DateTo   DATE
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    /* Shift ki tareekh se (back-dated entry ka din wahi jo shift ka). */
+    DECLARE @Shifts TABLE (Id BIGINT PRIMARY KEY, ShiftDate DATE, CashShortExcess DECIMAL(18,2));
+    INSERT INTO @Shifts (Id, ShiftDate, CashShortExcess)
+    SELECT sh.Id, sh.ShiftDate, sh.CashShortExcess
+    FROM PUMP.ShiftHeaders sh
+    WHERE sh.OwnerId = @OwnerId AND sh.PumpId = @PumpId AND sh.Status = 'CLOSED'
+      AND sh.ShiftDate BETWEEN @DateFrom AND @DateTo;
+
+    DECLARE @Lines TABLE
+    (
+        Section   NVARCHAR(20),
+        SortOrder INT,
+        Name      NVARCHAR(200),
+        Qty       DECIMAL(18,3) NULL,
+        Rate      DECIMAL(18,4) NULL,
+        Amount    DECIMAL(18,2),
+        Note      NVARCHAR(30) NULL
+    );
+
+    /* ---- STOCK: har tank ---- */
+    INSERT INTO @Lines (Section, SortOrder, Name, Qty, Rate, Amount, Note)
+    SELECT N'STOCK',
+           ROW_NUMBER() OVER (ORDER BY t.Name),
+           CONCAT(t.Name, N' · ', p.Name),
+           t.CurrentStock,
+           COALESCE(lr.Rate, p.CurrentRate),
+           t.CurrentStock * COALESCE(lr.Rate, p.CurrentRate),
+           CASE WHEN lr.Rate IS NOT NULL THEN N'PURCHASE' ELSE N'SALE_RATE' END
+    FROM PUMP.Tanks t
+    JOIN PUMP.Products p ON p.Id = t.ProductId
+    OUTER APPLY
+    (
+        SELECT TOP 1 Rate = d.Amount / NULLIF(d.Quantity, 0)
+        FROM PUMP.PurchaseDetails d
+        JOIN PUMP.PurchaseHeaders h ON h.Id = d.PurchaseHeaderId
+        WHERE h.OwnerId = @OwnerId AND h.PumpId = @PumpId AND d.ProductId = t.ProductId AND d.Quantity > 0
+        ORDER BY h.InvoiceDate DESC, h.Id DESC
+    ) lr
+    WHERE t.OwnerId = @OwnerId AND t.PumpId = @PumpId AND t.IsActive = 1 AND ISNULL(t.IsDeleted, 0) = 0;
+
+    /* ---- RECEIVABLE_TOP: sabse bade 10 udhaar ---- */
+    INSERT INTO @Lines (Section, SortOrder, Name, Qty, Rate, Amount, Note)
+    SELECT TOP 10 N'RECEIVABLE_TOP',
+           ROW_NUMBER() OVER (ORDER BY pa.CurrentBalance DESC),
+           pa.PartyName, NULL, NULL, pa.CurrentBalance, NULL
+    FROM PUMP.Parties pa
+    WHERE pa.OwnerId = @OwnerId AND pa.PumpId = @PumpId AND pa.IsActive = 1 AND ISNULL(pa.IsDeleted, 0) = 0
+      AND pa.CurrentBalance > 0
+    ORDER BY pa.CurrentBalance DESC;
+
+    /* ---- POSITION ---- */
+    INSERT INTO @Lines (Section, SortOrder, Name, Qty, Rate, Amount, Note)
+    SELECT N'POSITION', 1, N'STOCK_VALUE', NULL, NULL,
+           ISNULL((SELECT SUM(Amount) FROM @Lines WHERE Section = N'STOCK'), 0), NULL;
+
+    INSERT INTO @Lines (Section, SortOrder, Name, Qty, Rate, Amount, Note)
+    SELECT N'POSITION', 2, N'RECEIVABLE',
+           (SELECT COUNT(*) FROM PUMP.Parties pa
+            WHERE pa.OwnerId = @OwnerId AND pa.PumpId = @PumpId AND pa.IsActive = 1 AND ISNULL(pa.IsDeleted, 0) = 0
+              AND pa.CurrentBalance > 0),
+           NULL,
+           ISNULL((SELECT SUM(pa.CurrentBalance) FROM PUMP.Parties pa
+                   WHERE pa.OwnerId = @OwnerId AND pa.PumpId = @PumpId AND pa.IsActive = 1 AND ISNULL(pa.IsDeleted, 0) = 0
+                     AND pa.CurrentBalance > 0), 0),
+           NULL;
+
+    INSERT INTO @Lines (Section, SortOrder, Name, Qty, Rate, Amount, Note)
+    SELECT N'POSITION', 3, N'ADVANCE', NULL, NULL,
+           ISNULL((SELECT -SUM(pa.CurrentBalance) FROM PUMP.Parties pa
+                   WHERE pa.OwnerId = @OwnerId AND pa.PumpId = @PumpId AND pa.IsActive = 1 AND ISNULL(pa.IsDeleted, 0) = 0
+                     AND pa.CurrentBalance < 0), 0),
+           NULL;
+
+    INSERT INTO @Lines (Section, SortOrder, Name, Qty, Rate, Amount, Note)
+    SELECT N'POSITION', 4, N'DRAWER_CASH', NULL, NULL,
+           ISNULL((SELECT TOP 1 sh.ClosingCash FROM PUMP.ShiftHeaders sh
+                   WHERE sh.OwnerId = @OwnerId AND sh.PumpId = @PumpId AND sh.Status = 'CLOSED'
+                   ORDER BY sh.ShiftDate DESC, sh.Id DESC), 0),
+           NULL;
+
+    /* ---- FLOW ---- */
+    DECLARE @MeterSale DECIMAL(18,2) =
+        ISNULL((SELECT SUM(r.SoldAmount) FROM PUMP.ShiftNozzleReadings r JOIN @Shifts s ON s.Id = r.ShiftId), 0);
+
+    DECLARE @CounterSale DECIMAL(18,2) =
+        ISNULL((SELECT SUM(d.Amount)
+                FROM PUMP.SalesDetails d
+                JOIN PUMP.SalesHeaders h ON h.Id = d.SalesHeaderId
+                WHERE h.OwnerId = @OwnerId AND h.PumpId = @PumpId AND h.IsVoid = 0
+                  AND CAST(h.BillDateTime AS DATE) BETWEEN @DateFrom AND @DateTo
+                  AND NOT EXISTS (SELECT 1 FROM PUMP.Nozzles n WHERE n.ProductId = d.ProductId)), 0);
+
+    /* Bill ka din: shift se juda ho to shift ka din, warna bill ka. */
+    DECLARE @Bills TABLE (Mode NVARCHAR(30), Amount DECIMAL(18,2));
+    INSERT INTO @Bills (Mode, Amount)
+    SELECT UPPER(ISNULL(h.PaymentMode, '')), h.TotalAmount
+    FROM PUMP.SalesHeaders h
+    LEFT JOIN PUMP.ShiftHeaders sh ON sh.Id = h.ShiftId
+    WHERE h.OwnerId = @OwnerId AND h.PumpId = @PumpId AND h.IsVoid = 0
+      AND COALESCE(sh.ShiftDate, CAST(h.BillDateTime AS DATE)) BETWEEN @DateFrom AND @DateTo;
+
+    DECLARE @Dues TABLE (IsCash BIT, Amount DECIMAL(18,2));
+    INSERT INTO @Dues (IsCash, Amount)
+    SELECT CASE WHEN UPPER(ISNULL(pl.PaymentMode, 'CASH')) = 'CASH' THEN 1 ELSE 0 END,
+           -PUMP.fn_PartyLedgerSigned(pl.EntryType, pl.Amount)
+    FROM PUMP.PartyLedger pl
+    LEFT JOIN PUMP.ShiftHeaders sh ON sh.Id = pl.ShiftId
+    WHERE pl.OwnerId = @OwnerId AND pl.PumpId = @PumpId
+      AND UPPER(pl.EntryType) <> 'VOID'
+      AND PUMP.fn_PartyLedgerSigned(pl.EntryType, pl.Amount) < 0
+      AND COALESCE(sh.ShiftDate, CAST(pl.EntryDateTime AS DATE)) BETWEEN @DateFrom AND @DateTo;
+
+    DECLARE @Cash TABLE (TxnType NVARCHAR(20), Ref NVARCHAR(50), Amount DECIMAL(18,2));
+    INSERT INTO @Cash (TxnType, Ref, Amount)
+    SELECT UPPER(ct.TxnType), ISNULL(ct.ReferenceNo, ''), ct.Amount
+    FROM PUMP.CashTransactions ct
+    LEFT JOIN PUMP.ShiftHeaders sh ON sh.Id = ct.ShiftId
+    WHERE ct.OwnerId = @OwnerId AND ct.PumpId = @PumpId
+      AND COALESCE(sh.ShiftDate, CAST(ct.TxnDateTime AS DATE)) BETWEEN @DateFrom AND @DateTo;
+
+    DECLARE @Exp TABLE (IsCash BIT, Amount DECIMAL(18,2));
+    INSERT INTO @Exp (IsCash, Amount)
+    SELECT CASE WHEN UPPER(ISNULL(e.PaymentMode, 'CASH')) = 'CASH' THEN 1 ELSE 0 END, e.Amount
+    FROM PUMP.ExpenseTransactions e
+    WHERE e.OwnerId = @OwnerId AND e.PumpId = @PumpId
+      AND CAST(e.TxnDateTime AS DATE) BETWEEN @DateFrom AND @DateTo;
+
+    INSERT INTO @Lines (Section, SortOrder, Name, Qty, Rate, Amount, Note)
+    VALUES
+        (N'FLOW',  1, N'METER_SALE',     NULL, NULL, @MeterSale, NULL),
+        (N'FLOW',  2, N'COUNTER_SALE',   NULL, NULL, @CounterSale, NULL),
+        (N'FLOW',  3, N'CREDIT_GIVEN',   NULL, NULL, ISNULL((SELECT SUM(Amount) FROM @Bills WHERE Mode = 'CREDIT'), 0), NULL),
+        (N'FLOW',  4, N'DIGITAL',        NULL, NULL, ISNULL((SELECT SUM(Amount) FROM @Bills WHERE Mode IN ('UPI','CARD','DIGITAL','ONLINE','BANK','WALLET')), 0), NULL),
+        (N'FLOW',  5, N'DUES_IN_CASH',   NULL, NULL, ISNULL((SELECT SUM(Amount) FROM @Dues WHERE IsCash = 1), 0), NULL),
+        (N'FLOW',  6, N'DUES_IN_BANK',   NULL, NULL, ISNULL((SELECT SUM(Amount) FROM @Dues WHERE IsCash = 0), 0), NULL),
+        (N'FLOW',  7, N'CASH_IN',        NULL, NULL, ISNULL((SELECT SUM(Amount) FROM @Cash WHERE TxnType = 'IN'), 0), NULL),
+        (N'FLOW',  8, N'CASH_EXPENSE',   NULL, NULL, ISNULL((SELECT SUM(Amount) FROM @Exp WHERE IsCash = 1), 0), NULL),
+        (N'FLOW',  9, N'OTHER_EXPENSE',  NULL, NULL, ISNULL((SELECT SUM(Amount) FROM @Exp WHERE IsCash = 0), 0), NULL),
+        (N'FLOW', 10, N'BANK_DEPOSIT',   NULL, NULL,
+             ISNULL((SELECT SUM(Amount) FROM @Cash WHERE TxnType = 'BANK_DEPOSIT'), 0)
+           + ISNULL((SELECT SUM(bd.Amount) FROM PUMP.BankDeposits bd
+                     LEFT JOIN PUMP.ShiftHeaders sh ON sh.Id = bd.ShiftId
+                     WHERE bd.OwnerId = @OwnerId AND bd.PumpId = @PumpId AND bd.IsDeleted = 0
+                       AND COALESCE(sh.ShiftDate, bd.DepositDate) BETWEEN @DateFrom AND @DateTo), 0), NULL),
+        (N'FLOW', 11, N'TO_OWNER',       NULL, NULL, ISNULL((SELECT SUM(Amount) FROM @Cash WHERE TxnType = 'OUT' AND Ref IN ('HANDOVER-AUTO', 'HANDOVER-OWNER')), 0), NULL),
+        (N'FLOW', 12, N'OTHER_CASH_OUT', NULL, NULL, ISNULL((SELECT SUM(Amount) FROM @Cash WHERE TxnType = 'OUT' AND Ref NOT IN ('HANDOVER-AUTO', 'HANDOVER-OWNER')), 0), NULL),
+        (N'FLOW', 13, N'SHORT_EXCESS',   NULL, NULL, ISNULL((SELECT SUM(CashShortExcess) FROM @Shifts), 0), NULL),
+        (N'FLOW', 14, N'PURCHASE_BILLS', NULL, NULL,
+             ISNULL((SELECT SUM(h.TotalAmount) FROM PUMP.PurchaseHeaders h
+                     WHERE h.OwnerId = @OwnerId AND h.PumpId = @PumpId
+                       AND h.InvoiceDate BETWEEN @DateFrom AND @DateTo), 0), NULL),
+        (N'FLOW', 15, N'SALARY',         NULL, NULL,
+             ISNULL((SELECT SUM(sp.Amount) FROM PUMP.SalaryPayments sp
+                     WHERE sp.OwnerId = @OwnerId AND sp.PumpId = @PumpId
+                       AND sp.PaidOn BETWEEN @DateFrom AND @DateTo), 0), NULL);
+
+    /* NOTE (CLAUDE.md niyam 5): FinancialLineDto ke param theek isi kram / type me hain. */
+    SELECT Section   = CAST(Section AS NVARCHAR(20)),
+           SortOrder = CAST(SortOrder AS INT),
+           Name      = CAST(Name AS NVARCHAR(200)),
+           Qty       = CAST(Qty AS DECIMAL(18,3)),
+           Rate      = CAST(Rate AS DECIMAL(18,4)),
+           Amount    = CAST(Amount AS DECIMAL(18,2)),
+           Note      = CAST(Note AS NVARCHAR(30))
+    FROM @Lines
+    ORDER BY Section, SortOrder;
+END
+GO
+PRINT '  + AP1: sp_Report_Financials';
+GO
+
+/* ---- AP2: menu - jinhe "Users" milta hai (owner / admin) ---- */
+IF NOT EXISTS (SELECT 1 FROM PUMP.Menus WHERE Route = '/financials')
+BEGIN
+    DECLARE @UsersMenu BIGINT = (SELECT TOP 1 Id FROM PUMP.Menus WHERE Route = '/users');
+    INSERT INTO PUMP.Menus (ParentId, MenuName, Route, Icon, Sequence, IsVisible, IsActive)
+    VALUES (NULL, N'Financials', '/financials', N'account_balance', 24, 1, 1);
+    DECLARE @NewId BIGINT = CAST(SCOPE_IDENTITY() AS BIGINT);
+
+    INSERT INTO PUMP.RoleMenus (RoleId, MenuId, CanView, CanCreate, CanEdit, CanDelete)
+    SELECT rm.RoleId, @NewId, rm.CanView, 0, 0, 0
+    FROM PUMP.RoleMenus rm
+    WHERE rm.MenuId = @UsersMenu
+      AND NOT EXISTS (SELECT 1 FROM PUMP.RoleMenus x WHERE x.RoleId = rm.RoleId AND x.MenuId = @NewId);
+    PRINT '  + AP2: Financials ka menu bana';
+END
+ELSE
+    PRINT '  = AP2: Financials ka menu pehle se hai';
+GO
+
+PRINT '=== Section AP done ===';
 GO

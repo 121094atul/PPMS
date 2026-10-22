@@ -37,12 +37,18 @@
 
                     <div class="mb-2">
                         <label class="form-label">@L["Product"]</label>
+                        @* Gas (CNG) / charging ka tank nahi hota - list me nahi. Purana bana gas tank edit ho raha
+                           ho to uska product chhupta nahi, warna save karte hi tank ka product badal jaata. *@
                         <select asp-for="Form.ProductId" class="form-select" required>
-                            @foreach (var product in Model.Products)
+                            @foreach (var product in Model.Products.Where(p => PPMS.Client.Web.Services.ProductUnit.TracksStock(p.Category) || (Model.Form.Id > 0 && p.Id == Model.Form.ProductId)))
                             {
                                 <option value="@product.Id">@product.Name (@product.Category)</option>
                             }
                         </select>
+                        @if (Model.Products.Any(p => !PPMS.Client.Web.Services.ProductUnit.TracksStock(p.Category)))
+                        {
+                            <div class="form-text">@L["CNG / charging has no tank, so it is not in this list."]</div>
+                        }
                     </div>
 
                     <div class="row g-2 mb-2">

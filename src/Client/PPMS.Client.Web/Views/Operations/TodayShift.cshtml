@@ -88,6 +88,18 @@
                     <div class="col-6 col-md-3"><div class="text-muted">@L["Cash received"]</div><div class="fw-bold">@Rs(jc.CashToday)</div></div>
                     <div class="col-6 col-md-3"><div class="text-muted">@L["Difference"]</div><div class="fw-bold @(within ? "ts-ok" : jc.ShortExcess < 0 ? "ts-short" : "ts-excess")">@(jc.ShortExcess > 0 ? "+" : jc.ShortExcess < 0 ? "−" : "")@Rs(Math.Abs(jc.ShortExcess))</div></div>
                 </div>
+                @* Agli shift is nakad se shuru hogi — isi liye yahan saaf dikhate hain. *@
+                <div class="small mt-2">
+                    <span class="text-muted">@L["Left in the drawer (next shift starts with this)"]:</span> <strong>@Rs(jc.LeftInDrawer)</strong>
+                    @if (jc.HandedOwner > 0 || jc.HandedBank > 0)
+                    {
+                        <span class="text-muted">
+                            (@if (jc.HandedOwner > 0) { <text>@L["Given to owner"] @Rs(jc.HandedOwner)</text> }
+                             @if (jc.HandedOwner > 0 && jc.HandedBank > 0) { <text> · </text> }
+                             @if (jc.HandedBank > 0) { <text>@L["Deposited in bank"] @Rs(jc.HandedBank)</text> })
+                        </span>
+                    }
+                </div>
                 @if (!string.IsNullOrWhiteSpace(jc.DipNote))
                 {
                     <div class="small mt-2"><span class="text-muted">@L["Tank dip"]:</span> @jc.DipNote</div>
@@ -187,6 +199,25 @@
                         </div>
                     }
 
+                    @* Galle me shuru ka nakad: pichhli shift ke baad jitna bacha tha. Purana nakad jud-jud kar badi
+                       rakam ban gayi ho (malik ko diya / bank me jama kahin darj nahi hota tha) to yahan asli nakad likho
+                       - purani shift ki rows nahi badalti, sirf is shift ki shuruaat. *@
+                    <div class="mt-3">
+                        <label class="form-label mb-0" for="tsOpenCash">@L["Cash in the drawer at start"]</label>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input id="tsOpenCash" name="OpeningCash" type="number" step="0.01" min="0" inputmode="decimal"
+                                   class="form-control" style="max-width:220px" value="@N(st.OpeningCash ?? 0)" readonly />
+                            <button type="button" class="btn btn-link btn-sm p-0" id="tsEditOpenCash">✏️ @L["Change"]</button>
+                        </div>
+                        <div class="form-text mt-0">@L["This is what was left in the drawer after the last shift. Change it only if the real cash in the drawer is different."]</div>
+                        @if (Model.SuggestedOpeningCash >= 200000)
+                        {
+                            <div class="alert alert-warning py-2 px-2 small mt-2 mb-0">
+                                ⚠ @L["This is a lot of cash for a drawer. Is that really in the drawer? If not, press Change and write the real cash."]
+                            </div>
+                        }
+                    </div>
+
                     <div class="d-flex justify-content-between align-items-end mt-3 mb-1">
                         <label class="form-label mb-0">@L["Opening meter reading"]</label>
                         @if (!firstShift)
@@ -249,11 +280,13 @@
             shiftId = sh.Id,
             pumpId = Model.PumpId,
             tolerance = Model.ToleranceRs,
+            keepInDrawer = Model.KeepInDrawer,
             cash = Model.Cash,
             upi = Model.Collection.UpiAmount,
             card = Model.Collection.CardAmount,
             slips = Model.Collection.Credits.Select(c => new { partyId = c.PartyId, amount = c.Amount, vehicleNo = c.VehicleNo, slipNote = c.SlipNote }),
             expenses = Model.Expenses.Select(e => new { id = e.Id, expenseHeadName = e.ExpenseHeadName, amount = e.Amount, narration = e.Narration }),
+            handovers = Model.Handovers.Select(h => new { id = h.Id, kind = h.Kind, amount = h.Amount, note = h.Note }),
             products,
             labels = new
             {
@@ -267,6 +300,10 @@
                 cashOut = L["Cash taken out"].Value,
                 expenses = L["Cash expenses"].Value,
                 bank = L["Deposited in bank"].Value,
+                hoOwner = L["Given to owner"].Value,
+                hoBank = L["Deposited in bank"].Value,
+                autoOwner = L["Given to owner (automatic)"].Value,
+                left = L["Left in the drawer"].Value,
                 expected = L["Cash expected"].Value,
                 came = L["Cash received"].Value,
                 diff = L["Difference"].Value
@@ -276,6 +313,8 @@
                 money = Url.Action("SaveTodayShiftMoney"),
                 addExpense = Url.Action("AddTodayShiftExpense"),
                 deleteExpense = Url.Action("DeleteTodayShiftExpense"),
+                addHandover = Url.Action("AddTodayShiftHandover"),
+                deleteHandover = Url.Action("DeleteTodayShiftHandover"),
                 finish = Url.Action("FinishTodayShift")
             }
         };
@@ -312,6 +351,11 @@
             ["noExpense"] = L["No expense in this shift."].Value,
             ["expenseNeeded"] = L["Pick the expense type and enter the amount."].Value,
             ["deleteExpense"] = L["Delete this expense?"].Value,
+            ["deleteHandover"] = L["Delete this entry?"].Value,
+            ["hoNeedAmount"] = L["Enter the amount."].Value,
+            ["hoTooMuch"] = L["The cash handed over is more than the cash in the drawer."].Value,
+            ["kindOwner"] = L["Given to owner"].Value,
+            ["kindBank"] = L["Deposited in bank"].Value,
             ["chkMeter"] = L["Closing reading of every nozzle"].Value,
             ["chkDip"] = L["Tank dip"].Value,
             ["chkMoney"] = L["Online, card and credit"].Value,
@@ -350,7 +394,15 @@
 
         @* ── 1. Meter ── *@
         <section class="ts-sec" data-sec="1">
-            <p class="small text-muted mb-2">@L["Opening comes from the last shift. Fill only the closing. Testing is filled the same as last time - change it if it was different."]</p>
+            @if (Model.Nozzles.Any(x => IsLiquid(x.ProductName)))
+            {
+                <p class="small text-muted mb-2">@L["Opening comes from the last shift. Fill only the closing. Testing is filled the same as last time - change it if it was different."]</p>
+            }
+            else
+            {
+                @* Sirf gas (CNG) wala pump - testing hoti hi nahi. *@
+                <p class="small text-muted mb-2">@L["Opening comes from the last shift. Fill only the closing."]</p>
+            }
             @foreach (var n in Model.Nozzles)
             {
                 var liquid = IsLiquid(n.ProductName);
@@ -398,8 +450,11 @@
 
         @* ── 2. Tank dip ── *@
         <section class="ts-sec" data-sec="2" hidden>
-            <p class="small text-muted mb-1">@L["Measure each tank after this shift and write the litres from the dip chart. The difference shows as you type - the same number the DSR will show."]</p>
-            <p class="small text-muted mb-2">🚛 @L["Tanker unloaded today? Save the Purchase first - otherwise the difference here will look very large."]</p>
+            @if (liquidTanks.Count > 0)
+            {
+                <p class="small text-muted mb-1">@L["Measure each tank after this shift and write the litres from the dip chart. The difference shows as you type - the same number the DSR will show."]</p>
+                <p class="small text-muted mb-2">🚛 @L["Tanker unloaded today? Save the Purchase first - otherwise the difference here will look very large."]</p>
+            }
             @if (liquidTanks.Count == 0)
             {
                 <div class="ts-box text-muted small">@L["No tank to measure on this pump (gas storage is not dipped)."]</div>
@@ -497,8 +552,8 @@
             </details>
 
             <div class="ts-box">
-                <label class="form-label fw-semibold mb-1" for="tsCash">@L["How much cash came today?"]</label>
-                <div class="form-text mt-0 mb-2">@L["Only today's cash in the drawer - after paying the expenses above."]</div>
+                <label class="form-label fw-semibold mb-1" for="tsCash">@L["Cash counted today"]</label>
+                <div class="form-text mt-0 mb-2">@L["Count the cash that came today (after paying the expenses above) - before giving any to the owner or the bank. Write what you take out in the box below."]</div>
                 <div class="d-flex gap-2 align-items-center flex-wrap">
                     <input id="tsCash" type="number" class="form-control ts-big" style="max-width:200px" step="0.01" min="0" inputmode="decimal" />
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="tsNotesBtn">🧮 @L["Count notes"]</button>
@@ -526,6 +581,38 @@
                         <button type="button" class="btn btn-sm btn-success" id="tsDenApply">@L["Put in cash"]</button>
                     </div>
                 </div>
+            </div>
+
+            <div class="ts-box" id="tsHoBox">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">@L["Cash taken out of the drawer"] <span class="text-muted fw-normal small">(@L["optional"])</span></span>
+                    <span id="tsHoTotal">₹0</span>
+                </div>
+                @* Section AN: baaki nakad band hote hi apne aap "malik ko diya" ban jaata hai - yahan roz kuch likhna zaroori nahi. *@
+                <div class="form-text mt-0">@L["When the shift closes, the rest of the cash is written as given to the owner by itself. Write here only cash that went to the bank (or was given to the owner separately)."]</div>
+                <div id="tsHoList" class="mt-2"></div>
+                <div class="row g-2 align-items-end mt-1">
+                    <div class="col-12 col-sm-3">
+                        <label class="small text-muted mb-0" for="tsHoKind">@L["Given to"]</label>
+                        <select id="tsHoKind" class="form-select form-select-sm" data-no-search>
+                            <option value="OWNER">@L["Given to owner"]</option>
+                            <option value="BANK">@L["Deposited in bank"]</option>
+                        </select>
+                    </div>
+                    <div class="col-5 col-sm-3">
+                        <label class="small text-muted mb-0" for="tsHoAmt">@L["Amount"]</label>
+                        <input id="tsHoAmt" type="number" class="form-control form-control-sm" step="0.01" min="0" inputmode="decimal" />
+                    </div>
+                    <div class="col-7 col-sm-4">
+                        <label class="small text-muted mb-0" for="tsHoNote">@L["Note"]</label>
+                        <input id="tsHoNote" type="text" class="form-control form-control-sm" maxlength="150" />
+                    </div>
+                    <div class="col-12 col-sm-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary w-100" id="tsHoAdd">+ @L["Add"]</button>
+                    </div>
+                </div>
+                <div class="small text-danger mt-1" id="tsHoErr" hidden></div>
+                <div class="small mt-2">@L["Goes to the owner when the shift closes (automatic)"]: <strong id="tsLeft">₹0</strong></div>
             </div>
 
             <div class="small text-danger" id="tsMoneyErr" hidden></div>
@@ -584,6 +671,13 @@
                     </select>
                     <input type="text" class="form-control form-control-sm ts-s-note" maxlength="120" placeholder="@L["Note (slip no.)"]" autocomplete="off" />
                 </div>
+            </div>
+        </template>
+
+        <template id="tsHoTpl">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-1 small ts-ho-row">
+                <span><strong class="ts-h-kind"></strong> <span class="text-muted ts-h-note"></span></span>
+                <span class="d-flex align-items-center gap-2"><span class="ts-h-amt"></span><button type="button" class="btn btn-sm btn-link text-danger p-0 ts-h-del">@L["Delete"]</button></span>
             </div>
         </template>
 

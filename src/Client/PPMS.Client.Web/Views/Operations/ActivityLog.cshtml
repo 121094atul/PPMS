@@ -1,0 +1,145 @@
+﻿@model PPMS.Client.Web.Models.ActivityLogViewModel
+@{
+    ViewData["Title"] = "Activity Log";
+
+    // AuditLog me EntityName / Action angrezi code hain (alag-alag SP ne alag naam rakhe: "Party" aur
+    // "Parties" dono). Aadmi ke padhne layak - "Shift: closed" - aur Hindi me bhi.
+    var entityLabels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ShiftHeaders"] = "Shift", ["Shift"] = "Shift", ["ShiftNozzleReadings"] = "Shift",
+        ["CashTransactions"] = "Cashbook",
+        ["Parties"] = "Party", ["Party"] = "Party", ["PartyLedger"] = "Party account",
+        ["Tanks"] = "Tank", ["Tank"] = "Tank", ["TankTransactions"] = "Tank stock",
+        ["Purchase"] = "Purchase", ["StockReconciliations"] = "Stock check",
+        ["Sale"] = "Bill", ["SalesHeaders"] = "Bill",
+        ["Products"] = "Product", ["Product"] = "Product",
+        ["Nozzles"] = "Nozzle", ["Nozzle"] = "Nozzle",
+        ["Pumps"] = "Pump", ["Pump"] = "Pump",
+        ["Vendors"] = "Vendor", ["Vendor"] = "Vendor",
+        ["Employee"] = "Employee",
+        ["Users"] = "User", ["Role"] = "Role",
+        ["Owners"] = "Account", ["PaymentTransactions"] = "Payment"
+    };
+    var actionLabels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["CREATE"] = "added", ["INSERT"] = "added", ["UPDATE"] = "changed",
+        ["DELETE"] = "deleted", ["SOFT_DELETE"] = "deleted", ["RESTORE"] = "restored",
+        ["VOID"] = "cancelled", ["CLOSE"] = "closed",
+        ["REOPEN_SHIFT"] = "reopened", ["REOPEN"] = "reopened", ["REOPEN_RECALC"] = "edited after closing",
+        ["COLLECT_CASH"] = "cash collected", ["UNDO_COLLECT_CASH"] = "cash collection undone",
+        ["RECONCILE"] = "matched with dip", ["NEGATIVE_STOCK"] = "went below zero",
+        ["PASSWORD_RESET_ADMIN"] = "password reset by admin", ["PASSWORD_RESET_OTP"] = "password reset by OTP",
+        ["EXTEND_TRIAL"] = "trial extended", ["CREATE_TENANT"] = "account created", ["PAYMENT_SUCCESS"] = "payment received"
+    };
+    // Resx ki chaabi case dekhti hai, aur "Closed" / "CLOSED" / "Deleted" pehle se bani hain (naya "closed"
+    // jodna mana - resx me case badal kar wahi naam do baar nahi ho sakta). Isliye teeno roop aazmao.
+    string Tr(string key)
+    {
+        foreach (var k in new[] { key, char.ToUpperInvariant(key[0]) + key[1..], key.ToUpperInvariant() })
+        {
+            var r = L[k];
+            if (!r.IsResourceNotFound) return r.Value;
+        }
+        return key;
+    }
+    string What(PPMS.Client.Web.Services.ApiAuditLogEntryDto e)
+    {
+        var ent = entityLabels.TryGetValue(e.EntityName, out var el) ? Tr(el) : e.EntityName;
+        var act = actionLabels.TryGetValue(e.Action, out var al) ? Tr(al) : e.Action;
+        return $"{ent}: {act}";
+    }
+    var areas = new[] { ("", "All"), ("SHIFT", "Shift"), ("CASH", "Cashbook"), ("PARTY", "Party"), ("STOCK", "Stock and purchase"), ("SALE", "Bill"), ("MASTER", "Masters"), ("USER", "Users and account") };
+    var multiPump = Model.PumpNames.Count > 1;
+}
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="ActivityLog" asp-controller="Operations" class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label">@L["From"]</label>
+                <input class="form-control" type="date" name="dateFrom" value="@Model.DateFrom.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label">@L["To"]</label>
+                <input class="form-control" type="date" name="dateTo" value="@Model.DateTo.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">@L["What"]</label>
+                <select class="form-select" name="area" data-no-search>
+                    @foreach (var (code, label) in areas)
+                    {
+                        <option value="@code" selected="@(string.Equals(code, Model.Area ?? "", StringComparison.OrdinalIgnoreCase))">@L[label]</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-3 d-grid">
+                <button class="btn btn-primary" type="submit">@L["Load Report"]</button>
+            </div>
+        </form>
+        <div class="form-text mt-2">@L["Who did what and when - closing or editing a shift, Cashbook, party account, purchase, cancelled bills and more."]</div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>@L["When"]</th>
+                        <th>@L["Who"]</th>
+                        <th>@L["What"]</th>
+                        <th>@L["On what"]</th>
+                        <th>@L["Details"]</th>
+                        @if (multiPump)
+                        {
+                            <th>@L["Pump"]</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Items.Count == 0)
+                    {
+                        <tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#128221;</div><div class="empty-state-title">@L["No data in this range"]</div></div></td></tr>
+                    }
+                    @foreach (var e in Model.Items)
+                    {
+                        var isWarn = string.Equals(e.Action, "DELETE", StringComparison.OrdinalIgnoreCase)
+                                     || string.Equals(e.Action, "SOFT_DELETE", StringComparison.OrdinalIgnoreCase)
+                                     || string.Equals(e.Action, "VOID", StringComparison.OrdinalIgnoreCase)
+                                     || string.Equals(e.Action, "REOPEN_RECALC", StringComparison.OrdinalIgnoreCase)
+                                     || string.Equals(e.Action, "NEGATIVE_STOCK", StringComparison.OrdinalIgnoreCase);
+                        <tr>
+                            <td class="text-nowrap" data-label="@L["When"]">@e.CreatedOn.ToString("dd MMM yyyy, hh:mm tt")</td>
+                            <td data-label="@L["Who"]">@(e.UserName ?? "—")</td>
+                            <td data-label="@L["What"]"><span class="@(isWarn ? "text-danger fw-semibold" : "")">@What(e)</span></td>
+                            <td data-label="@L["On what"]">@(e.Detail ?? (e.EntityId is long id ? "#" + id : "—"))</td>
+                            <td class="small" data-label="@L["Details"]">@(string.IsNullOrWhiteSpace(e.Reason) ? e.NewValues : e.Reason)</td>
+                            @if (multiPump)
+                            {
+                                <td data-label="@L["Pump"]">@(e.PumpId is long pid && Model.PumpNames.TryGetValue(pid, out var pn) ? pn : "—")</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.PageCount > 1)
+        {
+            <nav class="mt-3 d-flex justify-content-between align-items-center">
+                <span class="small text-muted">@L["Page {0} of {1}", Model.PageNumber, Model.PageCount] · @Model.TotalCount</span>
+                <div class="d-flex gap-2">
+                    @if (Model.PageNumber > 1)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="ActivityLog" asp-route-dateFrom="@Model.DateFrom.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo.ToString("yyyy-MM-dd")" asp-route-area="@Model.Area" asp-route-page="@(Model.PageNumber - 1)">← @L["Previous"]</a>
+                    }
+                    @if (Model.PageNumber < Model.PageCount)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="ActivityLog" asp-route-dateFrom="@Model.DateFrom.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo.ToString("yyyy-MM-dd")" asp-route-area="@Model.Area" asp-route-page="@(Model.PageNumber + 1)">@L["Next"] →</a>
+                    }
+                </div>
+            </nav>
+        }
+    </div>
+</div>

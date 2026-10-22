@@ -110,4 +110,7 @@ public sealed class ShiftNozzleCloseReadingForm
     public decimal Rate { get; set; }
     public decimal ClosingReading { get; set; }
     public decimal TestingLoss { get; set; }
+
+    /// <summary>Tel (litre) hai to testing ka khaana; gas (CNG, kg) ki testing nahi hoti (Section AL).</summary>
+    public bool IsLiquid { get; set; } = true;
 }

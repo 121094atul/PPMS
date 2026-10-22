@@ -1482,6 +1482,50 @@ public sealed class PPMSApiClient(HttpClient httpClient)
         return items ?? new List<ApiMonthlySaleRegisterRow>();
     }
 
+    public async Task<IReadOnlyList<ApiProfitLossLineDto>> GetProfitLossAsync(string token, long pumpId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/reports/profit-loss?pumpId={pumpId}&dateFrom={dateFrom:yyyy-MM-dd}&dateTo={dateTo:yyyy-MM-dd}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return Array.Empty<ApiProfitLossLineDto>();
+        }
+
+        var items = await response.Content.ReadFromJsonAsync<List<ApiProfitLossLineDto>>(cancellationToken: cancellationToken);
+        return items is null ? Array.Empty<ApiProfitLossLineDto>() : items;
+    }
+
+    public async Task<IReadOnlyList<ApiFinancialLineDto>> GetFinancialsAsync(string token, long pumpId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/reports/financials?pumpId={pumpId}&dateFrom={dateFrom:yyyy-MM-dd}&dateTo={dateTo:yyyy-MM-dd}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return Array.Empty<ApiFinancialLineDto>();
+        }
+
+        var items = await response.Content.ReadFromJsonAsync<List<ApiFinancialLineDto>>(cancellationToken: cancellationToken);
+        return items is null ? Array.Empty<ApiFinancialLineDto>() : items;
+    }
+
+    public async Task<IReadOnlyList<ApiAuditLogEntryDto>> GetActivityLogAsync(string token, DateOnly dateFrom, DateOnly dateTo, string? area, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var url = $"/api/activity-log?dateFrom={dateFrom:yyyy-MM-dd}&dateTo={dateTo:yyyy-MM-dd}&pageNumber={pageNumber}&pageSize={pageSize}";
+        if (!string.IsNullOrWhiteSpace(area)) url += $"&area={Uri.EscapeDataString(area)}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return Array.Empty<ApiAuditLogEntryDto>();
+        }
+
+        var items = await response.Content.ReadFromJsonAsync<List<ApiAuditLogEntryDto>>(cancellationToken: cancellationToken);
+        return items is null ? Array.Empty<ApiAuditLogEntryDto>() : items;
+    }
+
     public async Task<IReadOnlyList<ApiDailyStockRegisterDto>> GetDailyStockRegisterAsync(string token, long pumpId, long productId, int month, int year, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/reports/daily-stock-register?pumpId={pumpId}&productId={productId}&month={month}&year={year}");

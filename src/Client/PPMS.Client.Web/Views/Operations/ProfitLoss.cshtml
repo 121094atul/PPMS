@@ -1,0 +1,192 @@
+@model PPMS.Client.Web.Models.ProfitLossViewModel
+@{
+    ViewData["Title"] = "Profit & Loss";
+    string Rs(decimal v) => (v < 0 ? "−₹" : "₹") + Math.Abs(v).ToString("N0");
+    string Unit(string? u) => PPMS.Client.Web.Services.ProductUnit.Abbr(u);
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var thisMonth = new DateOnly(today.Year, today.Month, 1);
+    var lastMonth = thisMonth.AddMonths(-1);
+}
+
+<style>
+    .pl-kpi { border-radius: .5rem; padding: .75rem 1rem; background: var(--bs-light, #f8f9fa); height: 100%; }
+    .pl-kpi .lbl { font-size: .8rem; color: #6c757d; }
+    .pl-kpi .val { font-size: 1.25rem; font-weight: 700; }
+    .pl-net { background: #e8f5e9; }
+    .pl-net.loss { background: #fdecea; }
+    @@media print {
+        .no-print, .side-accordion, nav, header, footer { display: none !important; }
+        .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+    }
+</style>
+
+<div class="card border-0 shadow-sm mb-3 no-print">
+    <div class="card-body">
+        <form method="get" asp-action="ProfitLoss" asp-controller="Operations" class="row g-2 align-items-end">
+            @if (Model.Pumps.Count > 1)
+            {
+                <div class="col-12 col-md-3">
+                    <label class="form-label">@L["Pump"]</label>
+                    <select class="form-select" name="pumpId" data-no-search>
+                        @foreach (var p in Model.Pumps)
+                        {
+                            <option value="@p.Id" selected="@(p.Id == Model.PumpId)">@p.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="col-6 col-md-3">
+                <label class="form-label">@L["From"]</label>
+                <input class="form-control" type="date" name="dateFrom" value="@Model.DateFrom.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label">@L["To"]</label>
+                <input class="form-control" type="date" name="dateTo" value="@Model.DateTo.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-12 col-md-3 d-flex gap-2">
+                <button class="btn btn-primary flex-grow-1" type="submit">@L["Load Report"]</button>
+                <button class="btn btn-outline-secondary" type="button" onclick="window.print()">🖨 @L["Print / PDF"]</button>
+            </div>
+        </form>
+        <div class="small mt-2">
+            <a asp-action="ProfitLoss" asp-route-pumpId="@Model.PumpId" asp-route-dateFrom="@thisMonth.ToString("yyyy-MM-dd")" asp-route-dateTo="@today.ToString("yyyy-MM-dd")">@L["This month"]</a>
+            ·
+            <a asp-action="ProfitLoss" asp-route-pumpId="@Model.PumpId" asp-route-dateFrom="@lastMonth.ToString("yyyy-MM-dd")" asp-route-dateTo="@thisMonth.AddDays(-1).ToString("yyyy-MM-dd")">@L["Last month"]</a>
+        </div>
+    </div>
+</div>
+
+<h5 class="mb-2">@L["Profit & Loss"] — @Model.DateFrom.ToString("dd MMM yyyy") – @Model.DateTo.ToString("dd MMM yyyy")</h5>
+
+@if (Model.Sales.Count == 0 && Model.Expenses.Count == 0 && Model.Salary == 0)
+{
+    <div class="card border-0 shadow-sm"><div class="card-body">
+        <div class="empty-state"><div class="empty-state-icon">&#128202;</div><div class="empty-state-title">@L["No data in this range"]</div><div class="empty-state-hint">@L["Close shifts and enter tanker bills in Purchase - the profit is worked out from them."]</div></div>
+    </div></div>
+}
+else
+{
+    <div class="row g-2 mb-3">
+        <div class="col-6 col-md"><div class="pl-kpi"><div class="lbl">@L["Sale"]</div><div class="val">@Rs(Model.TotalSale)</div></div></div>
+        <div class="col-6 col-md"><div class="pl-kpi"><div class="lbl">@L["Purchase cost of what was sold"]</div><div class="val">@Rs(Model.TotalCost)</div></div></div>
+        <div class="col-6 col-md"><div class="pl-kpi"><div class="lbl">@L["Margin"]</div><div class="val">@Rs(Model.GrossMargin)</div></div></div>
+        <div class="col-6 col-md"><div class="pl-kpi"><div class="lbl">@L["Expenses + salary"]</div><div class="val">@Rs(Model.TotalExpenses + Model.Salary)</div></div></div>
+        <div class="col-12 col-md"><div class="pl-kpi pl-net @(Model.NetProfit < 0 ? "loss" : "")"><div class="lbl">@L["Net profit"]</div><div class="val @(Model.NetProfit < 0 ? "text-danger" : "text-success")">@Rs(Model.NetProfit)</div></div></div>
+    </div>
+
+    @if (Model.AnyCostMissing)
+    {
+        <div class="alert alert-warning py-2 small">
+            ⚠ @L["Some products have no purchase bill, so their margin is not counted. Enter their bill in Purchase."]
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <h6 class="card-title">@L["Sale and purchase cost, product-wise"]</h6>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>@L["Product"]</th>
+                            <th class="text-end">@L["Sold"]</th>
+                            <th class="text-end">@L["Sale"]</th>
+                            <th class="text-end">@L["Purchase rate"]</th>
+                            <th class="text-end">@L["Purchase cost"]</th>
+                            <th class="text-end">@L["Margin"]</th>
+                            <th class="text-end">@L["Margin per unit"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model.Sales)
+                        {
+                            var u = Unit(s.Unit);
+                            var margin = s.CostAmount is null ? (decimal?)null : s.Amount - s.CostAmount.Value;
+                            <tr>
+                                <td data-label="@L["Product"]">@s.Name</td>
+                                <td class="text-end" data-label="@L["Sold"]">@s.Qty.ToString("N2") @u</td>
+                                <td class="text-end" data-label="@L["Sale"]">@Rs(s.Amount)</td>
+                                <td class="text-end" data-label="@L["Purchase rate"]">
+                                    @if (s.CostRate is decimal cr)
+                                    {
+                                        <span>₹@cr.ToString("N2")/@u</span>
+                                        if (s.CostSource == "LAST")
+                                        {
+                                            <div class="text-muted small">@L["last bill's rate"]</div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-warning">@L["No bill"]</span>
+                                    }
+                                </td>
+                                <td class="text-end" data-label="@L["Purchase cost"]">@(s.CostAmount is decimal ca ? Rs(ca) : "—")</td>
+                                <td class="text-end fw-semibold @(margin < 0 ? "text-danger" : "")" data-label="@L["Margin"]">@(margin is decimal m ? Rs(m) : "—")</td>
+                                <td class="text-end" data-label="@L["Margin per unit"]">@(margin is decimal m2 && s.Qty != 0 ? "₹" + (m2 / s.Qty).ToString("N2") + "/" + u : "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold">
+                            <td colspan="2">@L["Total"]</td>
+                            <td class="text-end">@Rs(Model.TotalSale)</td>
+                            <td></td>
+                            <td class="text-end">@Rs(Model.TotalCost)</td>
+                            <td class="text-end">@Rs(Model.GrossMargin)</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <h6 class="card-title">@L["Expenses and salary"]</h6>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <tbody>
+                        @foreach (var e in Model.Expenses)
+                        {
+                            <tr>
+                                <td>@e.Name <span class="text-muted small">(@e.Qty.ToString("0") @L["entries"])</span></td>
+                                <td class="text-end">@Rs(e.Amount)</td>
+                            </tr>
+                        }
+                        @if (Model.Salary > 0)
+                        {
+                            <tr><td>@L["Salary"]</td><td class="text-end">@Rs(Model.Salary)</td></tr>
+                        }
+                        @if (Model.Expenses.Count == 0 && Model.Salary == 0)
+                        {
+                            <tr><td class="text-muted" colspan="2">@L["No expense or salary in this range."]</td></tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold"><td>@L["Total"]</td><td class="text-end">@Rs(Model.TotalExpenses + Model.Salary)</td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <table class="table table-sm mb-0">
+                <tbody>
+                    <tr><td>@L["Margin"]</td><td class="text-end">@Rs(Model.GrossMargin)</td></tr>
+                    <tr><td>@L["Expenses"]</td><td class="text-end">@Rs(-Model.TotalExpenses)</td></tr>
+                    <tr><td>@L["Salary"]</td><td class="text-end">@Rs(-Model.Salary)</td></tr>
+                    <tr class="fw-bold fs-5"><td>@L["Net profit"]</td><td class="text-end @(Model.NetProfit < 0 ? "text-danger" : "text-success")">@Rs(Model.NetProfit)</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="small text-muted">
+        <div>• @L["Sale = meter sale of closed shifts (testing not counted) + bills of products that have no nozzle (mobil etc.)."]</div>
+        <div>• @L["Purchase rate = average rate of the purchase bills in this period. If there was no bill in this period, the last bill's rate."]</div>
+        <div>• @L["Stock gain or loss in the tank (dip) is not in this - see the Daily Stock Register."]</div>
+    </div>
+}

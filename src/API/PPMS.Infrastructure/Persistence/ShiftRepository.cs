@@ -155,7 +155,9 @@ public sealed class ShiftRepository(IOptions<DatabaseOptions> options) : IShiftR
                 x.OpenedOn,
                 x.ClosedOn,
                 x.Status,
-                x.ShiftNo))
+                x.ShiftNo,
+                x.CashShortExcess,
+                x.CashToOwner))
             .ToList();
     }
 
@@ -197,7 +199,9 @@ public sealed class ShiftRepository(IOptions<DatabaseOptions> options) : IShiftR
                 x.OpenedOn,
                 x.ClosedOn,
                 x.Status,
-                x.ShiftNo))
+                x.ShiftNo,
+                x.CashShortExcess,
+                x.CashToOwner))
             .ToList();
 
         return new PPMS.Shared.Models.PagedResponse<ShiftDto>(items, totalCount, pageNumber, pageSize);
@@ -222,7 +226,25 @@ public sealed class ShiftRepository(IOptions<DatabaseOptions> options) : IShiftR
         string Status,
         // Section X: pump + din ke hisaab se shift ka number. SP isse aakhir me
         // deti hai, isliye yahan bhi aakhir me.
-        int ShiftNo);
+        int ShiftNo,
+        // Section AN: asli short / excess aur apne aap malik ko gaya nakad.
+        decimal? CashShortExcess,
+        decimal? CashToOwner)
+    {
+        /// <summary>
+        /// Purane sp_Shift_List (AN se pehle, 17 column) ke liye. Dapper constructor column ginti se chunta hai,
+        /// isliye build pehle chadhe ya SQL pehle - dono kram me shift list chalti rahe.
+        /// </summary>
+        public ShiftRow(
+            long Id, long OwnerId, long PumpId, long? OperatorUserId, long? OperatorEmployeeId, string? OperatorName,
+            DateTime ShiftDate, string ShiftCode, decimal OpeningCash, decimal? ClosingCash, decimal TotalSoldQty,
+            decimal TotalSoldAmount, string? Notes, DateTime OpenedOn, DateTime? ClosedOn, string Status, int ShiftNo)
+            : this(Id, OwnerId, PumpId, OperatorUserId, OperatorEmployeeId, OperatorName, ShiftDate, ShiftCode,
+                   OpeningCash, ClosingCash, TotalSoldQty, TotalSoldAmount, Notes, OpenedOn, ClosedOn, Status, ShiftNo,
+                   null, null)
+        {
+        }
+    }
     public async Task<ShiftCollectionSummaryDto> GetCollectionSummaryAsync(long shiftId, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqlConnection(_options.ConnectionString);
