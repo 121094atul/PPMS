@@ -58,4 +58,9 @@ public sealed class ShiftCollectionCreditForm
 {
     public long PartyId { get; set; }
     public decimal Amount { get; set; }
+
+    // Har parchi alag (Section AK). Yahan dobara save karne par ye mit na jaayen,
+    // isliye form me saath chalte hain.
+    public string? VehicleNo { get; set; }
+    public string? SlipNote { get; set; }
 }

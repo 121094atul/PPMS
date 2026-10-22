@@ -48,14 +48,18 @@
                             {
                                 @foreach (var product in Model.Products)
                                 {
-                                    <option value="@product.Id">@product.Name (@product.Category)</option>
+                                    <option value="@product.Id" data-gas="@(PPMS.Client.Web.Services.ProductUnit.TracksStock(product.Category) ? "0" : "1")">@product.Name (@product.Category)</option>
                                 }
                             }
                         </select>
                     </div>
 
-                  
-                    <div class="mb-2">
+                    @* CNG / charging ka tank nahi hota (gas pipeline se aati hai) - tank ka khaana chhup jaata hai. *@
+                    <div class="mb-2" id="noTankNote" hidden>
+                        <div class="alert alert-info py-2 px-2 small mb-0">@L["This product is gas / charging - it has no tank. Nothing to pick here."]</div>
+                    </div>
+
+                    <div class="mb-2" id="tankBlock">
                         <label class="form-label">@L["Tank"]</label>
                         <select asp-for="Form.TankId" class="form-select" required>
                             <option value="">@L["-- Select tank --"]</option>
@@ -87,7 +91,7 @@
 
                     <div class="d-grid">
                        
-                        <button type="submit" class="btn btn-primary" disabled="@(Model.Tanks.Count == 0)">
+                        <button type="submit" class="btn btn-primary" id="nozzleSubmit" disabled="@(Model.Tanks.Count == 0)">
                             @((Model.Form.Id is null) ? L["Create Nozzle"] : L["Update Nozzle"])
                         </button>
                     </div>
@@ -156,6 +160,16 @@
             if (!productSelect || !tankSelect) return;
             
             const selectedProduct = productSelect.value;
+
+            // Gas / charging: tank hai hi nahi. Khaana chhupao, "zaroori" hatao, tank khaali bhejo.
+            const isGas = productSelect.selectedOptions[0]?.getAttribute("data-gas") === "1";
+            document.getElementById("tankBlock").hidden = isGas;
+            document.getElementById("noTankNote").hidden = !isGas;
+            tankSelect.required = !isGas;
+            if (isGas) { tankSelect.value = ""; }
+            const submitBtn = document.getElementById("nozzleSubmit");
+            if (submitBtn) { submitBtn.disabled = !isGas && tankSelect.options.length <= 1; }
+
             const options = tankSelect.options;
             let firstVisible = null;
             let visibleCount = 0;

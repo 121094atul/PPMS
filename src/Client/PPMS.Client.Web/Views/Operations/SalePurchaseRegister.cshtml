@@ -5,6 +5,8 @@
     var selectedPumpName = Model.Pumps.FirstOrDefault(p => p.Id == Model.PumpId)?.Name ?? "";
     var selectedProductName = Model.Products.FirstOrDefault(p => p.Id == Model.ProductId)?.Name ?? "";
     var selectedMonthName = System.Globalization.CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(Model.Month);
+    // Gas (CNG) kilo me bikti hai - "(L)" pakka likhna galat.
+    var unit = PPMS.Client.Web.Services.ProductUnit.Abbr(Model.Products.FirstOrDefault(p => p.Id == Model.ProductId)?.Unit);
 
     var totalSaleQty = Model.Items.Sum(x => x.SaleQty);
     var totalSaleAmt = Model.Items.Sum(x => x.SaleAmount);
@@ -159,10 +161,10 @@
                 <thead class="table-light">
                     <tr class="text-center">
                         <th>@L["Date"]</th>
-                        <th>@L["Sale"] (L)</th>
+                        <th>@L["Sale"] (@unit)</th>
                         <th>@L["Rate"]</th>
                         <th>@L["Total"] (₹)</th>
-                        <th>@L["Purchase"] (L)</th>
+                        <th>@L["Purchase"] (@unit)</th>
                         <th>@L["Purchase"] (₹)</th>
                     </tr>
                 </thead>
@@ -192,11 +194,11 @@
                     <tfoot class="fw-bold table-group-divider bg-light">
                         <tr>
                             <td class="text-center">@L["Total"]</td>
-                            <td class="text-end" data-label="@L["Sale"] (L)">@totalSaleQty.ToString("0.##")</td>
+                            <td class="text-end" data-label="@L["Sale"] (@unit)">@totalSaleQty.ToString("0.##")</td>
                             @* Rate ka jod nahi hota — har din ka apna rate hai *@
                             <td></td>
                             <td class="text-end" data-label="@L["Total"] (₹)">@totalSaleAmt.ToString("N0")</td>
-                            <td class="text-end" data-label="@L["Purchase"] (L)">@(totalPurQty > 0 ? totalPurQty.ToString("0.##") : "")</td>
+                            <td class="text-end" data-label="@L["Purchase"] (@unit)">@(totalPurQty > 0 ? totalPurQty.ToString("0.##") : "")</td>
                             <td class="text-end" data-label="@L["Purchase"] (₹)">@(totalPurAmt > 0 ? totalPurAmt.ToString("N2") : "")</td>
                         </tr>
                     </tfoot>

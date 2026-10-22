@@ -276,7 +276,7 @@
                     {
                         <a class="btn btn-sm btn-outline-primary py-0 px-2"
                            style="font-size:.72rem;"
-                           href="/Operations/Shifts?pumpId=@Model.PumpId&shiftDate=@d.Date.ToString("yyyy-MM-dd")"
+                           href="/Operations/TodayShift?pumpId=@Model.PumpId&date=@d.Date.ToString("yyyy-MM-dd")"
                            title="@L["Open a shift for this day"]">
                             @d.Label
                         </a>
@@ -342,6 +342,7 @@
 @* Quick Actions *@
 <div class="d-flex flex-wrap gap-2 mb-3">
     <span class="text-muted small fw-semibold align-self-center me-1">@L["Quick:"]</span>
+    <a href="/Operations/TodayShift?pumpId=@Model.PumpId" class="btn btn-primary quick-btn">⛽ @L["Today's Shift"]</a>
     <a href="/Operations/Shifts?pumpId=@Model.PumpId" class="btn btn-outline-primary quick-btn">⏱ Shifts</a>
     <a href="/Operations/Sales?pumpId=@Model.PumpId" class="btn btn-outline-success quick-btn">🛒 Sales</a>
     <a href="/Operations/Expenses?pumpId=@Model.PumpId" class="btn btn-outline-danger quick-btn">📤 Expenses</a>
@@ -363,7 +364,7 @@
                     <div class="text-center text-muted py-4 small">
                         <div style="font-size:2rem;">🔒</div>
                         @L["No open shift right now."]<br />
-                        <a href="/Operations/Shifts?pumpId=@Model.PumpId" class="btn btn-sm btn-warning mt-2">@L["Open Shift"]</a>
+                        <a href="/Operations/TodayShift?pumpId=@Model.PumpId" class="btn btn-sm btn-warning mt-2">@L["Open Shift"]</a>
                     </div>
                 }
                 else

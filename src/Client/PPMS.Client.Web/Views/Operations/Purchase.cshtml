@@ -2,7 +2,7 @@
 @model PPMS.Client.Web.Models.PurchaseManagementViewModel
 @{
     ViewData["Title"] = "Purchase Management";
-    var productOptions = Model.Products.Select(x => new { x.Id, Label = $"{x.Name} ({x.Category})", x.CurrentRate }).ToList();
+    var productOptions = Model.Products.Select(x => new { x.Id, Label = $"{x.Name} ({x.Category})", x.CurrentRate, Unit = PPMS.Client.Web.Services.ProductUnit.Abbr(x.Unit), Gas = !PPMS.Client.Web.Services.ProductUnit.TracksStock(x.Category) }).ToList();
     var tankOptions = Model.Tanks.Select(x => new { x.Id, x.ProductId, Label = $"{x.Name} ({x.ProductName})" }).ToList();
 
     // Har line ke neeche: nikla hua rate, chetavni, aur "mool + VAT + recovery" jodne ka
@@ -171,7 +171,7 @@
                                         </select>
                                     </div>
                                     <div class="col-6 col-md-2">
-                                        <label class="form-label small mb-1">@L["Qty (Litres)"]</label>
+                                        <label class="form-label small mb-1 qty-label">@L["Qty (Litres)"]</label>
                                         <input class="form-control form-control-sm" type="number" min="0.01" step="any" name="Form.Items[@i].Quantity"
                                                value="@(line.Quantity > 0 ? line.Quantity.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) : "")" required />
                                     </div>
@@ -243,8 +243,8 @@
                                     <td data-label="@L["Date"]">@p.InvoiceDate.ToString("dd-MMM")</td>
                                     <td data-label="@L["Vendor"]">@p.VendorName</td>
                                     <td data-label="@L["Product / Qty"]">
+                                        @* Har product ki apni ikai ProductSummary me hai ("CNG: 500 kg = ..."); alag-alag ikai ka jod nahi dikhate. *@
                                         <div class="small">@p.ProductSummary</div>
-                                        <div class="text-muted small">Total: @p.TotalQty.ToString("0.##") L</div>
                                     </td>
                                     <td class="text-end fw-semibold" data-label="@L["Amount"]">₹@p.TotalAmount.ToString("0.00")</td>
                                     <td class="text-center" data-label="@L["Action"]">
@@ -331,7 +331,8 @@
     const totalEl = document.getElementById("purchaseEstimatedTotal");
 
     const T = {
-        perLitre: '@L["per litre"]',
+        perUnit: '@L["per {0}", "{0}"]',
+        qtyLabel: '@L["Qty ({0})", "{0}"]',
         rateOdd: '@L["This rate is very different from the selling rate. Check the quantity and the amount."]',
         selling: '@L["Selling rate"]'
     };
@@ -345,6 +346,13 @@
             list.push(`<option value="${t.Id}" ${isSel}>${t.Label}</option>`);
         }
         return list.join("");
+    };
+
+    // Product ki ikai (L / kg) aur gas hai ya nahi. Gas ka tank nahi hota - tank ka khaana chhupta hai.
+    const unitOfRow = (row) => {
+        const pid = Number(row.querySelector('select[name$=".ProductId"]')?.value || 0);
+        const p = products.find(x => x.Id === pid);
+        return { unit: p ? p.Unit : 'L', gas: !!(p && p.Gas) };
     };
 
     // Product ka BIKRI rate - sirf milaan ke liye (khareed ka rate isse bahut door ho to tok do).
@@ -376,7 +384,7 @@
         if (qty <= 0 || amt <= 0) { rateEl.textContent = ''; return; }
 
         const rate = amt / qty;
-        rateEl.textContent = '= ₹' + inr(rate, 4) + ' ' + T.perLitre;
+        rateEl.textContent = '= ₹' + inr(rate, 4) + ' ' + T.perUnit.replace('{0}', unitOfRow(row).unit);
 
         // Ek ank chhoot jaaye ya galat product chun liya jaaye to rate bikri ke rate
         // se bahut door chala jaata hai. 25% se zyada farak par tok do (rokna nahi).
@@ -428,7 +436,17 @@
             }
         };
 
-        productCtrl?.addEventListener("change", () => { refreshTankOptions(null, true); calcTotal(); });
+        // Ikai + tank ka khaana product ke hisaab se: tel = litre + tank, gas = kg + bina tank.
+        const applyUnit = () => {
+            const u = unitOfRow(row);
+            const label = row.querySelector('.qty-label');
+            if (label) { label.textContent = u.unit === 'L' ? '@L["Qty (Litres)"]' : T.qtyLabel.replace('{0}', u.unit); }
+            const tankCol = tankCtrl?.closest('[class*="col-"]');
+            if (tankCol) { tankCol.hidden = u.gas; }
+            if (u.gas && tankCtrl) { tankCtrl.value = ''; }
+        };
+
+        productCtrl?.addEventListener("change", () => { refreshTankOptions(null, true); applyUnit(); calcTotal(); });
         row.querySelectorAll('input[name$=".Quantity"], input[name$=".Amount"]')
            .forEach(ctrl => ctrl.addEventListener("input", calcTotal));
 
@@ -447,6 +465,7 @@
         }));
 
         refreshTankOptions(initialTankId, isNewRow || !isEditingBill);
+        applyUnit();
     };
 
     const addRow = () => {
@@ -465,7 +484,7 @@
                     <select class="form-select form-select-sm" name="Form.Items[${idx}].TankId">${buildTankOptions(defaultProductId)}</select>
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="form-label small mb-1">@L["Qty (Litres)"]</label>
+                    <label class="form-label small mb-1 qty-label">@L["Qty (Litres)"]</label>
                     <input class="form-control form-control-sm" type="number" min="0.01" step="any" name="Form.Items[${idx}].Quantity" required />
                 </div>
                 <div class="col-6 col-md-3">

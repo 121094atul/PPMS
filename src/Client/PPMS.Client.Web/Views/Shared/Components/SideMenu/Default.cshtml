@@ -130,6 +130,15 @@ else
                 break;
             }
         }
+
+        // "Aaj ki shift" ka DB me apna menu nahi hai — jis group me Shifts hai usi me
+        // uske theek upar dikhta hai. Isliye jise Shifts ki ijaazat hai, use ye bhi.
+        var hasShifts = group.Items.Any(x => ResolveHref(x.Route) == "/Operations/Shifts");
+        var onTodayShift = string.Equals(currentPath, "/Operations/TodayShift", StringComparison.OrdinalIgnoreCase);
+        if (hasShifts && onTodayShift)
+        {
+            isGroupActive = true;
+        }
         
         // If current path is root (dashboard) and this is the first group, or if group is active
         if (!isGroupActive && currentPath == "/" && i == 0)
@@ -153,6 +162,10 @@ else
                     {
                         var resolvedHref = ResolveHref(item.Route);
                         var activeClass = string.Equals(resolvedHref, currentPath, StringComparison.OrdinalIgnoreCase) ? "active fw-bold text-primary" : "";
+                        if (resolvedHref == "/Operations/Shifts")
+                        {
+                            <a class="menu-link @(onTodayShift ? "active fw-bold text-primary" : "")" href="/Operations/TodayShift">⛽ @L["Today's Shift"]</a>
+                        }
                         <a class="menu-link @activeClass" href="@resolvedHref">@item.MenuName</a>
                     }
                 </div>

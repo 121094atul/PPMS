@@ -8,6 +8,18 @@
       "port": 5258
     },
     {
+      "name": "ppms-api-test",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".claude/test-run/run-api-test.ps1"],
+      "port": 5258
+    },
+    {
+      "name": "ppms-client-test",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".claude/test-run/run-client-test.ps1"],
+      "port": 5131
+    },
+    {
       "name": "ppms-client",
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "src/Client/PPMS.Client.Web/PPMS.Client.Web.csproj"],

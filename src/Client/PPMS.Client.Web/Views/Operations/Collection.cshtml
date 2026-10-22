@@ -48,7 +48,8 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>@L["Customer"]</th>
-                                    <th class="text-end" style="width:38%">@L["Amount"]</th>
+                                    <th style="width:26%">@L["Vehicle no."]</th>
+                                    <th class="text-end" style="width:28%">@L["Amount"]</th>
                                 </tr>
                             </thead>
                             <tbody id="creditRows">
@@ -70,6 +71,15 @@
                                                     }
                                                 }
                                             </select>
+                                        </td>
+                                        @* Har line ek parchi (Section AK). Note "Aaj ki shift" screen
+                                           se aata hai — yahan dikhate nahi, bas saath le jaate hain
+                                           taaki dobara save karne par mit na jaye. *@
+                                        <td data-label="@L["Vehicle no."]">
+                                            <input name="Form.Credits[@i].VehicleNo" type="text" maxlength="20"
+                                                   value="@Model.Form.Credits[i].VehicleNo"
+                                                   class="form-control form-control-sm text-uppercase" autocomplete="off" />
+                                            <input name="Form.Credits[@i].SlipNote" type="hidden" value="@Model.Form.Credits[i].SlipNote" />
                                         </td>
                                         <td class="text-end" data-label="@L["Amount"]">
                                             <input name="Form.Credits[@i].Amount" type="number" step="0.01" min="0"

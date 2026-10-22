@@ -138,9 +138,10 @@
         <div class="divider"></div>
         <table>
             <tbody>
-                @if(Model.TotalQuantity > 0) {
+                @* Ikai sale ki line se (gas = kg). Mili-juli ikai ho to jod nahi dikhate. *@
+                @if(Model.TotalQuantity > 0 && Model.QuantityUnit != null) {
                 <tr>
-                    <td>@L["Volume (Ltr)"]</td>
+                    <td>@(Model.QuantityUnit == "L" ? L["Volume (Ltr)"] : L["Quantity ({0})", Model.QuantityUnit])</td>
                     <td class="text-end">@Model.TotalQuantity.ToString("0.000")</td>
                 </tr>
                 }

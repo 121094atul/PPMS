@@ -13,7 +13,11 @@ namespace PPMS.Application.Features.Shifts;
 public sealed record ShiftCollectionCreditLine(
     long PartyId,
     string? PartyName,
-    decimal Amount
+    decimal Amount,
+    // Har parchi alag (Section AK) — kaunsi gaadi, aur chhota note (parchi no. / litre).
+    // Default isliye ki purana Collection form bina inke bhi chale.
+    string? VehicleNo = null,
+    string? SlipNote = null
 );
 
 public sealed record ShiftCollectionDto(
@@ -27,16 +31,6 @@ public sealed record SaveShiftCollectionRequest(
     decimal UpiAmount,
     decimal CardAmount,
     IReadOnlyList<ShiftCollectionCreditLine> Credits
-);
-
-/// <summary>
-/// NOTE (CLAUDE.md niyam 5): iske param sp_ShiftCollection_Get ke doosre
-/// result-set ke column ke theek us kram me hain.
-/// </summary>
-public sealed record ShiftCollectionCreditRow(
-    long PartyId,
-    string PartyName,
-    decimal Amount
 );
 
 public sealed record ShiftCollectionTotalsRow(

@@ -890,7 +890,9 @@ public sealed record ApiReceiptDto(
     decimal TotalCGST,
     decimal TotalSGST,
     string? PumpGSTIN,
-    string? PumpAddress
+    string? PumpAddress,
+    // "kg" / "L" - mili-juli ikai ho to null.
+    string? QuantityUnit = null
 );
 
 public sealed record ApiUserDto(
@@ -1215,7 +1217,13 @@ public sealed record ApiDecideRechargeRequest(string? Note);
 
 
 // ── Din ka collection — Online / Card / udhaar (Section W) ──────────────
-public sealed record ApiShiftCollectionCreditLine(long PartyId, string? PartyName, decimal Amount);
+public sealed record ApiShiftCollectionCreditLine(
+    long PartyId,
+    string? PartyName,
+    decimal Amount,
+    // Har parchi alag (Section AK) — kaunsi gaadi, aur chhota note (parchi no. / litre).
+    string? VehicleNo = null,
+    string? SlipNote = null);
 
 public sealed record ApiShiftCollection(
     decimal UpiAmount,

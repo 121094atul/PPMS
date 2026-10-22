@@ -58,12 +58,25 @@ public sealed class ShiftRepository(IOptions<DatabaseOptions> options) : IShiftR
             commandType: System.Data.CommandType.StoredProcedure);
 
         var totals = await multi.ReadFirstOrDefaultAsync<ShiftCollectionTotalsRow>();
-        var credits = (await multi.ReadAsync<ShiftCollectionCreditRow>()).AsList();
+
+        // Udhaar ki line naam se padhte hain, record se nahi. Section AK ne SP me
+        // VehicleNo / SlipNote jode — record (CLAUDE.md niyam 5) purane 3-column SP
+        // par toot jaata. Ab ye API naye aur purane dono SP ke saath chalti hai, to
+        // live par pehle build daalo, phir SQL — beech me Collection page band nahi hota.
+        var credits = (await multi.ReadAsync())
+            .Cast<IDictionary<string, object?>>()
+            .Select(r => new ShiftCollectionCreditLine(
+                Convert.ToInt64(r["PartyId"]),
+                r["PartyName"] as string,
+                Convert.ToDecimal(r["Amount"]),
+                r.TryGetValue("VehicleNo", out var vehicle) ? vehicle as string : null,
+                r.TryGetValue("SlipNote", out var note) ? note as string : null))
+            .ToList();
 
         return new ShiftCollectionDto(
             totals?.UpiAmount ?? 0,
             totals?.CardAmount ?? 0,
-            credits.Select(c => new ShiftCollectionCreditLine(c.PartyId, c.PartyName, c.Amount)).ToList());
+            credits);
     }
 
     public async Task SaveCollectionAsync(SaveShiftCollectionRequest request, long ownerId, long? userId, CancellationToken cancellationToken = default)
@@ -77,11 +90,12 @@ public sealed class ShiftRepository(IOptions<DatabaseOptions> options) : IShiftR
                 OwnerId = ownerId,
                 request.UpiAmount,
                 request.CardAmount,
-                // SP OPENJSON se padhta hai — sirf PartyId aur Amount chahiye.
+                // SP OPENJSON se padhta hai. Kram wahi rehta hai jo user ne likha —
+                // parchi ka BillNo usi kram se banta hai (Section AK).
                 CreditJson = JsonSerializer.Serialize(
                     (request.Credits ?? Array.Empty<ShiftCollectionCreditLine>())
                         .Where(c => c.PartyId > 0 && c.Amount > 0)
-                        .Select(c => new { c.PartyId, c.Amount })),
+                        .Select(c => new { c.PartyId, c.Amount, c.VehicleNo, c.SlipNote })),
                 UserId = userId
             },
             commandType: System.Data.CommandType.StoredProcedure);

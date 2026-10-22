@@ -17,6 +17,9 @@
     var selectedMonthName = months.FirstOrDefault(m => m.Value == Model.Month)?.Text ?? "---";
     var selectedProductName = Model.Products.FirstOrDefault(p => p.Id == Model.ProductId)?.Name ?? "---";
     var selectedPumpName = Model.Pumps.FirstOrDefault(p => p.Id == Model.PumpId)?.Name ?? "---";
+    // Gas / charging: tank, dip aur tanker nahi - stock ke khaane yahan nahi chalte (Section AL).
+    var isGasProduct = !PPMS.Client.Web.Services.ProductUnit.TracksStock(Model.Products.FirstOrDefault(p => p.Id == Model.ProductId)?.Category);
+    var qtyUnit = PPMS.Client.Web.Services.ProductUnit.Abbr(Model.Products.FirstOrDefault(p => p.Id == Model.ProductId)?.Unit);
 }
 
 @section Styles {
@@ -341,6 +344,13 @@
         </form>
     </div>
 </div>
+
+@if (isGasProduct)
+{
+    <div class="alert alert-info py-2 small no-print">
+        ⛽ @L["This is a gas / charging product - it has no tank, dip or tanker, so stock is not tracked here. Only the sale (in {0}) and its value count; the stock columns stay at 0.", qtyUnit]
+    </div>
+}
 
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-warning bg-opacity-25 py-3">

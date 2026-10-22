@@ -1,0 +1,606 @@
+@model PPMS.Client.Web.Models.TodayShiftViewModel
+@using System.Globalization
+@{
+    // Upar ka title bhi in-charge ki bhasha me — ye screen zyada phone par chalegi.
+    ViewData["Title"] = L["Today's Shift"].Value;
+    var inv = CultureInfo.InvariantCulture;
+    string N(decimal v) => v.ToString(inv);
+    string Rs(decimal v) => "₹" + Math.Round(v).ToString("N0", CultureInfo.GetCultureInfo("en-IN"));
+}
+
+@section Styles {
+<style>
+    .ts-wrap { max-width: 900px; margin: 0 auto; }
+    .ts-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; }
+    .ts-head h5 { margin: 0; font-weight: 700; }
+    .ts-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; margin: .75rem 0 1rem; }
+    .ts-step { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: .5rem .6rem; text-align: left; min-width: 0; color: var(--text-main); }
+    .ts-step.active { border: 2px solid var(--accent-primary); padding: calc(.5rem - 1px) calc(.6rem - 1px); }
+    .ts-num { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; background: #eef2ff; color: var(--accent-primary); margin-right: .3rem; flex: none; }
+    .ts-step.done .ts-num { background: #d1fae5; color: #047857; }
+    .ts-lbl { font-weight: 600; font-size: .85rem; }
+    .ts-sub { display: block; font-size: .72rem; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ts-box { border: 1px solid var(--border); border-radius: 10px; padding: .75rem; margin-bottom: .6rem; background: var(--surface); }
+    .ts-box.is-done { border-color: #a7f3d0; background: #f0fdf4; }
+    .ts-box.is-bad { border-color: #fca5a5; background: #fef2f2; }
+    .ts-open { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1rem; padding: .3rem 0; }
+    .ts-close { font-weight: 600; }
+    .ts-foot { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-size: .85rem; margin-top: .4rem; flex-wrap: wrap; }
+    .ts-nav { display: flex; justify-content: space-between; gap: .5rem; margin: .75rem 0 .25rem; }
+    .ts-nav .btn { min-width: 120px; }
+    .ts-bar { position: sticky; bottom: 0; z-index: 50; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 -4px 16px rgba(15, 23, 42, .08); padding: .5rem .75rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-top: 1rem; }
+    .ts-bar .lbl { font-size: .7rem; color: var(--text-soft); line-height: 1.15; }
+    .ts-bar .val { font-size: 1.05rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ts-ok { color: #047857; }
+    .ts-short { color: #b91c1c; }
+    .ts-excess { color: #b45309; }
+    .ts-big { font-size: 1.2rem; font-weight: 700; }
+    .ts-den { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .5rem; }
+    .ts-break td { padding: .3rem .25rem; border-bottom: 1px dashed var(--border); }
+    .ts-break tr.total td { border-bottom: 0; border-top: 2px solid var(--border); font-weight: 700; }
+    .ts-check { display: flex; align-items: center; gap: .5rem; padding: .2rem 0; }
+    .ts-check .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .7rem; flex: none; border: 1px solid var(--border); color: transparent; }
+    .ts-check.ok .dot { background: #10b981; border-color: #10b981; color: #fff; }
+    .ts-check.warn .dot { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+    .ts-slip-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .4rem; margin-top: .4rem; }
+    .ts-slip-help { display: grid; grid-template-columns: 80px 110px minmax(0, 1fr); gap: .4rem; margin-top: .4rem; }
+    .ts-draft { font-size: .75rem; color: var(--text-soft); }
+    /* Neeche chipki patti likhe jaane wale khaane ko na dhake (focus / scroll par). */
+    .content-pane { scroll-padding-bottom: 110px; }
+    @@media (max-width: 575.98px) {
+        .ts-step { padding: .4rem .25rem; text-align: center; }
+        .ts-step.active { padding: calc(.4rem - 1px) calc(.25rem - 1px); }
+        .ts-num { display: flex; margin: 0 auto .15rem; }
+        .ts-sub { display: none; }
+        .ts-lbl { font-size: .78rem; }
+        .ts-slip-help { grid-template-columns: 70px 92px minmax(0, 1fr); }
+        .ts-bar .val { font-size: .95rem; }
+        .ts-head .text-end { text-align: left !important; }
+        .ts-open { padding: 0; }
+    }
+</style>
+}
+
+<div class="ts-wrap">
+
+    @if (!string.IsNullOrWhiteSpace(Model.Message))
+    {
+        <div class="alert @(Model.IsError ? "alert-danger" : "alert-info") alert-dismissible fade show py-2 small" role="alert">
+            @Model.Message
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button>
+        </div>
+    }
+
+    @if (Model.JustClosed is { } jc)
+    {
+        var within = Math.Abs(jc.ShortExcess) <= jc.ToleranceRs;
+        <div class="card border-0 shadow-sm mb-3" style="border-left: 4px solid @(within ? "#10b981" : jc.ShortExcess < 0 ? "#ef4444" : "#f59e0b") !important;">
+            <div class="card-body">
+                <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+                    <h6 class="mb-0">✅ @L["Shift closed"] — @jc.Label</h6>
+                    <span class="badge @(within ? "bg-success" : jc.ShortExcess < 0 ? "bg-danger" : "bg-warning text-dark")">
+                        @(within ? L["Cash matched"] : jc.ShortExcess < 0 ? L["Cash short"] : L["Cash excess"])
+                    </span>
+                </div>
+                <div class="row g-2 small">
+                    <div class="col-6 col-md-3"><div class="text-muted">@L["Sale (meter)"]</div><div class="fw-bold">@Rs(jc.MeterSale)</div><div class="text-muted">@(jc.QtyText ?? jc.MeterQty.ToString("N2") + " L")</div></div>
+                    <div class="col-6 col-md-3"><div class="text-muted">@L["Cash expected"]</div><div class="fw-bold">@Rs(jc.CashExpectedToday)</div></div>
+                    <div class="col-6 col-md-3"><div class="text-muted">@L["Cash received"]</div><div class="fw-bold">@Rs(jc.CashToday)</div></div>
+                    <div class="col-6 col-md-3"><div class="text-muted">@L["Difference"]</div><div class="fw-bold @(within ? "ts-ok" : jc.ShortExcess < 0 ? "ts-short" : "ts-excess")">@(jc.ShortExcess > 0 ? "+" : jc.ShortExcess < 0 ? "−" : "")@Rs(Math.Abs(jc.ShortExcess))</div></div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(jc.DipNote))
+                {
+                    <div class="small mt-2"><span class="text-muted">@L["Tank dip"]:</span> @jc.DipNote</div>
+                }
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                    <a class="btn btn-sm btn-outline-primary" asp-action="Collection" asp-route-shiftId="@jc.ShiftId">💳 @L["Change online / credit"]</a>
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Shifts" asp-route-pumpId="@Model.PumpId">⏱ @L["Shift List"]</a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Model.Pumps.Count > 1)
+    {
+        <div class="mb-3" style="max-width:320px">
+            <label class="form-label small text-muted mb-1" for="tsPump">@L["Pump"]</label>
+            <select id="tsPump" class="form-select form-select-sm" data-no-search onchange="window.location='/Operations/TodayShift?pumpId='+this.value">
+                @foreach (var p in Model.Pumps)
+                {
+                    <option value="@p.Id" selected="@(p.Id == Model.PumpId)">@p.Name</option>
+                }
+            </select>
+        </div>
+    }
+
+    @if (Model.Pumps.Count == 0)
+    {
+        <div class="card border-0 shadow-sm"><div class="card-body">
+            <p class="mb-2">@L["No pump configured"]</p>
+            <a class="btn btn-primary btn-sm" asp-action="Pumps">@L["Add a pump"]</a>
+        </div></div>
+    }
+    else if (!Model.IsRunning)
+    {
+        @* ───────────────── Shift shuru karna ───────────────── *@
+        var st = Model.Start;
+        var firstShift = Model.LastShift is null;
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">▶ @L["Start the shift"]</h5>
+                @if (Model.LastShift is { } ls)
+                {
+                    <p class="text-muted small mb-3">
+                        @L["Last day filled"]: <strong>@ls.ShiftDate.ToString("dd MMM yyyy")</strong> (@L["Shift"] @ls.ShiftCode)
+                    </p>
+                }
+                else
+                {
+                    <p class="text-muted small mb-3">@L["This is the first shift of this pump. Enter the meter reading of every nozzle as it is right now."]</p>
+                }
+
+                <form asp-action="StartTodayShift" method="post" id="tsStartForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="PumpId" value="@st.PumpId" />
+
+                    <div class="row g-2">
+                        <div class="col-12 col-sm-6">
+                            <label class="form-label" for="tsDate">@L["Shift Date"]</label>
+                            <input id="tsDate" type="date" name="ShiftDate" class="form-control"
+                                   value="@st.ShiftDate.ToString("yyyy-MM-dd")" max="@Model.Today.ToString("yyyy-MM-dd")" required />
+                            @if (st.ShiftDate < Model.Today)
+                            {
+                                <div class="form-text text-warning fw-semibold">@L["Catching up an earlier day — this shift will be recorded on the date shown above."]</div>
+                            }
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <label class="form-label" for="tsOperator">@L["Shift In-charge"]</label>
+                            <select id="tsOperator" name="OperatorEmployeeId" class="form-select">
+                                <option value="">@L["-- I am running it myself --"]</option>
+                                @foreach (var e in Model.Employees)
+                                {
+                                    <option value="@e.Id" selected="@(e.Id == st.OperatorEmployeeId)">@e.FullName</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    @if (Model.GapDays > 0 && Model.GapFrom is { } gf)
+                    {
+                        <div class="alert alert-warning py-2 small mt-3 mb-0">
+                            ⚠ @L["{0} day(s) before this date have no shift.", Model.GapDays]
+                            @L["Fill those days first, oldest first - otherwise their sale gets added to this day. If the pump was closed on those days, it is fine."]
+                            <a class="fw-semibold" asp-action="TodayShift" asp-route-pumpId="@Model.PumpId" asp-route-date="@gf.ToString("yyyy-MM-dd")">@L["Go to {0}", gf.ToString("dd MMM")]</a>
+                        </div>
+                    }
+                    @if (Model.LaterDate is { } ld)
+                    {
+                        <div class="alert alert-danger py-2 small mt-3 mb-0">
+                            ⛔ @L["A later day already has a shift:"] <strong>@ld.ToString("dd MMM yyyy")</strong>.
+                            @L["Adding a day in between makes that later day's opening reading wrong, and its sale gets counted twice. Do not continue - call support."]
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.SameDayCodes))
+                    {
+                        <div class="alert alert-info py-2 small mt-3 mb-0">
+                            @L["This day already has shift {0}. This will be the next shift of the same day.", Model.SameDayCodes]
+                        </div>
+                    }
+
+                    <div class="d-flex justify-content-between align-items-end mt-3 mb-1">
+                        <label class="form-label mb-0">@L["Opening meter reading"]</label>
+                        @if (!firstShift)
+                        {
+                            <button type="button" class="btn btn-link btn-sm p-0" id="tsEditOpening">✏️ @L["Change reading"]</button>
+                        }
+                    </div>
+                    <div class="form-text mt-0 mb-2">
+                        @(firstShift ? L["Type the reading shown on each nozzle's meter."] : L["Taken from the last shift's closing. Change only if the meter was replaced."])
+                    </div>
+
+                    @for (var i = 0; i < st.Readings.Count; i++)
+                    {
+                        var r = st.Readings[i];
+                        <div class="ts-box d-flex align-items-center justify-content-between gap-2 py-2">
+                            <div>
+                                <strong>@r.NozzleCode</strong> <span class="text-muted small">@r.ProductName</span>
+                                <input type="hidden" name="Readings[@i].NozzleId" value="@r.NozzleId" />
+                                <input type="hidden" name="Readings[@i].ProductId" value="@r.ProductId" />
+                            </div>
+                            <input type="number" name="Readings[@i].OpeningReading" class="form-control text-end ts-open-in"
+                                   style="max-width:170px" step="0.001" min="0" inputmode="decimal" required
+                                   value="@N(r.OpeningReading)" @(firstShift ? "" : "readonly") />
+                        </div>
+                    }
+
+                    @* Pehli shift me milane ko pichhli reading hai hi nahi — tick tabhi jab "Change reading" dabaya. *@
+                    <div class="form-check small mt-2" id="tsGapWrap" hidden>
+                        <input class="form-check-input" type="checkbox" value="true" name="AllowMeterGap" id="tsAllowGap" />
+                        <label class="form-check-label text-muted" for="tsAllowGap">@L["Meter was changed - accept a difference from the last reading"]</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">▶ @L["Start shift for {0}", st.ShiftDate.ToString("dd MMM")]</button>
+                </form>
+            </div>
+        </div>
+    }
+    else
+    {
+        @* ───────────────── Chalti shift: 4 kadam ───────────────── *@
+        var sh = Model.Shift!;
+        // Har product ki apni ikai (Litre / Kg ...). CNG kilo me bikti hai: uska "L" likhna galat
+        // hai, uski testing nahi hoti, aur uska tank (cascade) dip se nahi naapa jaata.
+        string UnitOf(string productName) =>
+            Model.ProductUnits.TryGetValue(productName ?? "", out var u) && !string.IsNullOrWhiteSpace(u) ? u : "Litre";
+        // Gas / bijli / nag ko chhod kar baaki sab "tel" — Hindi me save purani ikai ("लीटर") bhi tel hi maani jaati hai.
+        var notLiquid = new[] { "kg", "किलो", "kwh", "piece", "नग", "scm" };
+        bool IsLiquid(string productName) => !notLiquid.Contains(UnitOf(productName).Trim().ToLowerInvariant());
+        string Abbr(string productName) => IsLiquid(productName)
+            ? "L"
+            : UnitOf(productName).Trim().ToLowerInvariant() is "kg" or "किलो" ? "kg" : UnitOf(productName).Trim();
+
+        var products = Model.Nozzles
+            .GroupBy(n => n.ProductName)
+            .Select(g => new { name = g.Key, rate = g.First().Rate, unit = Abbr(g.Key) })
+            .ToList();
+        var liquidTanks = Model.Tanks.Where(t => IsLiquid(t.ProductName)).ToList();
+        var boot = new
+        {
+            shiftId = sh.Id,
+            pumpId = Model.PumpId,
+            tolerance = Model.ToleranceRs,
+            cash = Model.Cash,
+            upi = Model.Collection.UpiAmount,
+            card = Model.Collection.CardAmount,
+            slips = Model.Collection.Credits.Select(c => new { partyId = c.PartyId, amount = c.Amount, vehicleNo = c.VehicleNo, slipNote = c.SlipNote }),
+            expenses = Model.Expenses.Select(e => new { id = e.Id, expenseHeadName = e.ExpenseHeadName, amount = e.Amount, narration = e.Narration }),
+            products,
+            labels = new
+            {
+                sale = L["Sale (meter)"].Value,
+                slips = L["Credit slips"].Value,
+                upi = L["Online"].Value,
+                card = L["Card"].Value,
+                other = L["Credit / online from the Sales screen"].Value,
+                receipts = L["Old dues received in cash"].Value,
+                cashIn = L["Cash put in"].Value,
+                cashOut = L["Cash taken out"].Value,
+                expenses = L["Cash expenses"].Value,
+                bank = L["Deposited in bank"].Value,
+                expected = L["Cash expected"].Value,
+                came = L["Cash received"].Value,
+                diff = L["Difference"].Value
+            },
+            urls = new
+            {
+                money = Url.Action("SaveTodayShiftMoney"),
+                addExpense = Url.Action("AddTodayShiftExpense"),
+                deleteExpense = Url.Action("DeleteTodayShiftExpense"),
+                finish = Url.Action("FinishTodayShift")
+            }
+        };
+        var T = new Dictionary<string, string>
+        {
+            // "4 me se 1" — Hindi me kram ulta hota hai, isliye poora vakya ek saath.
+            ["nOfM"] = L["{0} of {1}", "{0}", "{1}"].Value,
+            ["moneySub"] = L["Cash, online, credit"].Value,
+            ["checkSub"] = L["See the difference"].Value,
+            ["closeLess"] = L["Closing is less than opening."].Value,
+            ["testTooMuch"] = L["Testing is more than the meter moved."].Value,
+            ["whyNeeded"] = L["Testing above 5 L - pick the reason."].Value,
+            ["fillAll"] = L["Fill the closing reading of every nozzle."].Value,
+            // Ye chetavni ek hi sawaal me judti hain (today-shift.js finish()).
+            ["zeroSale"] = L["No reading has changed - the sale is zero."].Value,
+            ["noDip"] = L["Tank dip is not filled."].Value,
+            ["closeAnyQ"] = L["Close the shift anyway?"].Value,
+            ["cashNeeded"] = L["Enter how much cash came today (or press 'Exactly this came')."].Value,
+            ["slipParty"] = L["Pick the party for every credit slip."].Value,
+            ["slipFirst"] = L["Fill the party and amount of the last slip first."].Value,
+            ["farkShort"] = L["Cash is short by {0}.", "{0}"].Value,
+            ["farkExcess"] = L["Cash is more by {0}.", "{0}"].Value,
+            ["matched"] = L["Matched"].Value,
+            ["short"] = L["Cash short"].Value,
+            ["excess"] = L["Cash excess"].Value,
+            ["savedHere"] = L["Draft saved on this device"].Value,
+            ["moneySaved"] = L["Online and credit saved."].Value,
+            ["serverError"] = L["Server error - please try again."].Value,
+            ["closing"] = L["Closing the shift..."].Value,
+            ["closeAnyway"] = L["Close anyway"].Value,
+            ["bigDiff"] = L["This is a very big difference. Check the litres - is it the previous day's number?"].Value,
+            ["testingNote"] = L["Testing"].Value,
+            ["delete"] = L["Delete"].Value,
+            ["noExpense"] = L["No expense in this shift."].Value,
+            ["expenseNeeded"] = L["Pick the expense type and enter the amount."].Value,
+            ["deleteExpense"] = L["Delete this expense?"].Value,
+            ["chkMeter"] = L["Closing reading of every nozzle"].Value,
+            ["chkDip"] = L["Tank dip"].Value,
+            ["chkMoney"] = L["Online, card and credit"].Value,
+            ["chkCash"] = L["Cash counted"].Value,
+            ["chkMatch"] = L["Meter and money match"].Value,
+            ["notFilled"] = L["not filled"].Value
+        };
+
+        <div class="card border-0 shadow-sm mb-0">
+            <div class="card-body py-2">
+                <div class="ts-head">
+                    <div>
+                        <h5>@sh.ShiftDate.ToString("dd MMM yyyy") · @L["Shift"] @sh.ShiftNo <span class="text-muted fw-normal small">(@sh.ShiftCode)</span></h5>
+                        <div class="small text-muted">
+                            @Model.PumpName · @L["In-charge"]: <strong>@(sh.OperatorName ?? "—")</strong>
+                            @if (sh.ShiftDate < Model.Today)
+                            {
+                                <span class="badge bg-warning-subtle text-warning-emphasis ms-1">@L["Earlier day"]</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-success">@L["Shift is open"]</span>
+                        <div class="ts-draft" id="tsDraft">💾 @L["Saves by itself on this device"]</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="ts-steps" aria-label="@L["Steps"]">
+            <button type="button" class="ts-step active" data-step="1"><span class="ts-num">1</span><span class="ts-lbl">@L["Meter"]</span><span class="ts-sub" id="tsSub1"></span></button>
+            <button type="button" class="ts-step" data-step="2"><span class="ts-num">2</span><span class="ts-lbl">@L["Dip"]</span><span class="ts-sub" id="tsSub2"></span></button>
+            <button type="button" class="ts-step" data-step="3"><span class="ts-num">3</span><span class="ts-lbl">@L["Money"]</span><span class="ts-sub" id="tsSub3"></span></button>
+            <button type="button" class="ts-step" data-step="4"><span class="ts-num">4</span><span class="ts-lbl">@L["Close"]</span><span class="ts-sub" id="tsSub4"></span></button>
+        </nav>
+
+        @* ── 1. Meter ── *@
+        <section class="ts-sec" data-sec="1">
+            <p class="small text-muted mb-2">@L["Opening comes from the last shift. Fill only the closing. Testing is filled the same as last time - change it if it was different."]</p>
+            @foreach (var n in Model.Nozzles)
+            {
+                var liquid = IsLiquid(n.ProductName);
+                // Gas par testing ka sawaal hi nahi — pichhla 0 maano, khaana chhupa rahega.
+                var lastTest = liquid && Model.LastTesting.TryGetValue(n.NozzleId, out var lt) ? lt : 0m;
+                <div class="ts-box ts-noz" data-nozzle="@n.NozzleId" data-code="@n.NozzleCode" data-open="@N(n.OpeningReading)" data-rate="@N(n.Rate)" data-last-test="@N(lastTest)" data-unit="@Abbr(n.ProductName)" data-liquid="@(liquid ? "1" : "0")">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong>@n.NozzleCode</strong>
+                        <span class="badge bg-light text-dark border">@n.ProductName · ₹@n.Rate.ToString("0.00", inv)</span>
+                    </div>
+                    <div class="row g-2 align-items-end mt-1">
+                        @* Phone par ek hi line me — har nozzle ka card chhota rahe. *@
+                        <div class="col-12 col-sm-4 d-flex d-sm-block align-items-baseline gap-2">
+                            <div class="small text-muted">@L["Opening"]</div>
+                            <div class="ts-open">@n.OpeningReading.ToString("0.000", inv)</div>
+                        </div>
+                        <div class="col-7 col-sm-5">
+                            <label class="small text-muted mb-0" for="tsC@(n.NozzleId)">@L["Closing"]</label>
+                            <input id="tsC@(n.NozzleId)" type="number" class="form-control ts-close" step="0.001" min="0" inputmode="decimal" autocomplete="off" />
+                        </div>
+                        <div class="col-5 col-sm-3" @(liquid ? "" : "hidden")>
+                            <label class="small text-muted mb-0" for="tsT@(n.NozzleId)">@L["Testing (L)"]</label>
+                            <input id="tsT@(n.NozzleId)" type="number" class="form-control ts-test" step="0.001" min="0" inputmode="decimal" autocomplete="off" />
+                        </div>
+                    </div>
+                    <select class="form-select form-select-sm mt-2 ts-why" data-no-search hidden aria-label="@L["Reason for testing above 5 L"]">
+                        <option value="">@L["Testing above 5 L - why?"]</option>
+                        <option>@L["Weights & Measures check"]</option>
+                        <option>@L["Oil company check"]</option>
+                        <option>@L["Machine repair / calibration"]</option>
+                        <option>@L["Other"]</option>
+                    </select>
+                    <div class="ts-foot">
+                        <span><span class="ts-lit">—</span> × ₹@n.Rate.ToString("0.00", inv) = <strong class="ts-amt">—</strong></span>
+                        <button type="button" class="btn btn-link btn-sm p-0 ts-same">@L["Not used today"]</button>
+                    </div>
+                    <div class="small text-danger ts-err" hidden></div>
+                </div>
+            }
+            <div class="ts-nav">
+                <span></span>
+                <button type="button" class="btn btn-primary" data-go="2">@L["Next"]: @L["Dip"] →</button>
+            </div>
+        </section>
+
+        @* ── 2. Tank dip ── *@
+        <section class="ts-sec" data-sec="2" hidden>
+            <p class="small text-muted mb-1">@L["Measure each tank after this shift and write the litres from the dip chart. The difference shows as you type - the same number the DSR will show."]</p>
+            <p class="small text-muted mb-2">🚛 @L["Tanker unloaded today? Save the Purchase first - otherwise the difference here will look very large."]</p>
+            @if (liquidTanks.Count == 0)
+            {
+                <div class="ts-box text-muted small">@L["No tank to measure on this pump (gas storage is not dipped)."]</div>
+            }
+            @foreach (var t in liquidTanks)
+            {
+                <div class="ts-box ts-tank" data-tank="@t.TankId" data-book="@N(t.BookExcludingShift)" data-nozzles="@t.NozzleIds">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                        <strong>@t.TankName <span class="text-muted fw-normal small">(@t.ProductName)</span></strong>
+                        <span class="small text-muted">@L["Book Stock"]: <strong class="text-dark ts-book">—</strong> L</span>
+                    </div>
+                    <div class="row g-2 align-items-end mt-1">
+                        <div class="col-5 col-sm-3">
+                            <label class="small text-muted mb-0" for="tsCm@(t.TankId)">@L["Dip"] (@L["cm"])</label>
+                            <input id="tsCm@(t.TankId)" type="number" class="form-control ts-cm" step="0.01" min="0" inputmode="decimal" value="@(t.DipCm?.ToString(inv))" />
+                        </div>
+                        <div class="col-7 col-sm-4">
+                            <label class="small text-muted mb-0" for="tsAct@(t.TankId)">@L["Actual Stock"] (L)</label>
+                            <input id="tsAct@(t.TankId)" type="number" class="form-control ts-act" step="0.01" min="0" inputmode="decimal" value="@(t.ActualStock?.ToString(inv))" />
+                        </div>
+                        <div class="col-12 col-sm-5 small">
+                            @L["Difference"]: <strong class="ts-diff">—</strong>
+                        </div>
+                    </div>
+                    <div class="small text-danger mt-1 ts-dip-warn" hidden></div>
+                </div>
+            }
+            <div class="ts-nav">
+                <button type="button" class="btn btn-outline-secondary" data-go="1">← @L["Back"]</button>
+                <button type="button" class="btn btn-primary" data-go="3">@L["Next"]: @L["Money"] →</button>
+            </div>
+        </section>
+
+        @* ── 3. Paisa ── *@
+        <section class="ts-sec" data-sec="3" hidden>
+            <div class="ts-box">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label mb-1" for="tsUpi">@L["Online"] <span class="text-muted small">(UPI)</span></label>
+                        <input id="tsUpi" type="number" class="form-control ts-money" step="0.01" min="0" inputmode="decimal" />
+                        <div class="form-text">@L["PhonePe, GPay, Paytm - all together"]</div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label mb-1" for="tsCard">@L["Card"]</label>
+                        <input id="tsCard" type="number" class="form-control ts-money" step="0.01" min="0" inputmode="decimal" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="ts-box">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <strong>@L["Credit slips"]</strong>
+                    <span class="small text-muted">@L["Total"]: <strong id="tsSlipTotal">₹0</strong></span>
+                </div>
+                <div class="form-text mt-0 mb-2">@L["One line per slip. The party's account is updated with the vehicle number."]</div>
+                <div id="tsSlips"></div>
+                <div class="small text-danger mb-2" id="tsSlipErr" hidden></div>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="tsAddSlip">+ @L["Add slip"]</button>
+            </div>
+
+            <details class="ts-box" id="tsExpBox">
+                <summary class="fw-semibold">@L["Expenses paid from cash"] <span class="text-muted fw-normal small">(@L["optional"])</span> — <span id="tsExpTotal">₹0</span></summary>
+                <div id="tsExpList" class="mt-2"></div>
+                @if (Model.ExpenseHeads.Count == 0)
+                {
+                    <div class="small text-muted">@L["No expense type set up yet."] <a asp-action="Expenses" asp-route-pumpId="@Model.PumpId">@L["Open the Expenses page"]</a></div>
+                }
+                else
+                {
+                    <div class="row g-2 align-items-end mt-1">
+                        <div class="col-12 col-sm-4">
+                            <label class="small text-muted mb-0" for="tsExpHead">@L["Expense type"]</label>
+                            <select id="tsExpHead" class="form-select form-select-sm">
+                                <option value="">--</option>
+                                @foreach (var h in Model.ExpenseHeads)
+                                {
+                                    <option value="@h.Id">@h.HeadName</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-5 col-sm-3">
+                            <label class="small text-muted mb-0" for="tsExpAmt">@L["Amount"]</label>
+                            <input id="tsExpAmt" type="number" class="form-control form-control-sm" step="0.01" min="0" inputmode="decimal" />
+                        </div>
+                        <div class="col-7 col-sm-3">
+                            <label class="small text-muted mb-0" for="tsExpNote">@L["Note"]</label>
+                            <input id="tsExpNote" type="text" class="form-control form-control-sm" maxlength="200" />
+                        </div>
+                        <div class="col-12 col-sm-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger w-100" id="tsExpAdd">+ @L["Add"]</button>
+                        </div>
+                    </div>
+                    <div class="small text-danger mt-1" id="tsExpErr" hidden></div>
+                }
+            </details>
+
+            <div class="ts-box">
+                <label class="form-label fw-semibold mb-1" for="tsCash">@L["How much cash came today?"]</label>
+                <div class="form-text mt-0 mb-2">@L["Only today's cash in the drawer - after paying the expenses above."]</div>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <input id="tsCash" type="number" class="form-control ts-big" style="max-width:200px" step="0.01" min="0" inputmode="decimal" />
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="tsNotesBtn">🧮 @L["Count notes"]</button>
+                </div>
+                <div class="small mt-2">
+                    @L["Should be"]: <strong id="tsExpected">₹0</strong>
+                    <button type="button" class="btn btn-link btn-sm p-0 ms-1" id="tsCashExact">@L["Exactly this came"]</button>
+                </div>
+                <div id="tsNotes" class="mt-2 pt-2 border-top" hidden>
+                    <div class="ts-den">
+                        @foreach (var d in new[] { 500, 200, 100, 50, 20, 10 })
+                        {
+                            <label class="d-flex align-items-center gap-1 small mb-0">
+                                <span style="min-width:44px">₹@d ×</span>
+                                <input type="number" class="form-control form-control-sm ts-den-in" data-den="@d" min="0" step="1" inputmode="numeric" aria-label="₹@d" />
+                            </label>
+                        }
+                        <label class="d-flex align-items-center gap-1 small mb-0">
+                            <span style="min-width:44px">@L["Coins"] ₹</span>
+                            <input type="number" class="form-control form-control-sm ts-den-in" data-den="1" min="0" step="1" inputmode="numeric" aria-label="@L["Coins"]" />
+                        </label>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <span class="small">@L["Total"]: <strong id="tsDenTotal">₹0</strong></span>
+                        <button type="button" class="btn btn-sm btn-success" id="tsDenApply">@L["Put in cash"]</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="small text-danger" id="tsMoneyErr" hidden></div>
+            <div class="ts-nav">
+                <button type="button" class="btn btn-outline-secondary" data-go="2">← @L["Back"]</button>
+                <button type="button" class="btn btn-primary" data-go="4">@L["Next"]: @L["Check"] →</button>
+            </div>
+        </section>
+
+        @* ── 4. Milaan aur band ── *@
+        <section class="ts-sec" data-sec="4" hidden>
+            <div class="ts-box" id="tsChecklist"></div>
+            <div class="ts-box">
+                <table class="w-100 ts-break small"><tbody id="tsBreak"></tbody></table>
+            </div>
+            <div class="ts-box">
+                <label class="form-label mb-1" for="tsNotesText">@L["Notes"] <span class="text-muted small">(@L["optional"])</span></label>
+                <textarea id="tsNotesText" class="form-control" rows="2" maxlength="300" placeholder="@L["Enter any discrepancy or shift notes"]"></textarea>
+            </div>
+            <div class="alert alert-danger py-2 small" id="tsFinishErr" hidden></div>
+            <div class="ts-nav">
+                <button type="button" class="btn btn-outline-secondary" data-go="3">← @L["Back"]</button>
+                <button type="button" class="btn btn-success btn-lg" id="tsFinish">🔒 @L["Close the shift"]</button>
+            </div>
+        </section>
+
+        <div class="ts-bar" aria-live="polite">
+            <div><div class="lbl">@L["Sale (meter)"]</div><div class="val" id="tsBarSale">₹0</div></div>
+            <div><div class="lbl">@L["Cash expected"]</div><div class="val" id="tsBarExp">₹0</div></div>
+            <div><div class="lbl">@L["Difference"]</div><div class="val" id="tsBarDiff">—</div></div>
+        </div>
+
+        <template id="tsSlipTpl">
+            <div class="ts-box ts-slip">
+                <div class="d-flex gap-2 align-items-center">
+                    <select class="form-select form-select-sm ts-s-party" aria-label="@L["Party"]">
+                        <option value="">@L["Pick party"]</option>
+                        @foreach (var p in Model.Parties)
+                        {
+                            <option value="@p.Id">@p.PartyName</option>
+                        }
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline-danger ts-s-del" aria-label="@L["Delete"]">✕</button>
+                </div>
+                <div class="ts-slip-grid">
+                    <input type="text" class="form-control form-control-sm text-uppercase ts-s-veh" maxlength="20" placeholder="@L["Vehicle no."]" autocomplete="off" />
+                    <input type="number" class="form-control form-control-sm ts-s-amt" step="0.01" min="0" inputmode="decimal" placeholder="₹ @L["Amount"]" />
+                </div>
+                <div class="ts-slip-help">
+                    <input type="number" class="form-control form-control-sm ts-s-lit" step="0.01" min="0" inputmode="decimal" placeholder="@L["Qty"]" />
+                    <select class="form-select form-select-sm ts-s-prod" data-no-search aria-label="@L["Product"]">
+                        @foreach (var p in products)
+                        {
+                            <option value="@N(p.rate)" data-unit="@p.unit">@p.name</option>
+                        }
+                    </select>
+                    <input type="text" class="form-control form-control-sm ts-s-note" maxlength="120" placeholder="@L["Note (slip no.)"]" autocomplete="off" />
+                </div>
+            </div>
+        </template>
+
+        <template id="tsExpTpl">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-1 small ts-exp-row">
+                <span><strong class="ts-e-head"></strong> <span class="text-muted ts-e-note"></span></span>
+                <span class="d-flex align-items-center gap-2"><span class="ts-e-amt"></span><button type="button" class="btn btn-sm btn-link text-danger p-0 ts-e-del">@L["Delete"]</button></span>
+            </div>
+        </template>
+
+        <script>
+            window.TS_BOOT = @Json.Serialize(boot);
+            window.TS_T = @Json.Serialize(T);
+        </script>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/today-shift.js" asp-append-version="true"></script>
+}

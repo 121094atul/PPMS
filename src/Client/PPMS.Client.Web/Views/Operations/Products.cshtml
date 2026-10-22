@@ -38,11 +38,11 @@
                     <div class="mb-2">
                         <label class="form-label">@L["Category"]</label>
                         <select asp-for="Form.Category" class="form-select">
-                            <option>@L["Petrol"]</option>
-                            <option>@L["Diesel"]</option>
-                            <option>@L["CNG"]</option>
-                            <option>@L["ElectricCharging"]</option>
-                            <option>@L["Lubricant"]</option>
+                            <option value="Petrol">@L["Petrol"]</option>
+                            <option value="Diesel">@L["Diesel"]</option>
+                            <option value="CNG">@L["CNG"]</option>
+                            <option value="ElectricCharging">@L["ElectricCharging"]</option>
+                            <option value="Lubricant">@L["Lubricant"]</option>
                         </select>
                     </div>
 
@@ -50,10 +50,10 @@
                         <div class="col-md-6">
                             <label class="form-label">@L["Unit"]</label>
                             <select asp-for="Form.Unit" class="form-select" required>
-                                <option>@L["Litre"]</option>
-                                <option>@L["Kg"]</option>
-                                <option>@L["Piece"]</option>
-                                <option>@L["kWh"]</option>
+                                <option value="Litre">@L["Litre"]</option>
+                                <option value="Kg">@L["Kg"]</option>
+                                <option value="Piece">@L["Piece"]</option>
+                                <option value="kWh">@L["kWh"]</option>
                             </select>
                         </div>
                         <div class="col-md-6">

@@ -6,8 +6,14 @@ using PPMS.Client.Web.Services;
 namespace PPMS.Client.Web.Controllers;
 
 [SessionAuthorize]
-public class OperationsController(PPMSApiClient apiClient) : Controller
+public partial class OperationsController(PPMSApiClient apiClient) : Controller
 {
+    /// <summary>
+    /// Doosri partial file (OperationsController.TodayShift.cs) ke liye. Primary
+    /// constructor ka parameter sirf isi file me dikhta hai.
+    /// </summary>
+    private PPMSApiClient Api => apiClient;
+
     /// <summary>Shift List me ek page par kitni shift dikhein.</summary>
     private const int ShiftPageSize = 10;
 
@@ -101,11 +107,18 @@ public class OperationsController(PPMSApiClient apiClient) : Controller
         // shift kholte waqt "Some nozzles have no tank set" aata tha, us page par
         // jahan galti hui hi nahi thi. SP me bhi rok hai (THROW 50063/50064), ye
         // sirf pehli deewar hai taaki message saaf mile.
+        //
+        // Sirf gas (CNG) / charging ko chhoot: unka tank hota hi nahi (Section AL).
         if (model.Form.TankId is null or 0)
         {
-            TempData["NozzleMessage"] = "Please pick the tank this nozzle draws from. "
-                + "If the list is empty, add a tank for this product first.";
-            return RedirectToAction(nameof(Nozzles), new { pumpId = model.Form.PumpId });
+            var pumpProducts = await apiClient.GetProductsAsync(token, GetOwnerId(), model.Form.PumpId, cancellationToken);
+            var chosen = pumpProducts.FirstOrDefault(p => p.Id == model.Form.ProductId);
+            if (chosen is null || PPMS.Client.Web.Services.ProductUnit.TracksStock(chosen.Category))
+            {
+                TempData["NozzleMessage"] = "Please pick the tank this nozzle draws from. "
+                    + "If the list is empty, add a tank for this product first.";
+                return RedirectToAction(nameof(Nozzles), new { pumpId = model.Form.PumpId });
+            }
         }
 
         var request = new ApiSaveNozzleRequest(
@@ -594,6 +607,12 @@ public class OperationsController(PPMSApiClient apiClient) : Controller
         if (model.Form.PumpId <= 0 || model.Form.ExpenseHeadId <= 0 || model.Form.Amount <= 0)
         {
             TempData["ExpenseMessage"] = "Pump, expense head and amount are required.";
+            return RedirectToAction(nameof(Expenses), new { pumpId = model.Form.PumpId });
+        }
+
+        if (!IsOneOf(model.Form.PaymentMode, CashPaymentModes))
+        {
+            TempData["ExpenseMessage"] = "Please pick the payment mode from the list.";
             return RedirectToAction(nameof(Expenses), new { pumpId = model.Form.PumpId });
         }
 
@@ -1424,6 +1443,12 @@ public class OperationsController(PPMSApiClient apiClient) : Controller
             return RedirectToAction(nameof(Products));
         }
 
+        if (!IsOneOf(model.Form.Category, ProductCategories) || !IsOneOf(model.Form.Unit, ProductUnits))
+        {
+            TempData["ProductMessage"] = "Please pick the category and unit from the list.";
+            return RedirectToAction(nameof(Products), new { pumpId = model.Form.PumpId });
+        }
+
         var request = new ApiSaveProductRequest(
             Id: model.Form.Id,
             OwnerId: model.Form.OwnerId,
@@ -1483,10 +1508,12 @@ public class OperationsController(PPMSApiClient apiClient) : Controller
 
         // Khaali line (party chuni hi nahi, ya 0 rupaye) chhod dete hain —
         // form me hamesha ek-do khaali row rehti hain.
+        //
+        // Ek party ki do line ab JODTE NAHI (Section AK): har line ek parchi hai,
+        // apne gaadi number ke saath. Jodne par gaadi number mit jaata.
         var credits = (form.Credits ?? new List<ShiftCollectionCreditForm>())
             .Where(x => x.PartyId > 0 && x.Amount > 0)
-            .GroupBy(x => x.PartyId)                     // ek party do baar chuni to jod do
-            .Select(g => new ApiShiftCollectionCreditLine(g.Key, null, g.Sum(x => x.Amount)))
+            .Select(x => new ApiShiftCollectionCreditLine(x.PartyId, null, x.Amount, x.VehicleNo, x.SlipNote))
             .ToList();
 
         var result = await apiClient.SaveShiftCollectionAsync(
@@ -1548,7 +1575,13 @@ public class OperationsController(PPMSApiClient apiClient) : Controller
                 UpiAmount = collection.UpiAmount,
                 CardAmount = collection.CardAmount,
                 Credits = collection.Credits
-                    .Select(c => new ShiftCollectionCreditForm { PartyId = c.PartyId, Amount = c.Amount })
+                    .Select(c => new ShiftCollectionCreditForm
+                    {
+                        PartyId = c.PartyId,
+                        Amount = c.Amount,
+                        VehicleNo = c.VehicleNo,
+                        SlipNote = c.SlipNote
+                    })
                     .ToList()
             }
         };
@@ -1911,6 +1944,12 @@ public class OperationsController(PPMSApiClient apiClient) : Controller
         if (model.Form.PumpId <= 0 || model.Form.ShiftId <= 0 || validItems.Count == 0)
         {
             TempData["SalesMessage"] = "Pump, open shift and at least one valid line item are required.";
+            return RedirectToAction(nameof(Sales), new { pumpId = model.Form.PumpId });
+        }
+
+        if (!IsOneOf(model.Form.PaymentMode, SalePaymentModes))
+        {
+            TempData["SalesMessage"] = "Please pick the payment mode from the list.";
             return RedirectToAction(nameof(Sales), new { pumpId = model.Form.PumpId });
         }
 
@@ -2339,6 +2378,12 @@ public class OperationsController(PPMSApiClient apiClient) : Controller
         if (model.Form.PumpId <= 0 || model.Form.EmployeeId <= 0 || model.Form.Amount <= 0)
         {
             TempData["SalaryMessage"] = "Pump, employee and amount are required.";
+            return RedirectToAction(nameof(Salary), new { pumpId = model.Form.PumpId, salaryYear = model.Form.SalaryYear, salaryMonth = model.Form.SalaryMonth });
+        }
+
+        if (!IsOneOf(model.Form.PaymentMode, CashPaymentModes))
+        {
+            TempData["SalaryMessage"] = "Please pick the payment mode from the list.";
             return RedirectToAction(nameof(Salary), new { pumpId = model.Form.PumpId, salaryYear = model.Form.SalaryYear, salaryMonth = model.Form.SalaryMonth });
         }
 

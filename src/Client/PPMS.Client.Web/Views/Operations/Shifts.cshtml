@@ -8,6 +8,9 @@
         <div class="card shadow-sm border-0">
             <div class="card-body">
                 <h5 class="card-title">@L["Open Shift"]</h5>
+                <a class="btn btn-sm btn-primary w-100 mb-2" href="/Operations/TodayShift?pumpId=@Model.OpenShift.PumpId">
+                    ⛽ @L["Easier: do the whole shift on one screen"] →
+                </a>
                 <p class="text-muted small">@L["Enter each nozzle's opening meter reading to start the shift."]</p>
 
                 @if (!string.IsNullOrWhiteSpace(Model.Message))
@@ -310,7 +313,7 @@
                             <th>@L["Operator"]</th>
                             <th>@L["Open Cash"]</th>
                             <th>@L["Close Cash"]</th>
-                            <th>@L["Sold Qty"]</th>
+                            <th>@L["Sold Qty"] (L)</th>
                             <th>@L["Sold Amt"]</th>
                             <th>@L["Cash Delta"]</th>
                             <th>@L["Variance"]</th>
@@ -346,7 +349,7 @@
                                     <td data-label="@L["Operator"]">@(shift.OperatorName ?? "-")</td>
                                     <td data-label="@L["Open Cash"]">@shift.OpeningCash.ToString("0.00")</td>
                                     <td data-label="@L["Close Cash"]">@(shift.ClosingCash?.ToString("0.00") ?? "-")</td>
-                                    <td data-label="@L["Sold Qty"]">@shift.TotalSoldQty.ToString("0.000")</td>
+                                    <td data-label="@L["Sold Qty"] (L)">@shift.TotalSoldQty.ToString("0.000")</td>
                                     <td class="fw-bold" data-label="@L["Sold Amt"]">@shift.TotalSoldAmount.ToString("0.00")</td>
                                     <td data-label="@L["Cash Delta"]">@(shift.ClosingCash is null ? "-" : cashDelta.ToString("0.00"))</td>
                                     <td class="@(shift.ClosingCash is not null && Math.Abs(variance) > 100 ? "text-danger fw-bold" : "")" data-label="@L["Variance"]">@(shift.ClosingCash is null ? "-" : variance.ToString("0.00"))</td>
