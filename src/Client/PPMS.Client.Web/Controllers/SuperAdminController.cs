@@ -142,6 +142,36 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
         return ok.Success ? Ok() : BadRequest(ok.ErrorMessage ?? "Could not reset the password.");
     }
 
+    // ================= Support ke number (Section AR) =================
+    // Yahan daale number Login page, Manual, Shifts aur SMS sandesh me dikhte hain.
+
+    public async Task<IActionResult> HelpNumbers([FromServices] SupportContactService support, CancellationToken cancellationToken)
+    {
+        if (!IsSuperAdmin()) return Forbid();
+        ViewData["Title"] = "Support Numbers";
+
+        support.Invalidate();   // hamesha taaza dikhao
+        ViewBag.Message = TempData["HelpMessage"] as string;
+        ViewBag.IsError = TempData["HelpIsError"] is true;
+        return View(await support.GetAsync(cancellationToken));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> HelpNumbers(string? phone1, string? phone2, string? phone3,
+        [FromServices] SupportContactService support, CancellationToken cancellationToken)
+    {
+        if (!IsSuperAdmin()) return Forbid();
+
+        var result = await apiClient.SaveSupportContactsAsync(GetAccessToken(),
+            new ApiSupportContacts(phone1, phone2, phone3), cancellationToken);
+        support.Invalidate();
+
+        TempData["HelpMessage"] = result.Success ? "Support numbers saved." : (result.ErrorMessage ?? "Could not save the support numbers.");
+        TempData["HelpIsError"] = !result.Success;
+        return RedirectToAction(nameof(HelpNumbers));
+    }
+
     // ================= Message credits (Section Q) =================
     // Aapka stock (Twilio se khareeda) aur owner ke recharge — dono yahin se.
 

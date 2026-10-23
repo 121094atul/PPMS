@@ -1967,6 +1967,23 @@ public sealed class PPMSApiClient(HttpClient httpClient)
     public Task<(bool Success, string? ErrorMessage)> SaveCreditSettingsAsync(string token, ApiSaveCreditSettingsRequest body, CancellationToken ct = default)
         => PostJsonAsync(token, "/api/platform-credit/settings", body, "Could not save the settings.", ct);
 
+    // ---- Support ke number (Section AR) ----
+    /// <summary>Bina login - Login page ko bhi chahiye. Fail ho to null (number na dikhe, page na ruke).</summary>
+    public async Task<ApiSupportContacts?> GetSupportContactsAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync("/api/support-contacts", ct);
+            if (!response.IsSuccessStatusCode) { return null; }
+            return await response.Content.ReadFromJsonAsync<ApiSupportContacts>(cancellationToken: ct);
+        }
+        catch (HttpRequestException) { return null; }
+        catch (TaskCanceledException) { return null; }
+    }
+
+    public Task<(bool Success, string? ErrorMessage)> SaveSupportContactsAsync(string token, ApiSupportContacts body, CancellationToken ct = default)
+        => PostJsonAsync(token, "/api/support-contacts", body, "Could not save the support numbers.", ct);
+
     public async Task<IReadOnlyList<ApiRechargeRequestDto>> GetAllRechargesAsync(string token, string? status, CancellationToken ct = default)
         => await GetJsonAsync<List<ApiRechargeRequestDto>>(token, "/api/platform-credit/recharges" + (string.IsNullOrEmpty(status) ? "" : "?status=" + status), ct)
            ?? (IReadOnlyList<ApiRechargeRequestDto>)Array.Empty<ApiRechargeRequestDto>();

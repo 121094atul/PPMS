@@ -1,0 +1,85 @@
+@model PPMS.Client.Web.Services.ApiSupportContacts
+@{
+    ViewData["Title"] = "Support Numbers";
+    var message = ViewBag.Message as string;
+    var isError = ViewBag.IsError is true;
+}
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show py-2 small" role="alert">
+        @L[message]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button>
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">📞 @L["Support Numbers"]</h5>
+                <p class="text-muted small mb-3">
+                    @L["These numbers are shown on the login page, in the user manual, on the Shifts page and in SMS messages. The first number is also used for WhatsApp."]
+                </p>
+
+                <form method="post" asp-action="HelpNumbers" id="helpNumbersForm" novalidate>
+                    @Html.AntiForgeryToken()
+                    @for (var i = 1; i <= 3; i++)
+                    {
+                        var value = i switch { 1 => Model.Phone1, 2 => Model.Phone2, _ => Model.Phone3 };
+                        <div class="mb-3">
+                            <label class="form-label" for="phone@(i)">
+                                @(i == 1 ? L["Main number (WhatsApp)"] : L["Number {0} (optional)", i])
+                            </label>
+                            <input type="tel" inputmode="numeric" class="form-control" id="phone@(i)" name="phone@(i)"
+                                   value="@value" maxlength="15" placeholder="10 digit mobile"
+                                   pattern="[0-9+ ]{10,15}" @(i == 1 ? "required" : "") />
+                        </div>
+                    }
+                    <div class="form-text mb-3">@L["10 digit mobile number. Leave numbers 2 and 3 empty if not needed."]</div>
+                    <button type="submit" class="btn btn-primary">@L["Save"]</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">@L["Users will see"]</h6>
+                @if (Model.Numbers.Count == 0)
+                {
+                    <div class="text-danger small">@L["No support number is set. Users will not see any number."]</div>
+                }
+                else
+                {
+                    @foreach (var n in Model.Numbers)
+                    {
+                        <div class="fs-5 fw-bold mb-1"><a href="tel:@n">📞 @n</a></div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Sirf ank - 10 se 13. Pehla zaroori.
+        // document par capture me - taaki site.js ka "Saving..." spinner isse pehle na lag jaye.
+        document.addEventListener('submit', function (e) {
+            if (e.target.id !== 'helpNumbersForm') return;
+            var bad = null;
+            for (var i = 1; i <= 3; i++) {
+                var el = document.getElementById('phone' + i);
+                var digits = (el.value || '').replace(/\D/g, '');
+                el.classList.remove('is-invalid');
+                if ((i === 1 && digits.length === 0) || (digits.length > 0 && (digits.length < 10 || digits.length > 13))) {
+                    el.classList.add('is-invalid');
+                    bad = bad || el;
+                }
+            }
+            if (bad) { e.preventDefault(); e.stopPropagation(); bad.focus(); }
+        }, true);
+    </script>
+}

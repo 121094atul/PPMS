@@ -22789,3 +22789,81 @@ GO
 
 PRINT '=== Section AQ done ===';
 GO
+
+
+/* ==========================================================================================
+   SECTION AR — Support ke number Super Admin se (2026-10-23)
+   ------------------------------------------------------------------------------------------
+   Support number (6394389973) 16 jagah code me likha tha - Login page, Manual, Shifts page,
+   API ke OTP / free-trial sandesh. Badalna ho to code badal kar deploy karna padta. Owner:
+   "super admin pe panel bana do, waha number dale to jaha jaha display hota hai waha display
+   ho jaye, 2-3 number dalne ka option".
+
+   AppSettings (OwnerId = 0, global) me Support.Phone1 / Phone2 / Phone3. Phone1 zaroori -
+   pehli baar purana number hi bhar diya. Get bina login (login page ko chahiye).
+   ========================================================================================== */
+PRINT '=== Section AR: support number ===';
+GO
+
+IF NOT EXISTS (SELECT 1 FROM PUMP.AppSettings WHERE SettingKey = 'Support.Phone1' AND OwnerId = 0)
+    INSERT INTO PUMP.AppSettings (SettingKey, SettingValue, OwnerId, Description)
+    VALUES ('Support.Phone1', '6394389973', 0, N'Support number 1 - Login, Manual, sandesh me dikhta hai (Super Admin > Support numbers)');
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_SupportContacts_Get
+AS
+BEGIN
+    SET NOCOUNT ON;
+    /* NOTE (CLAUDE.md niyam 5): SupportContacts record ke param theek isi kram me. */
+    SELECT
+        Phone1 = CAST(NULLIF(LTRIM(RTRIM((SELECT SettingValue FROM PUMP.AppSettings WHERE SettingKey = 'Support.Phone1' AND OwnerId = 0))), '') AS NVARCHAR(20)),
+        Phone2 = CAST(NULLIF(LTRIM(RTRIM((SELECT SettingValue FROM PUMP.AppSettings WHERE SettingKey = 'Support.Phone2' AND OwnerId = 0))), '') AS NVARCHAR(20)),
+        Phone3 = CAST(NULLIF(LTRIM(RTRIM((SELECT SettingValue FROM PUMP.AppSettings WHERE SettingKey = 'Support.Phone3' AND OwnerId = 0))), '') AS NVARCHAR(20));
+END
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_SupportContacts_Save
+(
+    @Phone1 NVARCHAR(20),
+    @Phone2 NVARCHAR(20) = NULL,
+    @Phone3 NVARCHAR(20) = NULL,
+    @UserId BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    SET @Phone1 = NULLIF(LTRIM(RTRIM(@Phone1)), N'');
+    SET @Phone2 = NULLIF(LTRIM(RTRIM(@Phone2)), N'');
+    SET @Phone3 = NULLIF(LTRIM(RTRIM(@Phone3)), N'');
+
+    IF @Phone1 IS NULL
+        THROW 50170, 'The first support number is required.', 1;
+
+    DECLARE @Old NVARCHAR(200) = CONCAT(
+        (SELECT SettingValue FROM PUMP.AppSettings WHERE SettingKey = 'Support.Phone1' AND OwnerId = 0), ' / ',
+        (SELECT SettingValue FROM PUMP.AppSettings WHERE SettingKey = 'Support.Phone2' AND OwnerId = 0), ' / ',
+        (SELECT SettingValue FROM PUMP.AppSettings WHERE SettingKey = 'Support.Phone3' AND OwnerId = 0));
+
+    BEGIN TRANSACTION;
+        MERGE PUMP.AppSettings AS t
+        USING (VALUES ('Support.Phone1', @Phone1), ('Support.Phone2', @Phone2), ('Support.Phone3', @Phone3)) AS s (SettingKey, SettingValue)
+           ON t.SettingKey = s.SettingKey AND t.OwnerId = 0
+        WHEN MATCHED THEN
+            UPDATE SET SettingValue = s.SettingValue, ModifiedOn = SYSDATETIME()
+        WHEN NOT MATCHED THEN
+            INSERT (SettingKey, SettingValue, OwnerId, Description)
+            VALUES (s.SettingKey, s.SettingValue, 0, N'Support number (Super Admin > Support numbers)');
+    COMMIT TRANSACTION;
+
+    DECLARE @New NVARCHAR(200) = CONCAT(@Phone1, ' / ', @Phone2, ' / ', @Phone3);
+    EXEC PUMP.sp_Audit_Log @UserId = @UserId, @EntityName = 'AppSettings', @Action = 'UPDATE',
+         @OldValues = @Old, @NewValues = @New, @Reason = N'Support numbers';
+
+    EXEC PUMP.sp_SupportContacts_Get;
+END
+GO
+PRINT '  + AR1: Support.Phone1..3, sp_SupportContacts_Get / Save';
+PRINT '=== Section AR done ===';
+GO

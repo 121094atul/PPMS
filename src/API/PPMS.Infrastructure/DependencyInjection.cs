@@ -95,6 +95,7 @@ public static class DependencyInjection
         services.AddScoped<PPMS.Application.Features.Staff.IStaffRepository, StaffRepository>();
         services.AddScoped<PPMS.Application.Interfaces.IOwnerAlertRepository, OwnerAlertRepository>();
         services.AddScoped<PPMS.Application.Interfaces.ICreditRepository, CreditRepository>();
+        services.AddScoped<PPMS.Application.Interfaces.ISupportContactRepository, SupportContactRepository>();
         services.AddScoped<ISalaryPaymentRepository, SalaryPaymentRepository>();
         services.AddScoped<IDipTestingService, DipTestingService>();
         services.AddScoped<IPasswordHasher, Pbkdf2PasswordHasher>();

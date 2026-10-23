@@ -399,6 +399,7 @@ app.MapPost("/api/account/forgot-password", async (
     RequestOtpRequest request,
     HttpContext http,
     IPasswordResetService service,
+    ISupportContactRepository supportContacts,
     CancellationToken cancellationToken) =>
 {
     var outcome = await service.RequestOtpAsync(request.Mobile, http.Connection.RemoteIpAddress?.ToString(), cancellationToken);
@@ -415,7 +416,10 @@ app.MapPost("/api/account/forgot-password", async (
         {
             Success = false,
             SmsAvailable = false,
-            Message = "OTP service is not set up yet. Please call support on 6394389973 to reset your password."
+            // Number Super Admin se (Section AR).
+            Message = (await supportContacts.GetAsync(cancellationToken)).Display is string support
+                ? $"OTP service is not set up yet. Please call support on {support} to reset your password."
+                : "OTP service is not set up yet. Please call support to reset your password."
         }),
 
         /* SendFailed par ALAG jawab dena galat tha — SMS kharab hone par koi bhi
@@ -1382,6 +1386,31 @@ app.MapPost("/api/platform-credit/settings", async (SaveCreditSettingsRequest re
 {
     var settings = await repo.SaveSettingsAsync(request.UpiId, request.UpiName, request.PricePerCredit, cancellationToken);
     return Results.Ok(settings);
+}).RequireAuthorization("SuperAdminOnly");
+
+// Support ke number (Section AR). Padhna bina login - login page ko chahiye.
+app.MapGet("/api/support-contacts", async (ISupportContactRepository repo, CancellationToken cancellationToken) =>
+    Results.Ok(await repo.GetAsync(cancellationToken)));
+
+app.MapPost("/api/support-contacts", async (SaveSupportContactsRequest request, ClaimsPrincipal user, ISupportContactRepository repo, CancellationToken cancellationToken) =>
+{
+    // Sirf ank. "+91 98765-43210" / "098765..." -> 10 ank ka mobile; landline 11-13 ank tak.
+    static string? Clean(string? v)
+    {
+        if (string.IsNullOrWhiteSpace(v)) return null;
+        var digits = new string(v.Where(char.IsDigit).ToArray());
+        if (digits.Length == 12 && digits.StartsWith("91")) digits = digits[2..];
+        else if (digits.Length == 11 && digits.StartsWith('0')) digits = digits[1..];
+        return digits.Length == 0 ? null : digits;
+    }
+    var phones = new[] { Clean(request.Phone1), Clean(request.Phone2), Clean(request.Phone3) };
+    if (phones[0] is null)
+        return Results.BadRequest(new { Success = false, Message = "The first support number is required." });
+    if (phones.Any(p => p is not null && (p.Length < 10 || p.Length > 13)))
+        return Results.BadRequest(new { Success = false, Message = "Each support number must have 10 to 13 digits." });
+
+    long? userId = long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var uid) ? uid : null;
+    return Results.Ok(await repo.SaveAsync(phones[0]!, phones[1], phones[2], userId, cancellationToken));
 }).RequireAuthorization("SuperAdminOnly");
 
 app.MapGet("/api/platform-credit/recharges", async (string? status, ICreditRepository repo, CancellationToken cancellationToken) =>

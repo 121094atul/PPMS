@@ -75,6 +75,10 @@ builder.Services.AddSession(options =>
 
 // Antiforgery token JavaScript se bhi bheja ja sake (fetch wale POST ke liye).
 builder.Services.AddAntiforgery(options => options.HeaderName = "RequestVerificationToken");
+
+// Support ke number (Section AR) - chhota cache, Super Admin save par saaf.
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<PPMS.Client.Web.Services.SupportContactService>();
 builder.Services.AddHttpClient<PPMSApiClient>((sp, client) =>
 {
     var config = sp.GetRequiredService<IConfiguration>();

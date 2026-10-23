@@ -1,6 +1,11 @@
 ﻿@model PPMS.Client.Web.Models.LoginViewModel
+@inject PPMS.Client.Web.Services.SupportContactService SupportContacts
 @{
     Layout = null;
+    // Support ke number Super Admin daalta hai (Section AR) - yahan code me nahi.
+    var help = await SupportContacts.GetAsync();
+    // WhatsApp ko desh ka code chahiye: 10 ank ho to aage 91.
+    var waNumber = help.Primary is null ? null : (help.Primary.Length == 10 ? "91" + help.Primary : help.Primary);
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -160,27 +165,6 @@
             50%       { opacity: 0.5; transform: scale(0.7); }
         }
 
-        .btn-features {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(59,130,246,0.12);
-            border: 1px solid rgba(59,130,246,0.35);
-            color: #60a5fa;
-            font-size: 0.76rem;
-            font-weight: 600;
-            padding: 0.35rem 0.9rem;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-top: 0.3rem;
-        }
-        .btn-features:hover {
-            background: rgba(59,130,246,0.25);
-            color: #93c5fd;
-            border-color: #60a5fa;
-        }
-
         .form-label-custom {
             color: rgba(255,255,255,0.60);
             font-size: 11.5px;
@@ -290,38 +274,7 @@
             font-weight: 500;
         }
 
-        /* Feature Card styling inside Feature Modal */
-        .feature-box {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px;
-            padding: 1rem 1.1rem;
-            margin-bottom: 0.9rem;
-            transition: all 0.2s ease;
-        }
-        .feature-box:hover {
-            background: rgba(255,255,255,0.07);
-            border-color: rgba(249,115,22,0.3);
-            transform: translateY(-1px);
-        }
-        .feature-box-title {
-            color: #fb923c;
-            font-size: 0.92rem;
-            font-weight: 700;
-            margin-bottom: 0.35rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .feature-box-desc {
-            color: rgba(255,255,255,0.65);
-            font-size: 0.8rem;
-            line-height: 1.5;
-            margin: 0;
-        }
-        /* Install wala button. `btn-features` se alag rakha hai — wo halka,
-           "chahein to dekh lo" wala button hai; ye kaam ka hai, isliye thoda
-           bhara hua aur poori chaudai ka. */
+        /* Install wala button - kaam ka hai, isliye bhara hua aur poori chaudai ka. */
         .btn-install-app {
             display: flex;
             align-items: center;
@@ -343,20 +296,8 @@
             border-color: rgba(249, 115, 22, 0.7);
         }
 
-        .feature-pill {
-            display: inline-block;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.12);
-            color: #e2e8f0;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 6px;
-            margin: 4px 4px 0 0;
-        }
-
         /* ══════════════════════════════════════════════════════════════
-           MODAL (Trial + Features) — mobile par screen se bahar nikal
+           MODAL (Trial + Forgot) — mobile par screen se bahar nikal
            rahe the. Wajah: card ek flex item hai aur flex item ka
            default `min-width:auto` hota hai, yaani wo apne content ke
            min-content se chhota ho hi nahi sakta. 3 plan cards aur
@@ -464,9 +405,6 @@
             .ppms-contact-row { flex-direction: column; align-items: stretch !important; }
             .ppms-contact-row > a { justify-content: center; }
 
-            /* Feature ke pills lambe naam par bahar nikal jaate the. */
-            .feature-pill { white-space: normal; }
-
             .ppms-modal-scroll {
                 padding: 1rem 1rem 1.2rem !important;
                 max-height: none !important;
@@ -520,17 +458,12 @@
         <h1 class="login-title">@L["Petrol Pump Portal"]</h1>
         <p class="login-subtitle">@L["Management System &bull; Secure Access"]</p>
 
-        <!-- Buttons Header: 7 Days Trial & Explore Features -->
+        <!-- 7 din free trial -->
         <div class="text-center mb-4">
             <button type="button" class="trial-badge mb-2" onclick="openTrialModal()" title="@L["Click to Request 7-Day Free Trial"]">
                 <span class="dot"></span>
                 @L["7 Days Free Trial Available"]
                 <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-left:4px;opacity:0.7"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            </button>
-            <br />
-            <button type="button" class="btn-features" onclick="openFeaturesModal()" title="@L["View All Software Features & Modules"]">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-                @L["Explore All Software Features"]
             </button>
 
         </div>
@@ -548,7 +481,10 @@
                 {
                     @* Plan khatam hua owner kya kare - yahi sabse zaroori baat hai. Number
                        wahi jo neeche "OTP nahi aaya?" me hai. *@
-                    <div style="margin-top:6px;"><a href="tel:6394389973" style="color:#fcd34d; font-weight:700;">📞 6394389973</a></div>
+                    @foreach (var n in help.Numbers)
+                    {
+                        <div style="margin-top:6px;"><a href="tel:@n" style="color:#fcd34d; font-weight:700;">📞 @n</a></div>
+                    }
                 }
                 </div>
             </div>
@@ -655,10 +591,17 @@
                              fail hui - warna pata chal jaata ki kaun sa number registered
                              hai. Isliye har haal me ye raasta dikhate hain, taaki user
                              OTP ka intezaar karta na reh jaye. -->
-                        <div style="color:rgba(255,255,255,0.55); font-size:11px; margin-top:6px;">
-                            @L["OTP not received?"]
-                            <a href="tel:6394389973" style="color:#93c5fd;">@L["Call 6394389973"]</a>
-                        </div>
+                        @if (help.Primary is not null)
+                        {
+                            <div style="color:rgba(255,255,255,0.55); font-size:11px; margin-top:6px;">
+                                @L["OTP not received?"]
+                                @L["Call"]
+                                @for (var i = 0; i < help.Numbers.Count; i++)
+                                {
+                                    @(i > 0 ? " / " : "")<a href="tel:@help.Numbers[i]" style="color:#93c5fd;">@help.Numbers[i]</a>
+                                }
+                            </div>
+                        }
                     </div>
 
                     <label style="color:rgba(255,255,255,0.55); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:0.4rem;">@L["6-digit OTP"]</label>
@@ -727,15 +670,21 @@
                         <div style="color:rgba(255,255,255,0.50); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:0.4rem;">@L["Super Admin Direct Support"]</div>
                         <div class="ppms-contact-row" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
                             <div>
-                                <div style="color:#fb923c; font-size:1.15rem; font-weight:800;">&#128222; 6394389973</div>
+                                @foreach (var n in help.Numbers)
+                                {
+                                    <div style="color:#fb923c; font-size:1.15rem; font-weight:800;"><a href="tel:@n" style="color:inherit; text-decoration:none;">&#128222; @n</a></div>
+                                }
                                 <div style="color:rgba(255,255,255,0.45); font-size:0.75rem; margin-top:2px;">@L["Call or WhatsApp for immediate setup"]</div>
                             </div>
-                            <a href="https://wa.me/916394389973?text=Hello!%20I%20want%20to%20start%20my%207-Day%20Free%20Trial%20for%20Petrol%20Pump%20Portal." 
-                               target="_blank"
-                               style="display:inline-flex; align-items:center; gap:5px; background:#25d366; color:#fff; font-size:12px; font-weight:700; padding:0.45rem 0.9rem; border-radius:8px; text-decoration:none;">
-                                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                                @L["WhatsApp"]
-                            </a>
+                            @if (waNumber is not null)
+                            {
+                                <a href="https://wa.me/@(waNumber)?text=Hello!%20I%20want%20to%20start%20my%207-Day%20Free%20Trial%20for%20Petrol%20Pump%20Portal." 
+                                   target="_blank"
+                                   style="display:inline-flex; align-items:center; gap:5px; background:#25d366; color:#fff; font-size:12px; font-weight:700; padding:0.45rem 0.9rem; border-radius:8px; text-decoration:none;">
+                                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                    @L["WhatsApp"]
+                                </a>
+                            }
                         </div>
                     </div>
 
@@ -811,10 +760,13 @@
                     <div id="successSubline" style="color:rgba(255,255,255,0.60); font-size:0.85rem; line-height:1.6; margin-bottom:1.2rem;">
                         @L["Thank you for your interest. The Super Admin has been notified of your request. Our team will contact you shortly to complete your access setup."]
                     </div>
-                    <div style="background:rgba(249,115,22,0.12); border:1px solid rgba(249,115,22,0.3); border-radius:10px; padding:0.8rem; margin-bottom:1.2rem;">
-                        <div style="color:rgba(255,255,255,0.50); font-size:11px;">@L["Direct Super Admin Contact"]</div>
-                        <div style="color:#fb923c; font-weight:800; font-size:1.05rem; margin-top:2px;">&#128222; 6394389973</div>
-                    </div>
+                    @if (help.Primary is not null)
+                    {
+                        <div style="background:rgba(249,115,22,0.12); border:1px solid rgba(249,115,22,0.3); border-radius:10px; padding:0.8rem; margin-bottom:1.2rem;">
+                            <div style="color:rgba(255,255,255,0.50); font-size:11px;">@L["Direct Super Admin Contact"]</div>
+                            <div style="color:#fb923c; font-weight:800; font-size:1.05rem; margin-top:2px;">&#128222; @help.Display</div>
+                        </div>
+                    }
                     <button onclick="closeTrialModal()" style="width:100%; background:linear-gradient(135deg,#f97316,#dc2626); border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:700; padding:0.7rem; cursor:pointer;">@L["Close"]</button>
                 </div>
 
@@ -822,197 +774,9 @@
         </div>
     </div>
 
-    <!-- 2. Software Features Showcase Modal -->
-    <div id="featuresModal" class="ppms-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.80); z-index:9999; align-items:center; justify-content:center; padding:1rem; overflow-y:auto;">
-        <div class="ppms-modal-card" style="background:#1e293b; border:1px solid rgba(255,255,255,0.14); border-radius:22px; padding:0; max-width:540px; width:100%; position:relative; box-shadow:0 35px 80px rgba(0,0,0,0.8); overflow:hidden; margin:1rem auto;">
-            
-            <!-- Modal Header -->
-            <div style="background:linear-gradient(135deg,#0284c7,#0369a1); padding:1.4rem 1.6rem 1.1rem; position:relative;">
-                <button onclick="closeFeaturesModal()" style="position:absolute; top:14px; right:16px; background:rgba(255,255,255,0.2); border:none; color:#fff; width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;">&times;</button>
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="width:44px; height:44px; background:rgba(255,255,255,0.2); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px;">
-                        &#9881;
-                    </div>
-                    <div>
-                        <div style="color:#fff; font-weight:800; font-size:1.2rem;">@L["Complete Software Features"]</div>
-                        <div style="color:rgba(255,255,255,0.8); font-size:0.8rem;">@L["Petrol Pump Operations &amp; Accounting Suite"]</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Features Content Body -->
-            <div class="ppms-modal-scroll" style="padding:1.4rem 1.6rem 1.6rem; max-height:75vh; overflow-y:auto;">
-                
-                <!-- 1. Reports -->
-                <div class="feature-box">
-                    <div class="feature-box-title">
-                        <span>&#128202;</span> Reports &amp; Registers
-                    </div>
-                    <div class="feature-box-desc">
-                        @L["The registers you actually need — and every one of them exports to Excel."]
-                    </div>
-                    <div style="margin-top:6px;">
-                        <span class="feature-pill">@L["&#128202; Daily Stock Register (DSR)"]</span>
-                        <span class="feature-pill">@L["&#128214; Day Book"]</span>
-                        <span class="feature-pill">@L["&#128176; Outstanding (Credit)"]</span>
-                        <span class="feature-pill">@L["&#128100; Attendant Cash"]</span>
-                        <span class="feature-pill">@L["&#127970; Multi-Pump Comparison"]</span>
-                        <span class="feature-pill">@L["&#128190; CSV export on every report"]</span>
-                    </div>
-                </div>
-
-                <!-- 2. Shift -->
-                <div class="feature-box">
-                    <div class="feature-box-title">
-                        <span>&#9881;</span> Shift &amp; Nozzle Operations
-                    </div>
-                    <div class="feature-box-desc">
-                        @L["Enter the meter reading at the start and end of a shift. Sales, stock and cash are worked out for you."]
-                    </div>
-                    <div style="margin-top:6px;">
-                        <span class="feature-pill">@L["&#9981; Nozzle meter reading"]</span>
-                        <span class="feature-pill">@L["&#128260; Shift open &amp; close"]</span>
-                        <span class="feature-pill">@L["&#128181; Cash / credit / UPI / card"]</span>
-                        <span class="feature-pill">@L["&#129534; Note-by-note cash count"]</span>
-                        <span class="feature-pill">@L["&#128197; Forgot a day? Enter it later"]</span>
-                        <span class="feature-pill">@L["&#9889; Multi-pump support"]</span>
-                    </div>
-                </div>
-
-                <!-- 3. Nozzle-wise cash (naya) -->
-                <div class="feature-box">
-                    <div class="feature-box-title">
-                        <span>&#128176;</span> Cash from each attendant
-                    </div>
-                    <div class="feature-box-desc">
-                        @L["A different man on every nozzle? Track each one separately — so one man&#39;s shortage never hides behind another man&#39;s excess."]
-                    </div>
-                    <div style="margin-top:6px;">
-                        <span class="feature-pill">@L["&#129689; Float given per nozzle"]</span>
-                        <span class="feature-pill">@L["&#128203; Credit / UPI slips deducted"]</span>
-                        <span class="feature-pill">@L["&#9878; Short / excess per man"]</span>
-                        <span class="feature-pill">@L["&#127769; Collect the whole day&#39;s cash at night"]</span>
-                        <span class="feature-pill">@L["&#128241; Pending list with phone numbers"]</span>
-                    </div>
-                </div>
-
-                <!-- 4. Rates (naya) -->
-                <div class="feature-box">
-                    <div class="feature-box-title">
-                        <span>&#8377;</span> Daily rates, grade by grade
-                    </div>
-                    <div class="feature-box-desc">
-                        @L["Normal, Premium (XP95), E20, Diesel — each grade keeps its own rate, and each nozzle bills at its own."]
-                    </div>
-                    <div style="margin-top:6px;">
-                        <span class="feature-pill">@L["&#127749; All fuels on one screen"]</span>
-                        <span class="feature-pill">@L["&#128200; Shows what moved up or down"]</span>
-                        <span class="feature-pill">@L["&#128220; Full rate history"]</span>
-                        <span class="feature-pill">@L["&#9200; Old entries use that day&#39;s rate"]</span>
-                    </div>
-                </div>
-
-                <!-- 5. Stock -->
-                <div class="feature-box">
-                    <div class="feature-box-title">
-                        <span>&#128738;</span> Tank Stock &amp; Dip Testing
-                    </div>
-                    <div class="feature-box-desc">
-                        @L["Every litre accounted for, with the loss shown in rupees — not just litres."]
-                    </div>
-                    <div style="margin-top:6px;">
-                        <span class="feature-pill">@L["&#128207; Fuel dip &amp; water dip"]</span>
-                        <span class="feature-pill">@L["&#128201; Variance in litres and &#8377;"]</span>
-                        <span class="feature-pill">@L["&#128666; Tanker purchase entry"]</span>
-                        <span class="feature-pill">@L["&#128721; Wrong-tank entry blocked"]</span>
-                        <span class="feature-pill">@L["&#128276; Low stock alert"]</span>
-                    </div>
-                </div>
-
-                <!-- 6. Credit -->
-                <div class="feature-box">
-                    <div class="feature-box-title">
-                        <span>&#128203;</span> Credit Customers &amp; Ledger
-                    </div>
-                    <div class="feature-box-desc">
-                        @L["Know who owes what, and stop a sale before the limit is crossed."]
-                    </div>
-                    <div style="margin-top:6px;">
-                        <span class="feature-pill">@L["&#128210; Party ledger"]</span>
-                        <span class="feature-pill">@L["&#128179; Payment collection"]</span>
-                        <span class="feature-pill">@L["&#9888; Credit limit enforced on sale"]</span>
-                        <span class="feature-pill">@L["&#127903; Coupon books"]</span>
-                        <span class="feature-pill">@L["&#128667; Fleet contracts"]</span>
-                    </div>
-                </div>
-
-                <!-- 7. Staff -->
-                <div class="feature-box">
-                    <div class="feature-box-title">
-                        <span>&#128101;</span> Staff &amp; Expenses
-                    </div>
-                    <div class="feature-box-desc">
-                        @L["Your people and your day-to-day spending, in the same place as everything else."]
-                    </div>
-                    <div style="margin-top:6px;">
-                        <span class="feature-pill">@L["&#128100; Employee records"]</span>
-                        <span class="feature-pill">@L["&#128176; Monthly salary payment"]</span>
-                        <span class="feature-pill">@L["&#128221; Operating expenses"]</span>
-                        <span class="feature-pill">@L["&#128193; Head-wise categories"]</span>
-                        <span class="feature-pill">@L["&#127974; Bank deposits"]</span>
-                    </div>
-                </div>
-
-                <!-- 8. Bharosa (naya) -->
-                <div class="feature-box">
-                    <div class="feature-box-title">
-                        <span>&#128737;</span> Control &amp; Safety
-                    </div>
-                    <div class="feature-box-desc">
-                        @L["The part you only notice when something goes wrong — and then it matters more than anything else."]
-                    </div>
-                    <div style="margin-top:6px;">
-                        <span class="feature-pill">@L["&#128269; Who did what, and when"]</span>
-                        <span class="feature-pill">@L["&#128683; Voided bills are never deleted"]</span>
-                        <span class="feature-pill">@L["&#128190; Automatic daily backup"]</span>
-                        <span class="feature-pill">@L["&#128274; Account lock after failed logins"]</span>
-                        <span class="feature-pill">@L["&#128241; Password reset by OTP"]</span>
-                        <span class="feature-pill">@L["&#128272; Each pump&#39;s data stays its own"]</span>
-                    </div>
-                </div>
-
-                <!-- 9. Aasani (naya) -->
-                <div class="feature-box">
-                    <div class="feature-box-title">
-                        <span>&#128077;</span> Easy for everyone
-                    </div>
-                    <div class="feature-box-desc">
-                        @L["Built for the person standing at the pump, not for a computer operator."]
-                    </div>
-                    <div style="margin-top:6px;">
-                        <span class="feature-pill">@L["&#127760; English &amp; &#2361;&#2367;&#2306;&#2342;&#2368;"]</span>
-                        <span class="feature-pill">@L["&#128241; Works on a phone"]</span>
-                        <span class="feature-pill">@L["&#128214; Manual built in (download / print)"]</span>
-                        <span class="feature-pill">@L["&#9989; Step-by-step setup on day one"]</span>
-                        <span class="feature-pill">@L["&#128424; Print-ready registers"]</span>
-                    </div>
-                </div>
-
-                <!-- Bottom Action -->
-                <div style="display:flex; gap:0.75rem; margin-top:1.2rem;">
-                    <button onclick="closeFeaturesModal(); openTrialModal();" style="flex:1; background:linear-gradient(135deg,#10b981,#059669); border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:700; padding:0.75rem; cursor:pointer;">
-                        Start 7-Day Free Trial &rarr;
-                    </button>
-                    <button onclick="closeFeaturesModal()" style="flex:0 0 auto; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:10px; color:rgba(255,255,255,0.7); font-size:14px; padding:0.75rem 1.2rem; cursor:pointer;">
-                        @L["Close"]
-                    </button>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
     <script>
+        // Support ke number (Section AR) - Super Admin wale panel se.
+        var SUPPORT_CALL = @Json.Serialize(help.Primary is null ? "Please contact support." : "Please call " + help.Display + ".");
         var selectedModalPlan = '7_DAY_TRIAL';
 
         function openTrialModal() {
@@ -1101,7 +865,7 @@
                 // wo kabhi aayega hi nahi. Server saaf batata hai (ye poore system
                 // ki haalat hai, kisi khaas number ki nahi, isliye batana surakshit).
                 if (data.smsAvailable === false) {
-                    showMsg('forgotMsg1', data.message || 'OTP service is not set up. Please call 6394389973.', true);
+                    showMsg('forgotMsg1', data.message || 'OTP service is not set up. ' + SUPPORT_CALL, true);
                     return;
                 }
 
@@ -1171,36 +935,23 @@
             });
         }
 
-        function openFeaturesModal() {
-            document.getElementById('featuresModal').style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeFeaturesModal() {
-            document.getElementById('featuresModal').style.display = 'none';
-            document.body.style.overflow = '';
-        }
-
         /* Modal ke bahar (kaale hisse par) click karne se band ho — phone par
            X button chhota padta hai, aur log yahi umeed karte hain. Click seedha
            overlay par hi hona chahiye, andar ke card par nahi. */
-        ['trialModal', 'featuresModal', 'forgotModal'].forEach(function (id) {
+        ['trialModal', 'forgotModal'].forEach(function (id) {
             var el = document.getElementById(id);
             if (!el) return;
             el.addEventListener('click', function (e) {
                 if (e.target !== el) return;
                 if (id === 'trialModal') { closeTrialModal(); }
                 else if (id === 'forgotModal') { closeForgotModal(); }
-                else { closeFeaturesModal(); }
             });
         });
 
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape') return;
             var t = document.getElementById('trialModal');
-            var f = document.getElementById('featuresModal');
             if (t && t.style.display === 'flex') { closeTrialModal(); }
-            if (f && f.style.display === 'flex') { closeFeaturesModal(); }
             var g = document.getElementById('forgotModal');
             if (g && g.style.display === 'flex') { closeForgotModal(); }
         });
@@ -1321,13 +1072,13 @@
                     if (head) { head.textContent = '@L["Account created!"]'; }
                     if (sub) { sub.textContent = 'Username "' + username + '" - your 7-day trial has started.'; }
                 } else {
-                    modalError(res.data.message || 'Could not create the account. Please call 6394389973.');
+                    modalError(res.data.message || 'Could not create the account. ' + SUPPORT_CALL);
                     btn.disabled = false;
                     toggleSignupFields();
                 }
             })
             .catch(function () {
-                modalError('Network problem. Please call 6394389973.');
+                modalError('Network problem. ' + SUPPORT_CALL);
                 btn.disabled = false;
                 toggleSignupFields();
             });
@@ -1357,13 +1108,13 @@
                     document.getElementById('modalFormView').style.display = 'none';
                     document.getElementById('modalSuccessView').style.display = 'block';
                 } else {
-                    modalError('Could not send the request. Please call 6394389973.');
+                    modalError('Could not send the request. ' + SUPPORT_CALL);
                     btn.disabled = false;
                     toggleSignupFields();
                 }
             })
             .catch(function () {
-                modalError('Network problem. Please call 6394389973.');
+                modalError('Network problem. ' + SUPPORT_CALL);
                 btn.disabled = false;
                 toggleSignupFields();
             });

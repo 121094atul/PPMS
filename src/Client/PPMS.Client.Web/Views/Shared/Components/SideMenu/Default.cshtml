@@ -162,6 +162,10 @@
                     var isSupportActive = currentPath.StartsWith("/SuperAdmin/Support", StringComparison.OrdinalIgnoreCase);
                 }
                 <a class="menu-link @(isSupportActive ? "active fw-bold text-primary" : "")" href="/SuperAdmin/Support">Support Console</a>
+                @{
+                    var isHelpNumbersActive = currentPath.StartsWith("/SuperAdmin/HelpNumbers", StringComparison.OrdinalIgnoreCase);
+                }
+                <a class="menu-link @(isHelpNumbersActive ? "active fw-bold text-primary" : "")" href="/SuperAdmin/HelpNumbers">@L["Support Numbers"]</a>
             </div>
         </div>
     </div>

@@ -1,5 +1,8 @@
+@inject PPMS.Client.Web.Services.SupportContactService SupportContacts
 @{
     ViewData["Title"] = "User Manual";
+    // Support ke number Super Admin daalta hai (Section AR).
+    var help = await SupportContacts.GetAsync();
 }
 
 @section Styles {
@@ -428,7 +431,7 @@
                 registered mobile number. An OTP arrives, valid for 10 minutes.
             </p>
             <p>
-                If the OTP does not arrive, call support on <strong>6394389973</strong> — your
+                If the OTP does not arrive, call support @(help.Primary is null ? "" : "on ")<strong>@help.Display</strong> — your
                 password can be reset for you.
             </p>
 
@@ -463,9 +466,12 @@
                 <li><strong>Gas loss:</strong> the software does not work out compressor loss. Compare the kg you sold with the kg on the gas company's meter in their bill.</li>
             </ul>
 
-            <p class="text-muted mt-4" style="font-size:0.85rem;">
-                Support: 6394389973
-            </p>
+            @if (help.Primary is not null)
+            {
+                <p class="text-muted mt-4" style="font-size:0.85rem;">
+                    Support: @help.Display
+                </p>
+            }
         </div>
 
         <div class="man-hi">
@@ -801,7 +807,7 @@
                 नंबर डालिए। OTP आएगा, जो 10 मिनट तक चलेगा।
             </p>
             <p>
-                OTP न आए तो <strong>6394389973</strong> पर कॉल कीजिए — आपका पासवर्ड वहाँ से रीसेट
+                OTP न आए तो @(help.Primary is null ? "सहायता" : "")<strong>@help.Display</strong> पर कॉल कीजिए — आपका पासवर्ड वहाँ से रीसेट
                 कर दिया जाएगा।
             </p>
 
@@ -836,9 +842,12 @@
                 <li><strong>गैस का घाटा:</strong> कंप्रेसर का घाटा सॉफ़्टवेयर नहीं निकालता। अपनी बेची kg को गैस कंपनी के बिल में उनके मीटर की kg से मिलाइए।</li>
             </ul>
 
-            <p class="text-muted mt-4" style="font-size:0.85rem;">
-                सहायता: 6394389973
-            </p>
+            @if (help.Primary is not null)
+            {
+                <p class="text-muted mt-4" style="font-size:0.85rem;">
+                    सहायता: @help.Display
+                </p>
+            }
         </div>
 
     </div>

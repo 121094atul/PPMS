@@ -6,7 +6,8 @@ namespace PPMS.Application.Features.Owners;
 public sealed class SelfSignupService(
     ISelfSignupRepository repository,
     IPasswordHasher passwordHasher,
-    IWhatsAppNotificationService notificationService) : ISelfSignupService
+    IWhatsAppNotificationService notificationService,
+    ISupportContactRepository supportContacts) : ISelfSignupService
 {
     private const int TrialDays = 7;
 
@@ -25,9 +26,12 @@ public sealed class SelfSignupService(
         var result = await repository.SignupAsync(
             normalized, passwordHasher.HashPassword(request.Password), sourceIp, TrialDays, cancellationToken);
 
+        // Support ka number Super Admin badal sakta hai (Section AR) - code me nahi.
+        var support = (await supportContacts.GetAsync(cancellationToken)).Display;
         var message =
             $"Your PPMS account is ready. Username: {normalized.Username}. " +
-            $"Your {TrialDays}-day free trial has started. For help call 6394389973.";
+            $"Your {TrialDays}-day free trial has started." +
+            (support is null ? string.Empty : $" For help call {support}.");
 
         // SMS fail hone se sign-up na rukey — account to ban chuka hai, aur user
         // ko screen par bhi username dikh jaata hai.

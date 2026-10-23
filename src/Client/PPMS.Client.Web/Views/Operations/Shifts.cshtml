@@ -1,4 +1,5 @@
 ﻿@model PPMS.Client.Web.Models.ShiftManagementViewModel
+@inject PPMS.Client.Web.Services.SupportContactService SupportContacts
 @{
     ViewData["Title"] = "Shift Management";
 }
@@ -93,7 +94,10 @@
                         <div id="osWarnLater" class="alert alert-danger py-1 px-2 small mt-1 mb-0" hidden>
                             ⛔ @L["A later day already has a shift:"] <strong class="w-later"></strong>.
                             @L["Adding a day in between makes that later day's opening reading wrong, and its sale gets counted twice. Do not continue - call support."]
-                            <a href="tel:6394389973" class="fw-bold">📞 6394389973</a>
+                            @foreach (var n in (await SupportContacts.GetAsync()).Numbers)
+                            {
+                                <a href="tel:@n" class="fw-bold text-nowrap">📞 @n</a>
+                            }
                         </div>
                         <div id="osWarnFuture" class="alert alert-warning py-1 px-2 small mt-1 mb-0" hidden>
                             ⚠ @L["This date is in the future. Please check the date."]

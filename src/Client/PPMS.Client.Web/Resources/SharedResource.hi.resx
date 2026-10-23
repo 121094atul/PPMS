@@ -4135,4 +4135,40 @@
   <data name="All tanks are above the alert level." xml:space="preserve">
     <value>सब टैंक चेतावनी की सीमा से ऊपर हैं।</value>
   </data>
+  <data name="Support Numbers" xml:space="preserve">
+    <value>सहायता नंबर</value>
+  </data>
+  <data name="These numbers are shown on the login page, in the user manual, on the Shifts page and in SMS messages. The first number is also used for WhatsApp." xml:space="preserve">
+    <value>ये नंबर लॉगिन पेज, यूज़र मैनुअल, शिफ़्ट पेज और SMS संदेशों में दिखते हैं। पहला नंबर WhatsApp के लिए भी इस्तेमाल होता है।</value>
+  </data>
+  <data name="Main number (WhatsApp)" xml:space="preserve">
+    <value>मुख्य नंबर (WhatsApp)</value>
+  </data>
+  <data name="Number {0} (optional)" xml:space="preserve">
+    <value>नंबर {0} (ज़रूरी नहीं)</value>
+  </data>
+  <data name="10 digit mobile number. Leave numbers 2 and 3 empty if not needed." xml:space="preserve">
+    <value>10 अंक का मोबाइल नंबर। ज़रूरत न हो तो नंबर 2 और 3 खाली छोड़ दें।</value>
+  </data>
+  <data name="Users will see" xml:space="preserve">
+    <value>यूज़र को यह दिखेगा</value>
+  </data>
+  <data name="No support number is set. Users will not see any number." xml:space="preserve">
+    <value>कोई सहायता नंबर नहीं डाला गया है। यूज़र को कोई नंबर नहीं दिखेगा।</value>
+  </data>
+  <data name="Support numbers saved." xml:space="preserve">
+    <value>सहायता नंबर सेव हो गए।</value>
+  </data>
+  <data name="Could not save the support numbers." xml:space="preserve">
+    <value>सहायता नंबर सेव नहीं हो सके।</value>
+  </data>
+  <data name="The first support number is required." xml:space="preserve">
+    <value>पहला सहायता नंबर ज़रूरी है।</value>
+  </data>
+  <data name="Each support number must have 10 to 13 digits." xml:space="preserve">
+    <value>हर सहायता नंबर में 10 से 13 अंक होने चाहिए।</value>
+  </data>
+  <data name="Call" xml:space="preserve">
+    <value>कॉल करें:</value>
+  </data>
 </root>

@@ -1246,6 +1246,19 @@ public sealed record ApiCreditSettings(string UpiId, string UpiName, decimal? Pr
 
 public sealed record ApiSaveCreditSettingsRequest(string? UpiId, string? UpiName, decimal? PricePerCredit);
 
+/// <summary>Support ke number (Section AR). Phone1 zaroori, baaki do khaali ho sakte hain.</summary>
+public sealed record ApiSupportContacts(string? Phone1, string? Phone2, string? Phone3)
+{
+    public IReadOnlyList<string> Numbers =>
+        new[] { Phone1, Phone2, Phone3 }.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!.Trim()).ToList();
+
+    /// <summary>Pehla number - WhatsApp aur "abhi call karo" wale button ke liye.</summary>
+    public string? Primary => Numbers.FirstOrDefault();
+
+    /// <summary>"6394389973 / 9876543210" - koi na ho to khaali.</summary>
+    public string Display => string.Join(" / ", Numbers);
+}
+
 public sealed record ApiWalletDto(
     int Balance, int LifetimeAdded, int LifetimeUsed, int PendingCredits,
     string UpiId, string UpiName, decimal? PricePerCredit);
