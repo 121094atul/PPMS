@@ -433,6 +433,38 @@
         document.getElementById('ledgerEditCancel').addEventListener('click', function () {
             window.location.href = window.location.href;
         });
+
+        // Section AQ: nayi udhaar (SALE / badhaao) - usi party ki usi din wahi rakam pehle se ho to
+        // poochho. Sirf chetavni; sudhaar (Form.Id) par nahi.
+        var T = @Json.Serialize(new Dictionary<string, string>
+        {
+            ["dupCredit"] = L["This credit is already written: {0}. Check it is not written twice.", "{0}"].Value,
+            ["saveAnyQ"] = L["Save anyway?"].Value
+        });
+        form.addEventListener('submit', async function (e) {
+            if (form.dataset.ok) { return; }
+            var type = (document.getElementById('Form_EntryType') || {}).value;
+            var isNew = !(+(document.getElementById('Form_Id') || {}).value > 0);
+            var partyId = +(document.getElementById('Form_PartyId') || {}).value;
+            var amount = parseFloat((document.getElementById('Form_Amount') || {}).value);
+            var day = (document.getElementById('Form_EntryDate') || {}).value;
+            if (!isNew || (type !== 'SALE' && type !== 'DEBIT') || !(partyId > 0) || !(amount > 0) || !day) { return; }
+            e.preventDefault();
+            var found = [];
+            try {
+                var r = await ppmsFetch('@Url.Action("CheckCreditDuplicates")', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ entryDate: day, lines: [{ partyId: partyId, amount: amount }] })
+                });
+                var j = await r.json();
+                found = (j.items || []).map(function (d) {
+                    return d.partyName + ' ₹' + d.amount.toLocaleString('en-IN') + ' (' + d.entryDate + ')';
+                });
+            } catch (err) { /* sirf chetavni */ }
+            if (found.length && !(await ppmsConfirm(T.dupCredit.replace('{0}', found.join(', ')) + ' ' + T.saveAnyQ))) { return; }
+            form.dataset.ok = '1';
+            form.submit();
+        });
     })();
 
     function askLedgerDeleteReason(form) {

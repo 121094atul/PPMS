@@ -35,6 +35,26 @@ public sealed class SalaryManagementViewModel
     public string? Message { get; set; }
     public int SalaryYear { get; set; } = DateTime.Today.Year;
     public int SalaryMonth { get; set; } = DateTime.Today.Month;
+
+    // Section AQ: mahine ka hisaab (salary, diya, advance se kata, baaki) aur advance ki entry.
+    public IReadOnlyList<ApiSalarySummaryDto> Summary { get; set; } = Array.Empty<ApiSalarySummaryDto>();
+    public IReadOnlyList<ApiEmployeeAdvanceDto> Advances { get; set; } = Array.Empty<ApiEmployeeAdvanceDto>();
+    public EmployeeAdvanceForm AdvanceForm { get; set; } = new();
+}
+
+/// <summary>Advance diya ya wapas mila (Section AQ5). Salary me se kata salary form se jaata hai.</summary>
+public sealed class EmployeeAdvanceForm
+{
+    public long PumpId { get; set; }
+    public long EmployeeId { get; set; }
+    public string EntryType { get; set; } = "GIVEN";
+    public decimal Amount { get; set; }
+    public DateOnly EntryDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    public string PaymentMode { get; set; } = "Cash";
+    public string? Notes { get; set; }
+    // Wapas Salary page par usi mahine par aane ke liye.
+    public int SalaryYear { get; set; }
+    public int SalaryMonth { get; set; }
 }
 
 public sealed class SalaryPaymentForm
@@ -50,4 +70,6 @@ public sealed class SalaryPaymentForm
     public string PaymentMode { get; set; } = "Cash";
     public string? ReferenceNo { get; set; }
     public string? Notes { get; set; }
+    /// <summary>Section AQ: is salary me se kitna advance kata. Amount = haath me diya.</summary>
+    public decimal AdvanceCut { get; set; }
 }

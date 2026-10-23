@@ -179,35 +179,44 @@
         $('.ts-s-veh', node).value = s.vehicleNo || '';
         $('.ts-s-amt', node).value = s.amount ? s.amount : '';
         $('.ts-s-note', node).value = s.slipNote || '';
-        if (s.prod) { $('.ts-s-prod', node).selectedIndex = s.prod; }
+        var prodSel = $('.ts-s-prod', node);
+        // Server se aayi parchi me tel ki id (Section AQ); draft me purana index.
+        if (s.productId) {
+            var i = Array.prototype.findIndex.call(prodSel.options, function (o) { return o.getAttribute('data-id') === String(s.productId); });
+            if (i >= 0) { prodSel.selectedIndex = i; }
+        } else if (s.prod) { prodSel.selectedIndex = s.prod; }
+        if (s.quantity) { $('.ts-s-lit', node).value = s.quantity; }
         slipBox.appendChild(node);
         return node;
     }
 
     function slips() {
         return $$('.ts-slip', slipBox).map(function (el) {
+            var prodSel = $('.ts-s-prod', el);
+            var opt = prodSel.options[prodSel.selectedIndex];
+            var qty = num($('.ts-s-lit', el));
             return {
                 partyId: parseInt($('.ts-s-party', el).value, 10) || 0,
                 vehicleNo: $('.ts-s-veh', el).value.trim(),
                 amount: num($('.ts-s-amt', el)) || 0,
                 slipNote: $('.ts-s-note', el).value.trim(),
-                prod: $('.ts-s-prod', el).selectedIndex
+                prod: prodSel.selectedIndex,
+                // Kaunsa tel aur kitna - tabhi jab matra likhi ho (Section AQ).
+                productId: qty > 0 && opt ? (parseInt(opt.getAttribute('data-id'), 10) || null) : null,
+                quantity: qty > 0 ? qty : null
             };
         });
     }
 
-    // Litre likho to rakam (us product ke shift wale rate se), aur note khaali ho
-    // to "20 L Diesel" bhar do. Rakam seedha likho to litre khud nahi badalte.
+    // Litre likho to rakam (us product ke shift wale rate se). Rakam seedha likho to litre khud
+    // nahi badalte. Tel aur matra ab parchi ke saath save hote hain (Section AQ) - note me likhne ki
+    // zaroorat nahi, warna party ke khaate me do baar dikhta.
     function slipLitres(el) {
         var l = num($('.ts-s-lit', el));
         var prod = $('.ts-s-prod', el);
         var rate = parseFloat(prod.value) || 0;
         if (l === null || !rate) { return; }
         $('.ts-s-amt', el).value = (l * rate).toFixed(2);
-        var note = $('.ts-s-note', el);
-        var opt = prod.options[prod.selectedIndex];
-        var auto = l + ' ' + (opt.getAttribute('data-unit') || 'L') + ' ' + opt.text;
-        if (!note.value || note.dataset.auto === '1') { note.value = auto; note.dataset.auto = '1'; }
     }
 
     // ── 3. Paisa: kharcha (seedha server par) ──────────────────────────────
@@ -505,6 +514,36 @@
         }
     }
 
+    // Ek jaisi udhaar (Section AQ4): is shift me do parchi ek jaisi (party + rakam), aur usi din
+    // pehle se likhi udhaar (doosri shift / party khaata). Sirf chetavni - jaanch na ho paaye to chup.
+    async function creditDuplicates(sl) {
+        var name = function (id) {
+            var o = slipTpl.content.querySelector('.ts-s-party option[value="' + id + '"]');
+            return o ? o.textContent : '#' + id;
+        };
+        var seen = {}, twice = [];
+        sl.filter(function (s) { return s.partyId && s.amount > 0; }).forEach(function (s) {
+            var k = s.partyId + '|' + s.amount;
+            if (seen[k] === 1) { twice.push(name(s.partyId) + ' ' + rs(s.amount)); }
+            seen[k] = (seen[k] || 0) + 1;
+        });
+        var before = [];
+        var lines = sl.filter(function (s) { return s.partyId && s.amount > 0; })
+            .map(function (s) { return { partyId: s.partyId, amount: s.amount }; });
+        if (lines.length && B.urls.dupCheck) {
+            try {
+                var r = await ppmsFetch(B.urls.dupCheck, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ shiftId: B.shiftId, lines: lines })
+                });
+                var j = await r.json();
+                (j.items || []).forEach(function (d) { before.push(d.partyName + ' ' + rs(d.amount) + ' (' + d.entryDate + ')'); });
+            } catch (e) { /* sirf chetavni thi */ }
+        }
+        return { twice: twice, before: before };
+    }
+
     // ── Band karna ─────────────────────────────────────────────────────────
     function finishError(msg) {
         var e = $('#tsFinishErr');
@@ -553,6 +592,9 @@
         if (t.sale <= 0) { warn.push(T.zeroSale); }
         if (tanks.length && !tanks.some(function (x) { return x.act; })) { warn.push(T.noDip); }
         if (Math.abs(t.diff) > B.tolerance) { warn.push(fmt(t.diff < 0 ? T.farkShort : T.farkExcess, rs(Math.abs(t.diff)))); }
+        var dups = await creditDuplicates(t.slips);
+        if (dups.twice.length) { warn.push(fmt(T.dupTwice, dups.twice.join(', '))); }
+        if (dups.before.length) { warn.push(fmt(T.dupCredit, dups.before.join(', '))); }
         if (warn.length && !ack.warn) {
             warn.push(T.closeAnyQ);
             if (!(await ppmsConfirm(warn.join(' '), { okText: T.closeAnyway, danger: t.diff < 0 }))) { return; }
@@ -659,7 +701,6 @@
         if (slip) {
             moneyDirty = true;
             if (el.classList.contains('ts-s-lit')) { slipLitres(slip); }
-            if (el.classList.contains('ts-s-note')) { el.dataset.auto = ''; }
             $('#tsSlipErr').hidden = true;
         }
         if (el === upiEl || el === cardEl) { moneyDirty = true; }

@@ -58,6 +58,8 @@ public sealed class TodayShiftViewModel
 
     /// <summary>Product ka naam → ikai ("Litre", "Kg"...). CNG kilo me hai: uski testing aur dip nahi hoti.</summary>
     public IReadOnlyDictionary<string, string> ProductUnits { get; set; } = new Dictionary<string, string>();
+    /// <summary>Product ka naam → Id. Udhaar parchi me tel save karne ke liye (Section AQ).</summary>
+    public IReadOnlyDictionary<string, long> ProductIds { get; set; } = new Dictionary<string, long>();
     public ApiShiftCollection Collection { get; set; } = new(0, 0, new List<ApiShiftCollectionCreditLine>());
     public IReadOnlyList<ApiPartyDto> Parties { get; set; } = Array.Empty<ApiPartyDto>();
     public IReadOnlyList<ApiExpenseHeadDto> ExpenseHeads { get; set; } = Array.Empty<ApiExpenseHeadDto>();
@@ -159,7 +161,13 @@ public sealed class TodayShiftClosedInfo
 
 // ── JSON se aane wale input (fetch) ──────────────────────────────────────
 
-public sealed record TodayShiftSlipInput(long PartyId, decimal Amount, string? VehicleNo, string? SlipNote);
+/// <summary>Udhaar parchi. ProductId / Quantity (Section AQ) - kaunsa tel aur kitna; litre na likha ho to dono null.</summary>
+public sealed record TodayShiftSlipInput(long PartyId, decimal Amount, string? VehicleNo, string? SlipNote,
+    long? ProductId = null, decimal? Quantity = null);
+
+/// <summary>Ek jaisi udhaar ki jaanch (Section AQ4): shift ki parchi (ShiftId) ya khaate ki entry (EntryDate).</summary>
+public sealed record CreditDuplicateLineInput(long PartyId, decimal Amount);
+public sealed record CreditDuplicateCheckInput(long? ShiftId, DateOnly? EntryDate, List<CreditDuplicateLineInput>? Lines);
 
 public sealed record TodayShiftMoneyInput(long ShiftId, long PumpId, decimal Upi, decimal Card, List<TodayShiftSlipInput>? Slips);
 

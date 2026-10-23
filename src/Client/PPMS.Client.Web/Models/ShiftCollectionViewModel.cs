@@ -63,4 +63,9 @@ public sealed class ShiftCollectionCreditForm
     // isliye form me saath chalte hain.
     public string? VehicleNo { get; set; }
     public string? SlipNote { get; set; }
+
+    // Section AQ: kaunsa tel aur kitna - saath chalte hain, ProductLabel sirf dikhane ko ("20 L Diesel").
+    public long? ProductId { get; set; }
+    public decimal? Quantity { get; set; }
+    public string? ProductLabel { get; set; }
 }

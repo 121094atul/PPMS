@@ -68,11 +68,20 @@
                             </select>
                         </div>
                     </div>
+                    @* Section AQ: salary = haath me diya + advance me se kata. *@
+                    <div class="small text-muted mb-2" id="salHint"></div>
                     <div class="row g-2 mb-2">
                         <div class="col-md-6">
-                            <label class="form-label">@L["Amount"]</label>
-                            <input asp-for="Form.Amount" type="number" min="0.01" step="0.01" class="form-control" />
+                            <label class="form-label">@L["Paid in hand"]</label>
+                            <input asp-for="Form.Amount" type="number" min="0" step="0.01" class="form-control" />
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Cut from advance"]</label>
+                            <input asp-for="Form.AdvanceCut" type="number" min="0" step="0.01" class="form-control" />
+                            <div class="form-text" id="salCutHint"></div>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
                         <div class="col-md-6">
                             <label class="form-label">@L["Paid On"]</label>
                             <input asp-for="Form.PaidOn" type="date" class="form-control" />
@@ -102,9 +111,151 @@
                 </form>
             </div>
         </div>
+
+        @* Section AQ: advance diya / wapas mila. Salary me se kata upar salary ke saath. *@
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body">
+                <h5 class="card-title">@L["Advance"]</h5>
+                <p class="text-muted small mb-3">@L["Money given to an employee ahead of salary. Cut it from the salary above, or write here when it is paid back in cash."]</p>
+                <form asp-action="SaveAdvance" asp-controller="Operations" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="AdvanceForm.PumpId" type="hidden" />
+                    <input asp-for="AdvanceForm.SalaryYear" type="hidden" />
+                    <input asp-for="AdvanceForm.SalaryMonth" type="hidden" />
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-7">
+                            <label class="form-label">@L["Employee"]</label>
+                            <select asp-for="AdvanceForm.EmployeeId" class="form-select">
+                                @foreach (var e in Model.Employees)
+                                {
+                                    <option value="@e.Id">@e.FullName (@e.EmployeeCode)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">@L["What"]</label>
+                            <select asp-for="AdvanceForm.EntryType" class="form-select" data-no-search>
+                                <option value="GIVEN">@L["Advance given"]</option>
+                                <option value="RETURNED">@L["Paid back in cash"]</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6 col-md-4">
+                            <label class="form-label">@L["Amount"]</label>
+                            <input asp-for="AdvanceForm.Amount" type="number" min="0.01" step="0.01" class="form-control" required />
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label">@L["Date"]</label>
+                            <input asp-for="AdvanceForm.EntryDate" type="date" class="form-control" />
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">@L["Payment Mode"]</label>
+                            <select asp-for="AdvanceForm.PaymentMode" class="form-select" data-no-search>
+                                <option value="Cash">@L["Cash"]</option>
+                                <option value="UPI">@L["UPI"]</option>
+                                <option value="Bank">@L["Bank"]</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <input asp-for="AdvanceForm.Notes" class="form-control" maxlength="200" placeholder="@L["Note"]" />
+                    </div>
+                    <div class="form-text mb-2">@L["Advance given from the drawer during a shift? Also write it in that shift as cash taken out, or the shift will show it as short."]</div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-outline-primary">@L["Save Advance"]</button>
+                    </div>
+                </form>
+
+                @if (Model.Advances.Count > 0)
+                {
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>@L["Date"]</th><th>@L["Employee"]</th><th>@L["What"]</th><th class="text-end">@L["Amount"]</th><th></th></tr></thead>
+                            <tbody>
+                                @foreach (var a in Model.Advances.Take(20))
+                                {
+                                    var typeLabel = a.EntryType switch { "GIVEN" => L["Advance given"], "RETURNED" => L["Paid back in cash"], _ => L["Cut from salary"] };
+                                    <tr>
+                                        <td class="text-nowrap" data-label="@L["Date"]">@a.EntryDate.ToString("dd MMM yyyy")</td>
+                                        <td data-label="@L["Employee"]">@a.EmployeeName</td>
+                                        <td data-label="@L["What"]">@typeLabel @if (a.EntryType != "SALARY_CUT" && !string.IsNullOrWhiteSpace(a.Notes)) {<span class="text-muted small">· @a.Notes</span>}</td>
+                                        <td class="text-end @(a.EntryType == "GIVEN" ? "" : "text-success")" data-label="@L["Amount"]">@(a.EntryType == "GIVEN" ? "" : "−")₹@a.Amount.ToString("N0")</td>
+                                        <td class="text-end">
+                                            @if (a.EntryType != "SALARY_CUT")
+                                            {
+                                                <form asp-action="DeleteAdvance" asp-controller="Operations" method="post" class="d-inline js-adv-del">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@a.Id" />
+                                                    <input type="hidden" name="pumpId" value="@Model.Form.PumpId" />
+                                                    <input type="hidden" name="salaryYear" value="@Model.SalaryYear" />
+                                                    <input type="hidden" name="salaryMonth" value="@Model.SalaryMonth" />
+                                                    <button type="submit" class="btn btn-sm btn-link text-danger p-0">@L["Delete"]</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
     </div>
 
     <div class="col-xl-7">
+        @* Section AQ: mahine ka hisaab - kitni salary, kitni di, kitni baaki, kitna advance baaki. *@
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-2">@L["Salary this month"] <span class="text-muted fw-normal small">(@($"{Model.SalaryMonth:D2}/{Model.SalaryYear}"))</span></h5>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>@L["Employee"]</th>
+                                <th class="text-end">@L["Salary"]</th>
+                                <th class="text-end">@L["Paid in hand"]</th>
+                                <th class="text-end">@L["Cut from advance"]</th>
+                                <th class="text-end">@L["Salary pending"]</th>
+                                <th class="text-end">@L["Advance pending"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Summary.Count == 0)
+                            {
+                                <tr><td colspan="6" class="text-muted">@L["No employee found"]</td></tr>
+                            }
+                            @foreach (var s in Model.Summary)
+                            {
+                                <tr>
+                                    <td data-label="@L["Employee"]">@s.FullName <span class="text-muted small">@s.EmployeeCode</span></td>
+                                    <td class="text-end" data-label="@L["Salary"]">@(s.MonthlySalary > 0 ? "₹" + s.MonthlySalary.ToString("N0") : "—")</td>
+                                    <td class="text-end" data-label="@L["Paid in hand"]">₹@s.Paid.ToString("N0")</td>
+                                    <td class="text-end" data-label="@L["Cut from advance"]">₹@s.AdvanceCut.ToString("N0")</td>
+                                    <td class="text-end fw-semibold @(s.Pending > 0 ? "text-danger" : "text-success")" data-label="@L["Salary pending"]">@(s.MonthlySalary > 0 ? "₹" + s.Pending.ToString("N0") : "—")</td>
+                                    <td class="text-end @(s.AdvanceOutstanding > 0 ? "text-warning fw-semibold" : "")" data-label="@L["Advance pending"]">₹@s.AdvanceOutstanding.ToString("N0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        @if (Model.Summary.Count > 1)
+                        {
+                            <tfoot>
+                                <tr class="fw-bold">
+                                    <td>@L["Total"]</td>
+                                    <td class="text-end">₹@Model.Summary.Sum(x => x.MonthlySalary).ToString("N0")</td>
+                                    <td class="text-end">₹@Model.Summary.Sum(x => x.Paid).ToString("N0")</td>
+                                    <td class="text-end">₹@Model.Summary.Sum(x => x.AdvanceCut).ToString("N0")</td>
+                                    <td class="text-end">₹@Model.Summary.Where(x => x.MonthlySalary > 0).Sum(x => x.Pending).ToString("N0")</td>
+                                    <td class="text-end">₹@Model.Summary.Sum(x => x.AdvanceOutstanding).ToString("N0")</td>
+                                </tr>
+                            </tfoot>
+                        }
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <div class="card border-0 shadow-sm">
             <div class="card-body">
                 <h5 class="card-title mb-2">@L["Salary Payments"]</h5>
@@ -159,3 +310,57 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    // Section AQ: karmchari chuno to us mahine ka bhara hua (diya / kata) ya mahine ki salary pehle se,
+    // aur kitna advance baaki hai. Dobara save karne par kata hua advance chupchaap 0 na ho jaye.
+    (function () {
+        const rows = @Json.Serialize(Model.Summary.Select(s => new { id = s.EmployeeId, salary = s.MonthlySalary, paid = s.Paid, cut = s.AdvanceCut, adv = s.AdvanceOutstanding, payId = s.SalaryPaymentId }));
+        const T = @Json.Serialize(new Dictionary<string, string>
+        {
+            ["hint"] = L["Salary {0} · already paid {1} · advance pending {2}", "{0}", "{1}", "{2}"].Value,
+            ["cutHint"] = L["Advance pending: {0}"].Value,
+            ["cutTooMuch"] = L["This is more than the advance pending."].Value,
+            ["delAsk"] = L["Delete this advance entry?"].Value
+        });
+        const fmt = n => '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+        const emp = document.getElementById('Form_EmployeeId');
+        const amt = document.getElementById('Form_Amount');
+        const cut = document.getElementById('Form_AdvanceCut');
+        const hint = document.getElementById('salHint');
+        const cutHint = document.getElementById('salCutHint');
+        if (!emp || !amt || !cut) { return; }
+
+        function row() { return rows.find(r => String(r.id) === String(emp.value)); }
+        function fill() {
+            const r = row();
+            if (!r) { hint.textContent = ''; cutHint.textContent = ''; return; }
+            if (r.payId) {
+                amt.value = r.paid; cut.value = r.cut;
+            } else {
+                cut.value = 0; amt.value = r.salary > 0 ? r.salary : '';
+            }
+            hint.textContent = T.hint.replace('{0}', fmt(r.salary)).replace('{1}', fmt(r.paid + r.cut)).replace('{2}', fmt(r.adv));
+            check();
+        }
+        function check() {
+            const r = row();
+            // Is mahine ka pehle kata hua bhi wapas milega (dobara save me purana hat jaata hai).
+            const allowed = r ? r.adv + (r.cut || 0) : 0;
+            const c = parseFloat(cut.value) || 0;
+            cutHint.textContent = c > allowed ? T.cutTooMuch : T.cutHint.replace('{0}', fmt(allowed));
+            cutHint.className = 'form-text' + (c > allowed ? ' text-danger' : '');
+        }
+        emp.addEventListener('change', fill);
+        cut.addEventListener('input', check);
+        fill();
+
+        document.querySelectorAll('.js-adv-del').forEach(f => f.addEventListener('submit', async e => {
+            if (f.dataset.ok) { return; }
+            e.preventDefault();
+            if (await ppmsConfirm(T.delAsk, { danger: true })) { f.dataset.ok = '1'; f.submit(); }
+        }));
+    })();
+</script>
+}

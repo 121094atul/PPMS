@@ -80,6 +80,13 @@
                                                    value="@Model.Form.Credits[i].VehicleNo"
                                                    class="form-control form-control-sm text-uppercase" autocomplete="off" />
                                             <input name="Form.Credits[@i].SlipNote" type="hidden" value="@Model.Form.Credits[i].SlipNote" />
+                                            @* Section AQ: tel + matra bhi saath, taaki dobara save par mit na jaye. *@
+                                            <input name="Form.Credits[@i].ProductId" type="hidden" value="@Model.Form.Credits[i].ProductId" />
+                                            <input name="Form.Credits[@i].Quantity" type="hidden" value="@(Model.Form.Credits[i].Quantity?.ToString(System.Globalization.CultureInfo.InvariantCulture))" />
+                                            @if (!string.IsNullOrWhiteSpace(Model.Form.Credits[i].ProductLabel))
+                                            {
+                                                <div class="small text-muted coll-prod">@Model.Form.Credits[i].ProductLabel</div>
+                                            }
                                         </td>
                                         <td class="text-end" data-label="@L["Amount"]">
                                             <input name="Form.Credits[@i].Amount" type="number" step="0.01" min="0"
@@ -200,7 +207,51 @@
                     el.name = el.name.replace(/\[\d+\]/, '[' + idx + ']');
                     el.value = el.tagName === 'SELECT' ? '0' : '';
                 });
+                row.querySelectorAll('.coll-prod').forEach(el => el.remove());
                 body.appendChild(row);
+            });
+        }
+
+        // Section AQ: save se pehle ek jaisi udhaar ki chetavni (wahi party + rakam do baar, ya usi din
+        // pehle se kahin likhi). Sirf poochte hain - "haan" par save hota hai.
+        const form = document.querySelector('form[action$="SaveCollection"]');
+        const T = @Json.Serialize(new Dictionary<string, string>
+        {
+            ["dupCredit"] = L["This credit is already written: {0}. Check it is not written twice.", "{0}"].Value,
+            ["dupTwice"] = L["Two slips are the same: {0}.", "{0}"].Value,
+            ["saveAnyQ"] = L["Save anyway?"].Value
+        });
+        if (form) {
+            form.addEventListener('submit', async function (e) {
+                if (form.dataset.ok) { return; }
+                e.preventDefault();
+                const lines = [];
+                document.querySelectorAll('#creditRows tr').forEach(tr => {
+                    const sel = tr.querySelector('select');
+                    const amt = parseFloat(tr.querySelector('input[name$=".Amount"]')?.value);
+                    if (sel && +sel.value > 0 && amt > 0) {
+                        lines.push({ partyId: +sel.value, amount: amt, name: sel.options[sel.selectedIndex].text });
+                    }
+                });
+                const seen = {}, twice = [];
+                lines.forEach(l => { const k = l.partyId + '|' + l.amount; if (seen[k]) { twice.push(l.name + ' ₹' + fmt(l.amount)); } seen[k] = 1; });
+                let before = [];
+                if (lines.length) {
+                    try {
+                        const r = await ppmsFetch('@Url.Action("CheckCreditDuplicates")', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ shiftId: @Model.Form.ShiftId, lines: lines.map(l => ({ partyId: l.partyId, amount: l.amount })) })
+                        });
+                        const j = await r.json();
+                        before = (j.items || []).map(d => d.partyName + ' ₹' + fmt(d.amount) + ' (' + d.entryDate + ')');
+                    } catch (err) { /* sirf chetavni */ }
+                }
+                const warn = [];
+                if (twice.length) { warn.push(T.dupTwice.replace('{0}', twice.join(', '))); }
+                if (before.length) { warn.push(T.dupCredit.replace('{0}', before.join(', '))); }
+                if (warn.length && !(await ppmsConfirm(warn.join(' ') + ' ' + T.saveAnyQ))) { return; }
+                form.dataset.ok = '1';
+                form.submit();
             });
         }
 

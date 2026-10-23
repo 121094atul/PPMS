@@ -43,6 +43,9 @@ public sealed class ShiftService(IShiftRepository repository, IWhatsAppNotificat
     public Task SaveCollectionAsync(SaveShiftCollectionRequest request, long ownerId, long? userId, CancellationToken cancellationToken = default)
         => repository.SaveCollectionAsync(request, ownerId, userId, cancellationToken);
 
+    public Task<IReadOnlyList<CreditDuplicateDto>> FindCreditDuplicatesAsync(CreditDuplicateCheckRequest request, long ownerId, CancellationToken cancellationToken = default)
+        => repository.FindCreditDuplicatesAsync(request, ownerId, cancellationToken);
+
     public Task<IReadOnlyList<MeterChainGapDto>> GetMeterChainGapsAsync(long ownerId, long? pumpId, int days, CancellationToken cancellationToken = default)
     {
         return repository.GetMeterChainGapsAsync(ownerId, pumpId, days, cancellationToken);

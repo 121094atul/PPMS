@@ -272,7 +272,7 @@
 
         var products = Model.Nozzles
             .GroupBy(n => n.ProductName)
-            .Select(g => new { name = g.Key, rate = g.First().Rate, unit = Abbr(g.Key) })
+            .Select(g => new { name = g.Key, rate = g.First().Rate, unit = Abbr(g.Key), id = Model.ProductIds.TryGetValue(g.Key, out var pid) ? pid : 0 })
             .ToList();
         var liquidTanks = Model.Tanks.Where(t => IsLiquid(t.ProductName)).ToList();
         var boot = new
@@ -284,7 +284,7 @@
             cash = Model.Cash,
             upi = Model.Collection.UpiAmount,
             card = Model.Collection.CardAmount,
-            slips = Model.Collection.Credits.Select(c => new { partyId = c.PartyId, amount = c.Amount, vehicleNo = c.VehicleNo, slipNote = c.SlipNote }),
+            slips = Model.Collection.Credits.Select(c => new { partyId = c.PartyId, amount = c.Amount, vehicleNo = c.VehicleNo, slipNote = c.SlipNote, productId = c.ProductId, quantity = c.Quantity }),
             expenses = Model.Expenses.Select(e => new { id = e.Id, expenseHeadName = e.ExpenseHeadName, amount = e.Amount, narration = e.Narration }),
             handovers = Model.Handovers.Select(h => new { id = h.Id, kind = h.Kind, amount = h.Amount, note = h.Note }),
             products,
@@ -315,7 +315,8 @@
                 deleteExpense = Url.Action("DeleteTodayShiftExpense"),
                 addHandover = Url.Action("AddTodayShiftHandover"),
                 deleteHandover = Url.Action("DeleteTodayShiftHandover"),
-                finish = Url.Action("FinishTodayShift")
+                finish = Url.Action("FinishTodayShift"),
+                dupCheck = Url.Action("CheckCreditDuplicates")
             }
         };
         var T = new Dictionary<string, string>
@@ -332,6 +333,9 @@
             ["zeroSale"] = L["No reading has changed - the sale is zero."].Value,
             ["noDip"] = L["Tank dip is not filled."].Value,
             ["closeAnyQ"] = L["Close the shift anyway?"].Value,
+            // Section AQ: ek jaisi udhaar - "Sharma ₹500 (22 Oct)" ki list ke saath.
+            ["dupCredit"] = L["This credit is already written: {0}. Check it is not written twice.", "{0}"].Value,
+            ["dupTwice"] = L["Two slips are the same: {0}.", "{0}"].Value,
             ["cashNeeded"] = L["Enter how much cash came today (or press 'Exactly this came')."].Value,
             ["slipParty"] = L["Pick the party for every credit slip."].Value,
             ["slipFirst"] = L["Fill the party and amount of the last slip first."].Value,
@@ -666,7 +670,7 @@
                     <select class="form-select form-select-sm ts-s-prod" data-no-search aria-label="@L["Product"]">
                         @foreach (var p in products)
                         {
-                            <option value="@N(p.rate)" data-unit="@p.unit">@p.name</option>
+                            <option value="@N(p.rate)" data-unit="@p.unit" data-id="@p.id">@p.name</option>
                         }
                     </select>
                     <input type="text" class="form-control form-control-sm ts-s-note" maxlength="120" placeholder="@L["Note (slip no.)"]" autocomplete="off" />

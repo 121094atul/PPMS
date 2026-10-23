@@ -1008,7 +1008,9 @@ public sealed record ApiSaveSalaryPaymentRequest(
     DateOnly PaidOn,
     string PaymentMode,
     string? ReferenceNo,
-    string? Notes
+    string? Notes,
+    // Section AQ: salary me se kitna advance kata (null = advance ko mat chhedo).
+    decimal? AdvanceCut = null
 );
 
 public sealed record ApiSaveUserRequest(
@@ -1268,7 +1270,27 @@ public sealed record ApiShiftCollectionCreditLine(
     decimal Amount,
     // Har parchi alag (Section AK) — kaunsi gaadi, aur chhota note (parchi no. / litre).
     string? VehicleNo = null,
-    string? SlipNote = null);
+    string? SlipNote = null,
+    // Section AQ: kaunsa tel aur kitna. ProductName / Unit sirf dikhane ke liye (API Get se).
+    long? ProductId = null,
+    decimal? Quantity = null,
+    string? ProductName = null,
+    string? Unit = null);
+
+/// <summary>Ek jaisi udhaar ki jaanch (Section AQ4).</summary>
+public sealed record ApiCreditDuplicateLine(long PartyId, decimal Amount);
+public sealed record ApiCreditDuplicateCheckRequest(long? ShiftId, DateOnly? EntryDate, IReadOnlyList<ApiCreditDuplicateLine> Lines);
+public sealed record ApiCreditDuplicateDto(long PartyId, string PartyName, decimal Amount, DateTime EntryDate, string? ReferenceNo, string? Notes);
+
+/// <summary>Karmchari ka advance (Section AQ5). EntryType: GIVEN / RETURNED / SALARY_CUT.</summary>
+public sealed record ApiEmployeeAdvanceDto(long Id, long EmployeeId, string EmployeeName, string EntryType, decimal Amount,
+    DateTime EntryDate, string? PaymentMode, string? Notes, long? SalaryPaymentId);
+public sealed record ApiSaveEmployeeAdvanceRequest(long PumpId, long EmployeeId, string EntryType, decimal Amount,
+    DateOnly EntryDate, string? PaymentMode, string? Notes);
+
+/// <summary>Mahine ka salary hisaab (Section AQ6).</summary>
+public sealed record ApiSalarySummaryDto(long EmployeeId, string? EmployeeCode, string FullName, decimal MonthlySalary,
+    decimal Paid, decimal AdvanceCut, decimal Pending, decimal AdvanceOutstanding, long? SalaryPaymentId);
 
 public sealed record ApiShiftCollection(
     decimal UpiAmount,

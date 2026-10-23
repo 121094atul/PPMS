@@ -3967,4 +3967,70 @@
   <data name="Open Financials" xml:space="preserve">
     <value>पैसे का हिसाब देखें</value>
   </data>
+  <data name="Paid in hand" xml:space="preserve">
+    <value>हाथ में दिया</value>
+  </data>
+  <data name="Cut from advance" xml:space="preserve">
+    <value>एडवांस से काटा</value>
+  </data>
+  <data name="Advance" xml:space="preserve">
+    <value>एडवांस</value>
+  </data>
+  <data name="Money given to an employee ahead of salary. Cut it from the salary above, or write here when it is paid back in cash." xml:space="preserve">
+    <value>सैलरी से पहले कर्मचारी को दिया पैसा। ऊपर सैलरी में से काटिए, या नकद वापस मिले तो यहाँ लिखिए।</value>
+  </data>
+  <data name="Advance given" xml:space="preserve">
+    <value>एडवांस दिया</value>
+  </data>
+  <data name="Paid back in cash" xml:space="preserve">
+    <value>नकद वापस मिला</value>
+  </data>
+  <data name="Advance given from the drawer during a shift? Also write it in that shift as cash taken out, or the shift will show it as short." xml:space="preserve">
+    <value>शिफ़्ट में गल्ले से एडवांस दिया? उस शिफ़्ट में भी "नकद निकाला" लिखिए, वरना शिफ़्ट में कमी दिखेगी।</value>
+  </data>
+  <data name="Save Advance" xml:space="preserve">
+    <value>एडवांस सेव करें</value>
+  </data>
+  <data name="Cut from salary" xml:space="preserve">
+    <value>सैलरी से काटा</value>
+  </data>
+  <data name="Salary this month" xml:space="preserve">
+    <value>इस महीने की सैलरी</value>
+  </data>
+  <data name="Salary pending" xml:space="preserve">
+    <value>बाक़ी सैलरी</value>
+  </data>
+  <data name="Advance pending" xml:space="preserve">
+    <value>बाक़ी एडवांस</value>
+  </data>
+  <data name="Salary {0} · already paid {1} · advance pending {2}" xml:space="preserve">
+    <value>सैलरी {0} · दे चुके {1} · बाक़ी एडवांस {2}</value>
+  </data>
+  <data name="Advance pending: {0}" xml:space="preserve">
+    <value>बाक़ी एडवांस: {0}</value>
+  </data>
+  <data name="This is more than the advance pending." xml:space="preserve">
+    <value>ये बाक़ी एडवांस से ज़्यादा है।</value>
+  </data>
+  <data name="Delete this advance entry?" xml:space="preserve">
+    <value>ये एडवांस एंट्री हटाएँ?</value>
+  </data>
+  <data name="This credit is already written: {0}. Check it is not written twice." xml:space="preserve">
+    <value>ये उधार पहले से लिखा है: {0}। देख लीजिए कहीं दो बार तो नहीं लिखा।</value>
+  </data>
+  <data name="Two slips are the same: {0}." xml:space="preserve">
+    <value>दो पर्ची एक जैसी हैं: {0}।</value>
+  </data>
+  <data name="Save anyway?" xml:space="preserve">
+    <value>फिर भी सेव करें?</value>
+  </data>
+  <data name="Advance saved." xml:space="preserve">
+    <value>एडवांस सेव हो गया।</value>
+  </data>
+  <data name="Advance entry deleted." xml:space="preserve">
+    <value>एडवांस एंट्री हटा दी।</value>
+  </data>
+  <data name="Pick the employee, whether the advance was given or returned, and the amount." xml:space="preserve">
+    <value>कर्मचारी, एडवांस दिया या वापस मिला, और रक़म चुनिए।</value>
+  </data>
 </root>

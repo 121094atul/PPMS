@@ -158,6 +158,9 @@ public partial class OperationsController
         model.ProductUnits = productsTask.Result
             .GroupBy(p => p.Name)
             .ToDictionary(g => g.Key, g => g.First().Unit, StringComparer.OrdinalIgnoreCase);
+        model.ProductIds = productsTask.Result
+            .GroupBy(p => p.Name)
+            .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
 
         model.Nozzles = readingsTask.Result.OrderBy(r => r.NozzleCode).ToList();
         model.LastTesting = lastTask.Result.ToDictionary(r => r.NozzleId, r => r.TestingLoss);
@@ -575,6 +578,37 @@ public partial class OperationsController
         return Json(new { success = true, redirect = Url.Action(nameof(TodayShift), new { pumpId = input.PumpId }) });
     }
 
+    /// <summary>
+    /// Ek jaisi udhaar (Section AQ4): wahi party, wahi din, wahi rakam pehle se darj ho to lautata hai.
+    /// Aaj ki shift / Collection (ShiftId) aur Party Ledger (EntryDate) teeno yahi bulate hain. Sirf
+    /// chetavni - kuch rokta nahi; jaanch na ho paaye to khaali list.
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckCreditDuplicates([FromBody] CreditDuplicateCheckInput input, CancellationToken cancellationToken)
+    {
+        var token = GetToken();
+        if (token is null) return Unauthorized();
+
+        var lines = (input.Lines ?? new List<CreditDuplicateLineInput>())
+            .Where(l => l.PartyId > 0 && l.Amount > 0)
+            .Select(l => new ApiCreditDuplicateLine(l.PartyId, l.Amount))
+            .ToList();
+        if (lines.Count == 0 || (input.ShiftId is not > 0 && input.EntryDate is null))
+        {
+            return Json(new { success = true, items = Array.Empty<object>() });
+        }
+
+        var found = await Api.FindCreditDuplicatesAsync(token,
+            new ApiCreditDuplicateCheckRequest(input.ShiftId is > 0 ? input.ShiftId : null, input.EntryDate, lines),
+            cancellationToken);
+        return Json(new
+        {
+            success = true,
+            items = found.Select(d => new { d.PartyId, d.PartyName, d.Amount, entryDate = d.EntryDate.ToString("dd MMM"), d.Notes })
+        });
+    }
+
     private string? ValidateMoney(decimal upi, decimal card, List<TodayShiftSlipInput>? slips)
     {
         if (upi < 0 || card < 0 || (slips ?? new()).Any(x => x.Amount < 0))
@@ -594,7 +628,10 @@ public partial class OperationsController
             .Select(x => new ApiShiftCollectionCreditLine(
                 x.PartyId, null, x.Amount,
                 string.IsNullOrWhiteSpace(x.VehicleNo) ? null : x.VehicleNo.Trim().ToUpperInvariant(),
-                string.IsNullOrWhiteSpace(x.SlipNote) ? null : x.SlipNote.Trim()))
+                string.IsNullOrWhiteSpace(x.SlipNote) ? null : x.SlipNote.Trim(),
+                // Section AQ: tel tabhi jab matra likhi ho - warna sirf rakam wali parchi.
+                x.ProductId is > 0 && x.Quantity is > 0 ? x.ProductId : null,
+                x.ProductId is > 0 && x.Quantity is > 0 ? x.Quantity : null))
             .ToList();
 
     /// <summary>Us din tak ki aakhri band shift ka closing cash (galle me jitna chhoda gaya). Koi band shift na ho to null.</summary>

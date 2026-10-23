@@ -1527,7 +1527,10 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
         // apne gaadi number ke saath. Jodne par gaadi number mit jaata.
         var credits = (form.Credits ?? new List<ShiftCollectionCreditForm>())
             .Where(x => x.PartyId > 0 && x.Amount > 0)
-            .Select(x => new ApiShiftCollectionCreditLine(x.PartyId, null, x.Amount, x.VehicleNo, x.SlipNote))
+            // Section AQ: tel + matra "Aaj ki shift" se aate hain - yahan dobara save par bhi bane rahein.
+            .Select(x => new ApiShiftCollectionCreditLine(x.PartyId, null, x.Amount, x.VehicleNo, x.SlipNote,
+                x.ProductId is > 0 && x.Quantity is > 0 ? x.ProductId : null,
+                x.ProductId is > 0 && x.Quantity is > 0 ? x.Quantity : null))
             .ToList();
 
         var result = await apiClient.SaveShiftCollectionAsync(
@@ -1594,7 +1597,12 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
                         PartyId = c.PartyId,
                         Amount = c.Amount,
                         VehicleNo = c.VehicleNo,
-                        SlipNote = c.SlipNote
+                        SlipNote = c.SlipNote,
+                        ProductId = c.ProductId,
+                        Quantity = c.Quantity,
+                        ProductLabel = c.ProductId is > 0 && c.Quantity is > 0
+                            ? $"{c.Quantity:0.##} {UnitAbbr(c.Unit)} {c.ProductName}"
+                            : null
                     })
                     .ToList()
             }
@@ -2398,7 +2406,9 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
             return RedirectToAction("Login", "Account");
         }
 
-        if (model.Form.PumpId <= 0 || model.Form.EmployeeId <= 0 || model.Form.Amount <= 0)
+        // Section AQ: poori salary advance me kat sakti hai (haath me 0) - isliye amount + kata dono 0 na ho.
+        if (model.Form.PumpId <= 0 || model.Form.EmployeeId <= 0 || model.Form.Amount < 0 || model.Form.AdvanceCut < 0
+            || model.Form.Amount + model.Form.AdvanceCut <= 0)
         {
             TempData["SalaryMessage"] = "Pump, employee and amount are required.";
             return RedirectToAction(nameof(Salary), new { pumpId = model.Form.PumpId, salaryYear = model.Form.SalaryYear, salaryMonth = model.Form.SalaryMonth });
@@ -2421,11 +2431,49 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
             model.Form.PaidOn,
             model.Form.PaymentMode,
             model.Form.ReferenceNo,
-            model.Form.Notes);
+            model.Form.Notes,
+            model.Form.AdvanceCut);
 
         var result = await apiClient.SaveSalaryPaymentAsync(token, request, cancellationToken);
         TempData["SalaryMessage"] = result.Success ? "Salary payment saved successfully." : result.ErrorMessage;
         return RedirectToAction(nameof(Salary), new { pumpId = model.Form.PumpId, salaryYear = model.Form.SalaryYear, salaryMonth = model.Form.SalaryMonth });
+    }
+
+    /// <summary>Advance diya ya wapas mila (Section AQ5).</summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveAdvance(SalaryManagementViewModel model, CancellationToken cancellationToken)
+    {
+        var token = GetToken();
+        if (token is null) return RedirectToAction("Login", "Account");
+
+        var f = model.AdvanceForm;
+        object back = new { pumpId = f.PumpId, salaryYear = f.SalaryYear, salaryMonth = f.SalaryMonth };
+        if (f.PumpId <= 0 || f.EmployeeId <= 0 || f.Amount <= 0
+            || !IsOneOf(f.EntryType, new[] { "GIVEN", "RETURNED" }) || !IsOneOf(f.PaymentMode, CashPaymentModes))
+        {
+            TempData["SalaryMessage"] = "Pick the employee, whether the advance was given or returned, and the amount.";
+            return RedirectToAction(nameof(Salary), back);
+        }
+
+        var result = await apiClient.SaveEmployeeAdvanceAsync(token,
+            new ApiSaveEmployeeAdvanceRequest(f.PumpId, f.EmployeeId, f.EntryType.ToUpperInvariant(), f.Amount, f.EntryDate,
+                f.PaymentMode, string.IsNullOrWhiteSpace(f.Notes) ? null : f.Notes.Trim()),
+            cancellationToken);
+        TempData["SalaryMessage"] = result.Success ? "Advance saved." : result.ErrorMessage;
+        return RedirectToAction(nameof(Salary), back);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteAdvance(long id, long pumpId, int salaryYear, int salaryMonth, CancellationToken cancellationToken)
+    {
+        var token = GetToken();
+        if (token is null) return RedirectToAction("Login", "Account");
+
+        var result = await apiClient.DeleteEmployeeAdvanceAsync(token, id, cancellationToken);
+        TempData["SalaryMessage"] = result.Success ? "Advance entry deleted." : result.ErrorMessage;
+        return RedirectToAction(nameof(Salary), new { pumpId, salaryYear, salaryMonth });
     }
 
     [HttpGet]
@@ -3937,9 +3985,26 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
         var payments = selectedPumpId > 0
             ? await apiClient.GetSalaryPaymentsAsync(token, ownerId, selectedPumpId, year, month, cancellationToken)
             : Array.Empty<ApiSalaryPaymentDto>();
+        // Section AQ: mahine ka hisaab aur advance.
+        var summary = selectedPumpId > 0
+            ? await apiClient.GetSalarySummaryAsync(token, selectedPumpId, year, month, cancellationToken)
+            : Array.Empty<ApiSalarySummaryDto>();
+        var advances = selectedPumpId > 0
+            ? await apiClient.GetEmployeeAdvancesAsync(token, selectedPumpId, cancellationToken)
+            : Array.Empty<ApiEmployeeAdvanceDto>();
+        var firstEmployee = employees.Where(x => x.IsActive).OrderBy(x => x.FullName).FirstOrDefault();
 
         return new SalaryManagementViewModel
         {
+            Summary = summary,
+            Advances = advances,
+            AdvanceForm = new EmployeeAdvanceForm
+            {
+                PumpId = selectedPumpId,
+                EmployeeId = firstEmployee?.Id ?? 0,
+                SalaryYear = year,
+                SalaryMonth = month
+            },
             Form = new SalaryPaymentForm
             {
                 OwnerId = ownerId,

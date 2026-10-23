@@ -2134,6 +2134,56 @@ public sealed class PPMSApiClient(HttpClient httpClient)
         return (false, error);
     }
 
+    // ---- Section AQ: advance, mahine ka salary hisaab, ek jaisi udhaar ----
+
+    public async Task<IReadOnlyList<ApiSalarySummaryDto>> GetSalarySummaryAsync(string token, long pumpId, int year, int month, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/salary-summary?pumpId={pumpId}&year={year}&month={month}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode) return Array.Empty<ApiSalarySummaryDto>();
+        return await response.Content.ReadFromJsonAsync<List<ApiSalarySummaryDto>>(cancellationToken: cancellationToken) ?? new List<ApiSalarySummaryDto>();
+    }
+
+    public async Task<IReadOnlyList<ApiEmployeeAdvanceDto>> GetEmployeeAdvancesAsync(string token, long pumpId, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/employee-advances?pumpId={pumpId}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode) return Array.Empty<ApiEmployeeAdvanceDto>();
+        return await response.Content.ReadFromJsonAsync<List<ApiEmployeeAdvanceDto>>(cancellationToken: cancellationToken) ?? new List<ApiEmployeeAdvanceDto>();
+    }
+
+    public async Task<(bool Success, string? ErrorMessage)> SaveEmployeeAdvanceAsync(string token, ApiSaveEmployeeAdvanceRequest requestModel, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/employee-advances");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = JsonContent.Create(requestModel);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.IsSuccessStatusCode) return (true, null);
+        return (false, await ReadErrorMessageAsync(response, "Unable to save the advance.", cancellationToken));
+    }
+
+    public async Task<(bool Success, string? ErrorMessage)> DeleteEmployeeAdvanceAsync(string token, long id, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/employee-advances/{id}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.IsSuccessStatusCode) return (true, null);
+        return (false, await ReadErrorMessageAsync(response, "Unable to delete the advance.", cancellationToken));
+    }
+
+    public async Task<IReadOnlyList<ApiCreditDuplicateDto>> FindCreditDuplicatesAsync(string token, ApiCreditDuplicateCheckRequest requestModel, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/credit/duplicates");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = JsonContent.Create(requestModel);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        // Jaanch na ho paaye (purana API) to chup - ye sirf chetavni hai, kaam nahi rokti.
+        if (!response.IsSuccessStatusCode) return Array.Empty<ApiCreditDuplicateDto>();
+        return await response.Content.ReadFromJsonAsync<List<ApiCreditDuplicateDto>>(cancellationToken: cancellationToken) ?? new List<ApiCreditDuplicateDto>();
+    }
+
     public async Task<(bool Success, string? ErrorMessage)> DeleteUserAsync(string token, long id, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/users/{id}");

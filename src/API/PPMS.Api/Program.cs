@@ -1545,6 +1545,38 @@ app.MapPost("/api/salary-payments", async (SaveSalaryPaymentRequest request, ISa
     }
 }).RequireAuthorization();
 
+// Karmchari ka advance aur mahine ki salary ka hisaab (Section AQ). Owner JWT se; pump usi owner ka.
+app.MapGet("/api/salary-summary", async (long pumpId, int year, int month, ClaimsPrincipal user, ITenantGuard guard, ISalaryPaymentService service, CancellationToken cancellationToken) =>
+{
+    var ownerId = ResolveOwnerId(user, null);
+    if (!await guard.OwnsAsync(ownerId, TenantEntities.Pump, pumpId, cancellationToken)) return Results.NotFound();
+    return Results.Ok(await service.GetSummaryAsync(ownerId, pumpId, year, month, cancellationToken));
+}).RequireAuthorization();
+
+app.MapGet("/api/employee-advances", async (long pumpId, ClaimsPrincipal user, ITenantGuard guard, ISalaryPaymentService service, CancellationToken cancellationToken) =>
+{
+    var ownerId = ResolveOwnerId(user, null);
+    if (!await guard.OwnsAsync(ownerId, TenantEntities.Pump, pumpId, cancellationToken)) return Results.NotFound();
+    return Results.Ok(await service.GetAdvancesAsync(ownerId, pumpId, cancellationToken));
+}).RequireAuthorization();
+
+app.MapPost("/api/employee-advances", async (SaveEmployeeAdvanceRequest request, ClaimsPrincipal user, ITenantGuard guard, ISalaryPaymentService service, CancellationToken cancellationToken) =>
+{
+    var ownerId = ResolveOwnerId(user, null);
+    if (!await guard.OwnsAsync(ownerId, TenantEntities.Pump, request.PumpId, cancellationToken)) return Results.NotFound();
+    long? userId = long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var advUid) ? advUid : null;
+    var id = await service.SaveAdvanceAsync(request, ownerId, userId, cancellationToken);
+    return Results.Ok(new { Id = id });
+}).RequireAuthorization();
+
+app.MapDelete("/api/employee-advances/{id:long}", async (long id, ClaimsPrincipal user, ISalaryPaymentService service, CancellationToken cancellationToken) =>
+{
+    var ownerId = ResolveOwnerId(user, null);
+    long? userId = long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var advUid) ? advUid : null;
+    await service.DeleteAdvanceAsync(id, ownerId, userId, cancellationToken);
+    return Results.Ok(new { Success = true });
+}).RequireAuthorization();
+
 app.MapGet("/api/roles", async (ClaimsPrincipal user, long? ownerId, IRoleService service, CancellationToken cancellationToken) =>
 {
     var resolvedOwnerId = ResolveOwnerId(user, ownerId);
@@ -1636,6 +1668,16 @@ app.MapPost("/api/shifts/{id:long}/collection", async (long id, SaveShiftCollect
     long? userId = long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var collUid) ? collUid : null;
     await service.SaveCollectionAsync(request, ownerId, userId, cancellationToken);
     return Results.Ok(new { Success = true });
+}).RequireAuthorization();
+
+// Ek jaisi udhaar ki jaanch (Section AQ4) - sirf batata hai, rokta nahi. Shift / party usi owner ki
+// hai ye SP OwnerId se khud chhaanta hai; doosre owner ki shift di to din hi nahi milta.
+app.MapPost("/api/credit/duplicates", async (CreditDuplicateCheckRequest request, ClaimsPrincipal user, IShiftService service, CancellationToken cancellationToken) =>
+{
+    var ownerId = ResolveOwnerId(user, null);
+    if (ownerId <= 0) return Results.Unauthorized();
+    var items = await service.FindCreditDuplicatesAsync(request, ownerId, cancellationToken);
+    return Results.Ok(items);
 }).RequireAuthorization();
 
 // Meter ki tooti hui kadi (Section R2) — sirf batata hai, rokta kuch nahi.

@@ -22143,3 +22143,649 @@ GO
 
 PRINT '=== Section AP done ===';
 GO
+
+
+/* ==========================================================================================
+   SECTION AQ — Udhaar parchi me tel + matra, ek jaisi udhaar par chetavni, karmchari ka advance
+                (2026-10-23)
+   ------------------------------------------------------------------------------------------
+   Owner ne PetroPulse360 ke milaan me ye teen maange ("3 4 5 ye teen kaam karo"):
+
+   AQ1-3  Udhaar parchi me kaunsa tel aur kitna (litre / kg). "Aaj ki shift" me litre likhne ka
+          khaana pehle se tha par sirf rakam save hoti thi. Ab SalesHeaders.SlipProductId / SlipQty
+          (SalesDetails me NAHI - use P&L, raseed, void padhte hain; matra wahan jaati to dobara
+          ginti). Party ke khaate ke Notes me "20.00 L Diesel" bhi.
+   AQ4    sp_Credit_FindDuplicates - wahi party, wahi din, wahi rakam ki udhaar pehle se ho to
+          batata hai (screen chetavni deti hai, rokti nahi). Isi shift ki apni COLL- entry aur
+          void bill ki entry nahi ginti.
+   AQ5-6  EmployeeAdvances: advance diya (GIVEN), wapas mila (RETURNED), salary me se kata
+          (SALARY_CUT, salary payment se juda). sp_Salary_Summary - mahine ki salary, diya,
+          kata, baaki salary aur baaki advance.
+   AQ7    P&L me salary = nakad diya + advance se kata.
+
+   Purana koi data nahi badla: do NULL column, ek nayi table, naye SP; teen SP (collection get /
+   save, P&L) me sirf jodna.
+   ========================================================================================== */
+PRINT '=== Section AQ: parchi me tel + matra, udhaar duplicate, advance ===';
+GO
+
+IF COL_LENGTH('PUMP.SalesHeaders', 'SlipProductId') IS NULL
+    ALTER TABLE PUMP.SalesHeaders ADD SlipProductId BIGINT NULL;
+IF COL_LENGTH('PUMP.SalesHeaders', 'SlipQty') IS NULL
+    ALTER TABLE PUMP.SalesHeaders ADD SlipQty DECIMAL(18,3) NULL;
+GO
+PRINT '  + AQ1: SalesHeaders.SlipProductId, SlipQty';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_ShiftCollection_Get
+(
+    @ShiftId BIGINT,
+    @OwnerId BIGINT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM PUMP.ShiftHeaders WHERE Id = @ShiftId AND OwnerId = @OwnerId)
+        THROW 50230, 'That shift was not found.', 1;
+
+    /* Pehli row: UPI aur Card ka jod */
+    SELECT
+        UpiAmount  = ISNULL(SUM(CASE WHEN UPPER(PaymentMode) IN ('UPI','WALLET') THEN TotalAmount END), 0),
+        CardAmount = ISNULL(SUM(CASE WHEN UPPER(PaymentMode) = 'CARD' THEN TotalAmount END), 0)
+    FROM PUMP.SalesHeaders
+    WHERE ShiftId = @ShiftId AND OwnerId = @OwnerId AND IsVoid = 0
+      AND BillNo LIKE 'COLL-%';
+
+    /* Doosri row-set: udhaar ki har parchi. Column ka kram C# ke
+       ShiftCollectionCreditRow jaisa hi rakhna (CLAUDE.md niyam 5). */
+    SELECT
+        h.PartyId,
+        PartyName = p.PartyName,
+        Amount    = h.TotalAmount,
+        h.VehicleNo,
+        h.SlipNote,
+        /* Section AQ: parchi ka tel aur matra. API ye naam se padhti hai (purane SP par null). */
+        ProductId   = h.SlipProductId,
+        ProductName = pr.Name,
+        Quantity    = h.SlipQty,
+        Unit        = pr.Unit
+    FROM PUMP.SalesHeaders h
+    JOIN PUMP.Parties p ON p.Id = h.PartyId
+    LEFT JOIN PUMP.Products pr ON pr.Id = h.SlipProductId
+    WHERE h.ShiftId = @ShiftId AND h.OwnerId = @OwnerId AND h.IsVoid = 0
+      AND h.BillNo LIKE 'COLL-%'
+      AND UPPER(h.PaymentMode) = 'CREDIT'
+    ORDER BY h.Id;
+END
+GO
+PRINT '  + AQ2: sp_ShiftCollection_Get (tel + matra)';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_ShiftCollection_Save
+(
+    @ShiftId     BIGINT,
+    @OwnerId     BIGINT,
+    @UpiAmount   DECIMAL(18,2) = 0,
+    @CardAmount  DECIMAL(18,2) = 0,
+    @CreditJson  NVARCHAR(MAX) = NULL,   -- [{"PartyId":1,"Amount":300,"VehicleNo":"UP32AB1234","SlipNote":"..","ProductId":4,"Quantity":20}, ...]
+    @UserId      BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @PumpId BIGINT, @ShiftDate DATE;
+
+    SELECT @PumpId = PumpId, @ShiftDate = ShiftDate
+    FROM PUMP.ShiftHeaders
+    WHERE Id = @ShiftId AND OwnerId = @OwnerId;
+
+    IF @PumpId IS NULL
+        THROW 50230, 'That shift was not found.', 1;
+
+    SET @UpiAmount  = ISNULL(@UpiAmount, 0);
+    SET @CardAmount = ISNULL(@CardAmount, 0);
+
+    IF @UpiAmount < 0 OR @CardAmount < 0
+        THROW 50231, 'Amount cannot be negative.', 1;
+
+    /* Parchi likhne ke kram me (Seq) — BillNo ka kram yahi se. */
+    DECLARE @Credit TABLE
+    (
+        Seq       INT IDENTITY(1,1),
+        PartyId   BIGINT,
+        Amount    DECIMAL(18,2),
+        VehicleNo NVARCHAR(30) NULL,
+        SlipNote  NVARCHAR(150) NULL,
+        ProductId BIGINT NULL,
+        Quantity  DECIMAL(18,3) NULL
+    );
+
+    IF @CreditJson IS NOT NULL AND ISJSON(@CreditJson) = 1
+    BEGIN
+        INSERT INTO @Credit (PartyId, Amount, VehicleNo, SlipNote, ProductId, Quantity)
+        SELECT x.PartyId, x.Amount,
+               NULLIF(LEFT(UPPER(LTRIM(RTRIM(x.VehicleNo))), 30), N''),
+               NULLIF(LEFT(LTRIM(RTRIM(x.SlipNote)), 150), N''),
+               NULLIF(x.ProductId, 0),
+               CASE WHEN x.Quantity > 0 THEN x.Quantity END
+        FROM OPENJSON(@CreditJson) j
+        CROSS APPLY OPENJSON(j.value)
+        WITH (PartyId   BIGINT        '$.PartyId',
+              Amount    DECIMAL(18,2) '$.Amount',
+              VehicleNo NVARCHAR(100) '$.VehicleNo',
+              SlipNote  NVARCHAR(400) '$.SlipNote',
+              ProductId BIGINT        '$.ProductId',
+              Quantity  DECIMAL(18,3) '$.Quantity') x
+        WHERE ISNULL(x.PartyId, 0) > 0 AND ISNULL(x.Amount, 0) > 0
+        ORDER BY CAST(j.[key] AS INT);
+
+        /* Party usi owner ki honi chahiye. Doosre tenant ki party ki id daal kar
+           uske khaate me entry na ho jaye. */
+        IF EXISTS (SELECT 1 FROM @Credit c
+                   WHERE NOT EXISTS (SELECT 1 FROM PUMP.Parties p
+                                     WHERE p.Id = c.PartyId AND p.OwnerId = @OwnerId
+                                       AND ISNULL(p.IsDeleted, 0) = 0))
+            THROW 50232, 'One of the credit customers does not belong to your account.', 1;
+
+        /* Section AQ: parchi ka tel isi pump ka ho - doosre pump / tenant ka product nahi. */
+        IF EXISTS (SELECT 1 FROM @Credit c
+                   WHERE c.ProductId IS NOT NULL
+                     AND NOT EXISTS (SELECT 1 FROM PUMP.Products pr
+                                     WHERE pr.Id = c.ProductId AND pr.OwnerId = @OwnerId AND pr.PumpId = @PumpId))
+            THROW 50233, 'Pick a product of this pump for the credit slip.', 1;
+    END
+
+    DECLARE @Stamp DATETIME2(7) = DATEADD(HOUR, 20, CAST(@ShiftDate AS DATETIME2(7)));
+
+    BEGIN TRANSACTION;
+
+        /* Purani COLL- entry saaf — pehle purana udhaar party ke khaate se ghatao,
+           warna dobara save karne par wahi udhaar do baar jud jaata (Section W). */
+        UPDATE p
+        SET p.CurrentBalance = ISNULL(p.CurrentBalance, 0) - old.Amount
+        FROM PUMP.Parties p
+        JOIN (
+            SELECT PartyId, Amount = SUM(TotalAmount)
+            FROM PUMP.SalesHeaders
+            WHERE ShiftId = @ShiftId AND OwnerId = @OwnerId AND IsVoid = 0
+              AND BillNo LIKE 'COLL-%' AND UPPER(PaymentMode) = 'CREDIT'
+              AND PartyId IS NOT NULL
+            GROUP BY PartyId
+        ) old ON old.PartyId = p.Id;
+
+        DELETE FROM PUMP.PartyLedger
+        WHERE ShiftId = @ShiftId AND OwnerId = @OwnerId
+          AND ReferenceNo LIKE 'COLL-%';
+
+        DELETE FROM PUMP.SalesHeaders
+        WHERE ShiftId = @ShiftId AND OwnerId = @OwnerId
+          AND BillNo LIKE 'COLL-%';
+
+        IF @UpiAmount > 0
+            INSERT INTO PUMP.SalesHeaders
+                (OwnerId, PumpId, ShiftId, PartyId, BillNo, BillDateTime, PaymentMode,
+                 CustomerName, TotalAmount, IsVoid, IsInterState, CreatedBy)
+            VALUES
+                (@OwnerId, @PumpId, @ShiftId, NULL,
+                 CONCAT('COLL-', @ShiftId, '-UPI'), @Stamp, 'UPI',
+                 N'Online (day total)', @UpiAmount, 0, 0, @UserId);
+
+        IF @CardAmount > 0
+            INSERT INTO PUMP.SalesHeaders
+                (OwnerId, PumpId, ShiftId, PartyId, BillNo, BillDateTime, PaymentMode,
+                 CustomerName, TotalAmount, IsVoid, IsInterState, CreatedBy)
+            VALUES
+                (@OwnerId, @PumpId, @ShiftId, NULL,
+                 CONCAT('COLL-', @ShiftId, '-CARD'), @Stamp, 'CARD',
+                 N'Card (day total)', @CardAmount, 0, 0, @UserId);
+
+        /* Udhaar — har parchi ki apni row, Seq ke kram me */
+        INSERT INTO PUMP.SalesHeaders
+            (OwnerId, PumpId, ShiftId, PartyId, BillNo, BillDateTime, PaymentMode,
+             VehicleNo, CustomerName, TotalAmount, IsVoid, IsInterState, CreatedBy, SlipNote,
+             SlipProductId, SlipQty)
+        SELECT
+            @OwnerId, @PumpId, @ShiftId, c.PartyId,
+            CONCAT('COLL-', @ShiftId, '-CR-', c.PartyId, '-', c.Seq), @Stamp, 'CREDIT',
+            c.VehicleNo, p.PartyName, c.Amount, 0, 0, @UserId, c.SlipNote,
+            c.ProductId, CASE WHEN c.ProductId IS NOT NULL THEN c.Quantity END
+        FROM @Credit c
+        JOIN PUMP.Parties p ON p.Id = c.PartyId
+        ORDER BY c.Seq;
+
+        /* Party ka khaata — gaadi number aur note bhi, taaki party ke hisaab me
+           dikhe ki kaunsi gaadi ne kitna liya. */
+        INSERT INTO PUMP.PartyLedger
+            (OwnerId, PumpId, PartyId, EntryType, Amount, EntryDateTime,
+             ReferenceNo, Notes, ShiftId, PaymentMode, CreatedBy)
+        SELECT
+            @OwnerId, @PumpId, c.PartyId, 'SALE', c.Amount, @Stamp,
+            CONCAT('COLL-', @ShiftId, '-CR-', c.PartyId, '-', c.Seq),
+            CONCAT(N'Credit given during the shift',
+                   N' · ' + c.VehicleNo,
+                   /* Section AQ: "20.00 L Diesel" - party ke khaate me dikhe kitna tel liya. */
+                   N' · ' + CASE WHEN c.ProductId IS NOT NULL AND c.Quantity IS NOT NULL
+                                 THEN CONCAT(FORMAT(c.Quantity, 'N2'), N' ',
+                                             CASE WHEN pr.Unit IN (N'Kg', N'kg', N'किलो') THEN N'kg'
+                                                  WHEN pr.Unit = N'kWh' THEN N'kWh'
+                                                  WHEN pr.Unit IN (N'Piece', N'नग') THEN N'pcs'
+                                                  ELSE N'L' END,
+                                             N' ', pr.Name) END,
+                   N' · ' + c.SlipNote),
+            @ShiftId, 'CREDIT', @UserId
+        FROM @Credit c
+        LEFT JOIN PUMP.Products pr ON pr.Id = c.ProductId
+        ORDER BY c.Seq;
+
+        UPDATE p
+        SET p.CurrentBalance = ISNULL(p.CurrentBalance, 0) + x.Amount
+        FROM PUMP.Parties p
+        JOIN (SELECT PartyId, Amount = SUM(Amount) FROM @Credit GROUP BY PartyId) x
+          ON x.PartyId = p.Id;
+
+    COMMIT TRANSACTION;
+
+    SELECT Saved = 1;
+END
+GO
+PRINT '  + AQ3: sp_ShiftCollection_Save (tel + matra)';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_Credit_FindDuplicates
+(
+    @OwnerId   BIGINT,
+    @ShiftId   BIGINT = NULL,       -- shift ki parchi: din shift ka, aur isi shift ki apni entry nahi
+    @EntryDate DATE   = NULL,       -- bina shift (party khaata): ye din
+    @LinesJson NVARCHAR(MAX)        -- [{"PartyId":1,"Amount":500}, ...]
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Day DATE = @EntryDate;
+    IF @ShiftId IS NOT NULL
+        SELECT @Day = ShiftDate FROM PUMP.ShiftHeaders WHERE Id = @ShiftId AND OwnerId = @OwnerId;
+
+    DECLARE @Lines TABLE (PartyId BIGINT, Amount DECIMAL(18,2));
+    IF @Day IS NOT NULL AND ISJSON(@LinesJson) = 1
+        INSERT INTO @Lines (PartyId, Amount)
+        SELECT DISTINCT x.PartyId, x.Amount
+        FROM OPENJSON(@LinesJson) WITH (PartyId BIGINT '$.PartyId', Amount DECIMAL(18,2) '$.Amount') x
+        WHERE ISNULL(x.PartyId, 0) > 0 AND ISNULL(x.Amount, 0) > 0;
+
+    /* NOTE (CLAUDE.md niyam 5): CreditDuplicateDto ke param theek isi kram / type me hain. */
+    SELECT
+        PartyId     = CAST(pl.PartyId AS BIGINT),
+        PartyName   = CAST(p.PartyName AS NVARCHAR(200)),
+        Amount      = CAST(pl.Amount AS DECIMAL(18,2)),
+        EntryDate   = CAST(COALESCE(sh.ShiftDate, CAST(pl.EntryDateTime AS DATE)) AS DATE),
+        ReferenceNo = CAST(pl.ReferenceNo AS NVARCHAR(50)),
+        Notes       = CAST(LEFT(pl.Notes, 300) AS NVARCHAR(300))
+    FROM @Lines l
+    JOIN PUMP.PartyLedger pl ON pl.PartyId = l.PartyId AND pl.Amount = l.Amount AND pl.OwnerId = @OwnerId
+    JOIN PUMP.Parties p      ON p.Id = pl.PartyId
+    LEFT JOIN PUMP.ShiftHeaders sh ON sh.Id = pl.ShiftId
+    WHERE UPPER(pl.EntryType) IN ('SALE', 'DEBIT', 'CHARGE')
+      AND COALESCE(sh.ShiftDate, CAST(pl.EntryDateTime AS DATE)) = @Day
+      AND NOT (@ShiftId IS NOT NULL AND ISNULL(pl.ShiftId, 0) = @ShiftId AND ISNULL(pl.ReferenceNo, '') LIKE 'COLL-%')
+      AND NOT EXISTS (SELECT 1 FROM PUMP.SalesHeaders h
+                      WHERE h.OwnerId = @OwnerId AND h.BillNo = pl.ReferenceNo AND h.IsVoid = 1)
+    ORDER BY p.PartyName, pl.Id;
+END
+GO
+PRINT '  + AQ4: sp_Credit_FindDuplicates';
+GO
+
+IF OBJECT_ID('PUMP.EmployeeAdvances', 'U') IS NULL
+BEGIN
+    CREATE TABLE PUMP.EmployeeAdvances
+    (
+        Id              BIGINT        IDENTITY(1,1) NOT NULL,
+        OwnerId         BIGINT        NOT NULL,
+        PumpId          BIGINT        NOT NULL,
+        EmployeeId      BIGINT        NOT NULL,
+        -- GIVEN = advance diya, RETURNED = nakad wapas mila, SALARY_CUT = salary me se kata
+        EntryType       NVARCHAR(12)  NOT NULL,
+        Amount          DECIMAL(18,2) NOT NULL,
+        EntryDate       DATE          NOT NULL,
+        PaymentMode     NVARCHAR(20)  NULL,
+        SalaryPaymentId BIGINT        NULL,
+        Notes           NVARCHAR(250) NULL,
+        IsDeleted       BIT           NOT NULL CONSTRAINT DF_EmpAdv_IsDeleted DEFAULT (0),
+        CreatedOn       DATETIME2(7)  NOT NULL CONSTRAINT DF_EmpAdv_CreatedOn DEFAULT (SYSDATETIME()),
+        CreatedBy       BIGINT        NULL,
+        CONSTRAINT PK_EmployeeAdvances PRIMARY KEY CLUSTERED (Id),
+        CONSTRAINT FK_EmpAdv_Employee FOREIGN KEY (EmployeeId) REFERENCES PUMP.Employees(Id),
+        CONSTRAINT CK_EmpAdv_Type CHECK (EntryType IN ('GIVEN', 'RETURNED', 'SALARY_CUT')),
+        CONSTRAINT CK_EmpAdv_Amount CHECK (Amount > 0)
+    );
+    CREATE INDEX IX_EmpAdv_Employee ON PUMP.EmployeeAdvances (EmployeeId, IsDeleted);
+    PRINT '  + AQ5: table PUMP.EmployeeAdvances';
+END
+ELSE
+    PRINT '  = AQ5: table PUMP.EmployeeAdvances pehle se hai';
+GO
+
+/* Ek karmchari ka baaki advance: diya - wapas mila - salary se kata. */
+CREATE OR ALTER FUNCTION PUMP.fn_EmployeeAdvanceBalance (@EmployeeId BIGINT)
+RETURNS DECIMAL(18,2)
+AS
+BEGIN
+    RETURN ISNULL((SELECT SUM(CASE WHEN EntryType = 'GIVEN' THEN Amount ELSE -Amount END)
+                   FROM PUMP.EmployeeAdvances
+                   WHERE EmployeeId = @EmployeeId AND IsDeleted = 0), 0);
+END
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_EmployeeAdvance_Save
+(
+    @OwnerId     BIGINT,
+    @PumpId      BIGINT,
+    @EmployeeId  BIGINT,
+    @EntryType   NVARCHAR(12),      -- GIVEN / RETURNED (SALARY_CUT sirf salary se)
+    @Amount      DECIMAL(18,2),
+    @EntryDate   DATE,
+    @PaymentMode NVARCHAR(20) = NULL,
+    @Notes       NVARCHAR(250) = NULL,
+    @UserId      BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM PUMP.Employees
+                   WHERE Id = @EmployeeId AND OwnerId = @OwnerId AND PumpId = @PumpId AND ISNULL(IsDeleted, 0) = 0)
+        THROW 50152, 'Employee not found, or the employee does not belong to this pump.', 1;
+    IF @EntryType NOT IN ('GIVEN', 'RETURNED')
+        THROW 50160, 'Pick whether the advance was given or returned.', 1;
+    IF ISNULL(@Amount, 0) <= 0
+        THROW 50161, 'Enter the amount.', 1;
+    IF @EntryType = 'RETURNED' AND @Amount > PUMP.fn_EmployeeAdvanceBalance(@EmployeeId)
+        THROW 50162, 'More is being returned than the advance this employee has.', 1;
+
+    INSERT INTO PUMP.EmployeeAdvances (OwnerId, PumpId, EmployeeId, EntryType, Amount, EntryDate, PaymentMode, Notes, CreatedBy)
+    VALUES (@OwnerId, @PumpId, @EmployeeId, @EntryType, @Amount, @EntryDate, NULLIF(@PaymentMode, N''), NULLIF(@Notes, N''), @UserId);
+    DECLARE @Id BIGINT = CAST(SCOPE_IDENTITY() AS BIGINT);
+
+    DECLARE @Reason NVARCHAR(500) = CONCAT(@EntryType, ' Rs ', @Amount, ISNULL(' - ' + NULLIF(@Notes, N''), ''));
+    EXEC PUMP.sp_Audit_Log @OwnerId = @OwnerId, @PumpId = @PumpId, @UserId = @UserId,
+         @EntityName = 'EmployeeAdvances', @EntityId = @Id, @Action = 'CREATE', @Reason = @Reason;
+
+    SELECT @Id AS Id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_EmployeeAdvance_Delete
+(
+    @Id      BIGINT,
+    @OwnerId BIGINT,
+    @UserId  BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @PumpId BIGINT, @Type NVARCHAR(12), @EmployeeId BIGINT, @Amount DECIMAL(18,2);
+    SELECT @PumpId = PumpId, @Type = EntryType, @EmployeeId = EmployeeId, @Amount = Amount
+    FROM PUMP.EmployeeAdvances WHERE Id = @Id AND OwnerId = @OwnerId AND IsDeleted = 0;
+
+    IF @PumpId IS NULL
+        THROW 50163, 'That advance entry was not found.', 1;
+    IF @Type = 'SALARY_CUT'
+        THROW 50164, 'This was cut from a salary - change it on that salary payment.', 1;
+    /* Diya hua advance hataane se baaki minus me na jaye (wapas / kata pehle se ho). */
+    IF @Type = 'GIVEN' AND PUMP.fn_EmployeeAdvanceBalance(@EmployeeId) - @Amount < 0
+        THROW 50165, 'Part of this advance is already returned or cut from salary. Remove those first.', 1;
+
+    UPDATE PUMP.EmployeeAdvances SET IsDeleted = 1 WHERE Id = @Id AND OwnerId = @OwnerId;
+
+    EXEC PUMP.sp_Audit_Log @OwnerId = @OwnerId, @PumpId = @PumpId, @UserId = @UserId,
+         @EntityName = 'EmployeeAdvances', @EntityId = @Id, @Action = 'DELETE';
+
+    SELECT Deleted = 1;
+END
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_EmployeeAdvance_List
+(
+    @OwnerId BIGINT,
+    @PumpId  BIGINT,
+    @Top     INT = 50
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    /* NOTE (CLAUDE.md niyam 5): EmployeeAdvanceDto ke param theek isi kram / type me hain. */
+    SELECT TOP (@Top)
+        Id              = a.Id,
+        EmployeeId      = a.EmployeeId,
+        EmployeeName    = CAST(e.FullName AS NVARCHAR(200)),
+        EntryType       = CAST(a.EntryType AS NVARCHAR(12)),
+        Amount          = a.Amount,
+        EntryDate       = a.EntryDate,
+        PaymentMode     = CAST(a.PaymentMode AS NVARCHAR(20)),
+        Notes           = CAST(a.Notes AS NVARCHAR(250)),
+        SalaryPaymentId = a.SalaryPaymentId
+    FROM PUMP.EmployeeAdvances a
+    JOIN PUMP.Employees e ON e.Id = a.EmployeeId
+    WHERE a.OwnerId = @OwnerId AND a.PumpId = @PumpId AND a.IsDeleted = 0
+    ORDER BY a.EntryDate DESC, a.Id DESC;
+END
+GO
+
+/* Salary payment ke saath "advance me se kata" - us payment ki purani kati entry hata kar nayi. */
+CREATE OR ALTER PROCEDURE PUMP.sp_SalaryPayment_SetAdvanceCut
+(
+    @OwnerId         BIGINT,
+    @PumpId          BIGINT,
+    @SalaryPaymentId BIGINT,
+    @Amount          DECIMAL(18,2),
+    @UserId          BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @EmployeeId BIGINT, @PaidOn DATE, @Year INT, @Month INT;
+    SELECT @EmployeeId = EmployeeId, @PaidOn = PaidOn, @Year = SalaryYear, @Month = SalaryMonth
+    FROM PUMP.SalaryPayments
+    WHERE Id = @SalaryPaymentId AND OwnerId = @OwnerId AND PumpId = @PumpId;
+
+    IF @EmployeeId IS NULL
+        THROW 50166, 'That salary payment was not found.', 1;
+
+    SET @Amount = ISNULL(@Amount, 0);
+    IF @Amount < 0
+        THROW 50161, 'Enter the amount.', 1;
+
+    BEGIN TRANSACTION;
+        UPDATE PUMP.EmployeeAdvances SET IsDeleted = 1
+        WHERE SalaryPaymentId = @SalaryPaymentId AND EntryType = 'SALARY_CUT' AND IsDeleted = 0;
+
+        IF @Amount > PUMP.fn_EmployeeAdvanceBalance(@EmployeeId)
+            THROW 50167, 'More is being cut than the advance this employee has.', 1;
+
+        IF @Amount > 0
+            INSERT INTO PUMP.EmployeeAdvances (OwnerId, PumpId, EmployeeId, EntryType, Amount, EntryDate, SalaryPaymentId, Notes, CreatedBy)
+            VALUES (@OwnerId, @PumpId, @EmployeeId, 'SALARY_CUT', @Amount, @PaidOn, @SalaryPaymentId,
+                    CONCAT(N'Cut from salary ', RIGHT('0' + CAST(@Month AS VARCHAR(2)), 2), '/', @Year), @UserId);
+    COMMIT TRANSACTION;
+
+    SELECT Saved = 1;
+END
+GO
+
+/* Mahine ka hisaab: har karmchari ki salary, diya (nakad), advance se kata, baaki salary, baaki advance. */
+CREATE OR ALTER PROCEDURE PUMP.sp_Salary_Summary
+(
+    @OwnerId BIGINT,
+    @PumpId  BIGINT,
+    @Year    INT,
+    @Month   INT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @MonthEnd DATE = EOMONTH(DATEFROMPARTS(@Year, @Month, 1));
+
+    /* NOTE (CLAUDE.md niyam 5): SalarySummaryDto ke param theek isi kram / type me hain. */
+    SELECT
+        EmployeeId         = e.Id,
+        EmployeeCode       = CAST(e.EmployeeCode AS NVARCHAR(30)),
+        FullName           = CAST(e.FullName AS NVARCHAR(200)),
+        MonthlySalary      = CAST(ISNULL(e.MonthlySalary, 0) AS DECIMAL(18,2)),
+        Paid               = CAST(ISNULL(sp.Amount, 0) AS DECIMAL(18,2)),
+        AdvanceCut         = CAST(ISNULL(cut.Amount, 0) AS DECIMAL(18,2)),
+        Pending            = CAST(CASE WHEN ISNULL(e.MonthlySalary, 0) > 0
+                                       THEN ISNULL(e.MonthlySalary, 0) - ISNULL(sp.Amount, 0) - ISNULL(cut.Amount, 0)
+                                       ELSE 0 END AS DECIMAL(18,2)),
+        AdvanceOutstanding = CAST(PUMP.fn_EmployeeAdvanceBalance(e.Id) AS DECIMAL(18,2)),
+        SalaryPaymentId    = sp.Id
+    FROM PUMP.Employees e
+    OUTER APPLY (SELECT TOP 1 s.Id, s.Amount FROM PUMP.SalaryPayments s
+                 WHERE s.EmployeeId = e.Id AND s.OwnerId = @OwnerId AND s.PumpId = @PumpId
+                   AND s.SalaryYear = @Year AND s.SalaryMonth = @Month) sp
+    OUTER APPLY (SELECT Amount = SUM(a.Amount) FROM PUMP.EmployeeAdvances a
+                 WHERE a.SalaryPaymentId = sp.Id AND a.EntryType = 'SALARY_CUT' AND a.IsDeleted = 0) cut
+    WHERE e.OwnerId = @OwnerId AND e.PumpId = @PumpId AND ISNULL(e.IsDeleted, 0) = 0
+      AND (e.IsActive = 1 OR sp.Id IS NOT NULL OR PUMP.fn_EmployeeAdvanceBalance(e.Id) <> 0)
+      AND (e.JoinDate IS NULL OR e.JoinDate <= @MonthEnd)
+    ORDER BY e.FullName;
+END
+GO
+PRINT '  + AQ6: advance (save / delete / list / salary cut) + sp_Salary_Summary';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_Report_ProfitLoss
+(
+    @OwnerId  BIGINT,
+    @PumpId   BIGINT,
+    @DateFrom DATE,
+    @DateTo   DATE
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    /* NOTE (CLAUDE.md niyam 5): ProfitLossLineDto ke param theek isi kram / type me hain. */
+    ;WITH meter AS
+    (
+        SELECT r.ProductId, Qty = SUM(ISNULL(r.SoldQty, 0)), Amount = SUM(ISNULL(r.SoldAmount, 0))
+        FROM PUMP.ShiftNozzleReadings r
+        JOIN PUMP.ShiftHeaders sh ON sh.Id = r.ShiftId
+        WHERE sh.OwnerId = @OwnerId AND sh.PumpId = @PumpId AND sh.Status = 'CLOSED'
+          AND sh.ShiftDate BETWEEN @DateFrom AND @DateTo
+        GROUP BY r.ProductId
+    ),
+    counterSale AS
+    (
+        /* Mobil / saaman: jis product ka koi nozzle hi nahi, uska bill hi uski bikri hai. */
+        SELECT d.ProductId, Qty = SUM(ISNULL(d.Quantity, 0)), Amount = SUM(ISNULL(d.Amount, 0))
+        FROM PUMP.SalesDetails d
+        JOIN PUMP.SalesHeaders h ON h.Id = d.SalesHeaderId
+        WHERE h.OwnerId = @OwnerId AND h.PumpId = @PumpId AND h.IsVoid = 0
+          AND CAST(h.BillDateTime AS DATE) BETWEEN @DateFrom AND @DateTo
+          AND NOT EXISTS (SELECT 1 FROM PUMP.Nozzles n WHERE n.ProductId = d.ProductId)
+        GROUP BY d.ProductId
+    ),
+    sold AS
+    (
+        SELECT x.ProductId, Qty = SUM(x.Qty), Amount = SUM(x.Amount)
+        FROM (SELECT ProductId, Qty, Amount FROM meter
+              UNION ALL
+              SELECT ProductId, Qty, Amount FROM counterSale) x
+        GROUP BY x.ProductId
+    ),
+    costed AS
+    (
+        SELECT s.ProductId, s.Qty, s.Amount,
+               PeriodRate = (SELECT SUM(d.Amount) / NULLIF(SUM(d.Quantity), 0)
+                             FROM PUMP.PurchaseDetails d
+                             JOIN PUMP.PurchaseHeaders h ON h.Id = d.PurchaseHeaderId
+                             WHERE h.OwnerId = @OwnerId AND h.PumpId = @PumpId AND d.ProductId = s.ProductId
+                               AND d.Quantity > 0
+                               AND h.InvoiceDate BETWEEN @DateFrom AND @DateTo),
+               LastRate   = (SELECT TOP 1 d.Amount / NULLIF(d.Quantity, 0)
+                             FROM PUMP.PurchaseDetails d
+                             JOIN PUMP.PurchaseHeaders h ON h.Id = d.PurchaseHeaderId
+                             WHERE h.OwnerId = @OwnerId AND h.PumpId = @PumpId AND d.ProductId = s.ProductId
+                               AND d.Quantity > 0
+                               AND h.InvoiceDate <= @DateTo
+                             ORDER BY h.InvoiceDate DESC, h.Id DESC)
+        FROM sold s
+        WHERE s.Qty <> 0 OR s.Amount <> 0
+    )
+    SELECT
+        Section    = CAST(N'SALE' AS NVARCHAR(20)),
+        SortOrder  = CAST(ROW_NUMBER() OVER (ORDER BY p.IsFuel DESC, p.Name) AS INT),
+        ItemId     = CAST(c.ProductId AS BIGINT),
+        Name       = CAST(p.Name AS NVARCHAR(200)),
+        Unit       = CAST(p.Unit AS NVARCHAR(20)),
+        Qty        = CAST(c.Qty AS DECIMAL(18,3)),
+        Amount     = CAST(c.Amount AS DECIMAL(18,2)),
+        CostRate   = CAST(COALESCE(c.PeriodRate, c.LastRate) AS DECIMAL(18,4)),
+        CostAmount = CAST(c.Qty * COALESCE(c.PeriodRate, c.LastRate) AS DECIMAL(18,2)),
+        CostSource = CAST(CASE WHEN c.PeriodRate IS NOT NULL THEN N'PERIOD'
+                               WHEN c.LastRate   IS NOT NULL THEN N'LAST'
+                               ELSE N'NONE' END AS NVARCHAR(10))
+    FROM costed c
+    JOIN PUMP.Products p ON p.Id = c.ProductId
+
+    UNION ALL
+
+    SELECT
+        CAST(N'EXPENSE' AS NVARCHAR(20)),
+        CAST(ROW_NUMBER() OVER (ORDER BY SUM(e.Amount) DESC) AS INT),
+        CAST(e.ExpenseHeadId AS BIGINT),
+        CAST(ISNULL(eh.HeadName, N'-') AS NVARCHAR(200)),
+        CAST(NULL AS NVARCHAR(20)),
+        CAST(COUNT(*) AS DECIMAL(18,3)),
+        CAST(SUM(e.Amount) AS DECIMAL(18,2)),
+        CAST(NULL AS DECIMAL(18,4)),
+        CAST(NULL AS DECIMAL(18,2)),
+        CAST(N'' AS NVARCHAR(10))
+    FROM PUMP.ExpenseTransactions e
+    LEFT JOIN PUMP.ExpenseHeads eh ON eh.Id = e.ExpenseHeadId
+    WHERE e.OwnerId = @OwnerId AND e.PumpId = @PumpId
+      AND CAST(e.TxnDateTime AS DATE) BETWEEN @DateFrom AND @DateTo
+    GROUP BY e.ExpenseHeadId, eh.HeadName
+
+    UNION ALL
+
+    SELECT
+        CAST(N'SALARY' AS NVARCHAR(20)),
+        CAST(1 AS INT),
+        CAST(NULL AS BIGINT),
+        CAST(N'Salary' AS NVARCHAR(200)),
+        CAST(NULL AS NVARCHAR(20)),
+        CAST(COUNT(*) AS DECIMAL(18,3)),
+        CAST(SUM(x.Amount) AS DECIMAL(18,2)),
+        CAST(NULL AS DECIMAL(18,4)),
+        CAST(NULL AS DECIMAL(18,2)),
+        CAST(N'' AS NVARCHAR(10))
+    FROM
+    (
+        /* Section AQ: salary ka kharcha = haath me diya + advance me se kata (wo bhi salary hai). */
+        SELECT sp.Amount FROM PUMP.SalaryPayments sp
+        WHERE sp.OwnerId = @OwnerId AND sp.PumpId = @PumpId
+          AND sp.PaidOn BETWEEN @DateFrom AND @DateTo
+        UNION ALL
+        SELECT ea.Amount FROM PUMP.EmployeeAdvances ea
+        WHERE ea.OwnerId = @OwnerId AND ea.PumpId = @PumpId AND ea.IsDeleted = 0
+          AND ea.EntryType = 'SALARY_CUT'
+          AND ea.EntryDate BETWEEN @DateFrom AND @DateTo
+    ) x
+    HAVING COUNT(*) > 0;
+END
+GO
+PRINT '  + AQ7: sp_Report_ProfitLoss - salary me advance se kata bhi';
+GO
+
+PRINT '=== Section AQ done ===';
+GO

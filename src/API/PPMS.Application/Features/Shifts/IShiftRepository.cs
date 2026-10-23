@@ -1,4 +1,4 @@
-﻿namespace PPMS.Application.Features.Shifts;
+namespace PPMS.Application.Features.Shifts;
 
 public interface IShiftRepository
 {
@@ -12,6 +12,8 @@ public interface IShiftRepository
     Task<IReadOnlyList<MeterChainGapDto>> GetMeterChainGapsAsync(long ownerId, long? pumpId, int days, CancellationToken cancellationToken = default);
     Task<ShiftCollectionDto> GetCollectionAsync(long shiftId, long ownerId, CancellationToken cancellationToken = default);
     Task SaveCollectionAsync(SaveShiftCollectionRequest request, long ownerId, long? userId, CancellationToken cancellationToken = default);
+    /// <summary>Wahi party, wahi din, wahi rakam ki udhaar pehle se (Section AQ4).</summary>
+    Task<IReadOnlyList<CreditDuplicateDto>> FindCreditDuplicatesAsync(CreditDuplicateCheckRequest request, long ownerId, CancellationToken cancellationToken = default);
     Task<decimal> SaveCashDenominationAsync(long shiftId, SaveShiftCashDenominationRequest request, CancellationToken cancellationToken = default);
 
     // Support console (Section Z) — Super Admin hi call karta hai.

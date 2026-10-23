@@ -11,5 +11,7 @@ public sealed record SaveSalaryPaymentRequest(
     DateOnly PaidOn,
     string PaymentMode,
     string? ReferenceNo,
-    string? Notes
+    string? Notes,
+    // Section AQ: salary me se kitna advance kata. null = advance ko mat chhedo (purana client).
+    decimal? AdvanceCut = null
 );

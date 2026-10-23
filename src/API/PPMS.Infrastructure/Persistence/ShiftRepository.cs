@@ -70,7 +70,12 @@ public sealed class ShiftRepository(IOptions<DatabaseOptions> options) : IShiftR
                 r["PartyName"] as string,
                 Convert.ToDecimal(r["Amount"]),
                 r.TryGetValue("VehicleNo", out var vehicle) ? vehicle as string : null,
-                r.TryGetValue("SlipNote", out var note) ? note as string : null))
+                r.TryGetValue("SlipNote", out var note) ? note as string : null,
+                // Section AQ - purane SP par ye column hote hi nahi.
+                r.TryGetValue("ProductId", out var pid) && pid is not null ? Convert.ToInt64(pid) : null,
+                r.TryGetValue("Quantity", out var qty) && qty is not null ? Convert.ToDecimal(qty) : null,
+                r.TryGetValue("ProductName", out var pname) ? pname as string : null,
+                r.TryGetValue("Unit", out var unit) ? unit as string : null))
             .ToList();
 
         return new ShiftCollectionDto(
@@ -95,10 +100,29 @@ public sealed class ShiftRepository(IOptions<DatabaseOptions> options) : IShiftR
                 CreditJson = JsonSerializer.Serialize(
                     (request.Credits ?? Array.Empty<ShiftCollectionCreditLine>())
                         .Where(c => c.PartyId > 0 && c.Amount > 0)
-                        .Select(c => new { c.PartyId, c.Amount, c.VehicleNo, c.SlipNote })),
+                        .Select(c => new { c.PartyId, c.Amount, c.VehicleNo, c.SlipNote, c.ProductId, c.Quantity })),
                 UserId = userId
             },
             commandType: System.Data.CommandType.StoredProcedure);
+    }
+
+    public async Task<IReadOnlyList<CreditDuplicateDto>> FindCreditDuplicatesAsync(CreditDuplicateCheckRequest request, long ownerId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        var rows = await connection.QueryAsync<CreditDuplicateDto>(
+            sql: "PUMP.sp_Credit_FindDuplicates",
+            param: new
+            {
+                OwnerId = ownerId,
+                request.ShiftId,
+                EntryDate = request.EntryDate?.ToDateTime(TimeOnly.MinValue),
+                LinesJson = JsonSerializer.Serialize(
+                    (request.Lines ?? Array.Empty<CreditDuplicateLine>())
+                        .Where(l => l.PartyId > 0 && l.Amount > 0)
+                        .Select(l => new { l.PartyId, l.Amount }))
+            },
+            commandType: System.Data.CommandType.StoredProcedure);
+        return rows.AsList();
     }
 
     public async Task<long> CloseAsync(CloseShiftRequest request, CancellationToken cancellationToken = default)
