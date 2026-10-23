@@ -170,6 +170,16 @@ body {
   margin-bottom: 2px;
 }
 
+/* Menu ka icon (emoji) - sab ek seedh me, text se thoda hat kar. */
+.menu-ico {
+  display: inline-block;
+  width: 1.5em;
+  margin-right: 0.4rem;
+  text-align: center;
+  font-size: 1.05em;
+  line-height: 1;
+}
+
 .menu-link:hover {
   background: var(--bg-sidebar-hover);
   color: var(--sidebar-text-active);

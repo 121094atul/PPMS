@@ -66,6 +66,64 @@
             _ => "#"
         };
     }
+
+    // Har menu ka chhota icon. App me icon font nahi hai - emoji har phone / computer par bina kuch
+    // load kiye dikhta hai ("Aaj ki shift" ka ⛽ bhi yahi). Purane, sab jagah chalne wale emoji hi.
+    private static string ResolveIcon(string route)
+    {
+        return route.ToLowerInvariant() switch
+        {
+            "/dashboard" => "🏠",
+            "/pump" or "/pumps" => "🏭",
+            "/product" or "/products" => "📦",
+            "/tank" or "/tanks" => "🛢️",
+            "/daily-rates" or "/rates" => "🏷️",
+            "/nozzle" or "/nozzles" => "🚰",
+            "/nozzle-cash" => "💵",
+            "/attendant-cash" => "👛",
+            "/party" or "/parties" => "👥",
+            "/sales" or "/sale" => "🧾",
+            "/shift" or "/shifts" => "⏱️",
+            "/tank-stock" => "📊",
+            "/party-ledger" => "📒",
+            "/purchase" => "🚚",
+            "/vendor" or "/vendors" => "🏢",
+            "/stock-reconcile" => "⚖️",
+            "/cashbook" => "💰",
+            "/expenses" => "📤",
+            "/dip-testing" => "📏",
+            "/day-book" => "📖",
+            "/fleet-contracts" => "🚛",
+            "/coupon-books" => "🎟️",
+            "/reports" => "📑",
+            "/outstanding" => "⏳",
+            "/pump-comparison" => "🆚",
+            "/daily-stock-register" => "📋",
+            "/sale-purchase-register" => "🗂️",
+            "/profit-loss" => "📈",
+            "/financials" => "🏦",
+            "/users" or "/user" => "👤",
+            "/roles" or "/role" => "🔐",
+            "/employees" or "/employee" => "👔",
+            "/staff" => "👷",
+            "/salary" or "/salary-register" => "💸",
+            "/activity-log" => "🕒",
+            "/alerts" => "🔔",
+            "/wallet" => "💬",
+            "/manual" or "/help" => "📘",
+            _ => "•"
+        };
+    }
+
+    private static string GroupIcon(string group) => group switch
+    {
+        "General" => "⭐",
+        "Masters" => "🗄️",
+        "Operations" => "⚙️",
+        "Reports" => "📚",
+        "Management" => "👔",
+        _ => "•"
+    };
 }
 
 <div class="accordion side-accordion" id="appMenu">
@@ -75,7 +133,7 @@
     <div class="accordion-item">
         <h2 class="accordion-header">
             <button class="accordion-button @(isSuperAdminActive ? "" : "collapsed")" type="button" data-bs-toggle="collapse" data-bs-target="#superAdminMenuGroup" aria-expanded="@(isSuperAdminActive ? "true" : "false")">
-                Super Admin
+                <span class="menu-ico" aria-hidden="true">🛡️</span>Super Admin
             </button>
         </h2>
         <div id="superAdminMenuGroup" class="accordion-collapse collapse @(isSuperAdminActive ? "show" : "")" data-bs-parent="#appMenu">
@@ -156,7 +214,7 @@ else
         <div class="accordion-item">
             <h2 class="accordion-header">
                 <button class="accordion-button @isCollapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="@isExpanded">
-                    @group.GroupName
+                    <span class="menu-ico" aria-hidden="true">@GroupIcon(group.GroupName)</span>@group.GroupName
                 </button>
             </h2>
             <div id="@collapseId" class="accordion-collapse collapse @showClass" data-bs-parent="#appMenu">
@@ -167,9 +225,9 @@ else
                         var activeClass = string.Equals(resolvedHref, currentPath, StringComparison.OrdinalIgnoreCase) ? "active fw-bold text-primary" : "";
                         if (resolvedHref == "/Operations/Shifts")
                         {
-                            <a class="menu-link @(onTodayShift ? "active fw-bold text-primary" : "")" href="/Operations/TodayShift">⛽ @L["Today's Shift"]</a>
+                            <a class="menu-link @(onTodayShift ? "active fw-bold text-primary" : "")" href="/Operations/TodayShift"><span class="menu-ico" aria-hidden="true">⛽</span>@L["Today's Shift"]</a>
                         }
-                        <a class="menu-link @activeClass" href="@resolvedHref">@item.MenuName</a>
+                        <a class="menu-link @activeClass" href="@resolvedHref"><span class="menu-ico" aria-hidden="true">@ResolveIcon(item.Route)</span>@item.MenuName</a>
                     }
                 </div>
             </div>
