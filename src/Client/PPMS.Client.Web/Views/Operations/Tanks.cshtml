@@ -57,8 +57,10 @@
                             <input asp-for="Form.Capacity" type="number" class="form-control" step="0.01" min="0" required />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">@L["Safe Fill Level"]</label>
+                            @* Naam se "kitna bhar sakte hain" lagta tha - asal me ye kam stock ki chetavni ki seema hai (dashboard). *@
+                            <label class="form-label">@L["Low stock alert below (L)"]</label>
                             <input asp-for="Form.SafeFillLevel" type="number" class="form-control" step="0.01" min="0" required />
+                            <div class="form-text">@L["Dashboard warns when stock goes below this. For example 3,000 L."]</div>
                         </div>
                     </div>
 

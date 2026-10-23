@@ -18,7 +18,7 @@
                         <th>@L["Tank Name"]</th>
                         <th>@L["Product"]</th>
                         <th>@L["Capacity"]</th>
-                        <th>@L["Safe Level"]</th>
+                        <th>@L["Alert below"]</th>
                         <th>@L["Current Stock"]</th>
                         <th>@L["Status"]</th>
                         <th class="text-center">@L["Actions"]</th>
@@ -72,7 +72,7 @@
                             <input type="number" step="0.01" class="form-control form-control-sm" id="Capacity" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="SafeFillLevel" class="form-label fw-bold">Safe Fill Level <span class="text-danger">*</span></label>
+                            <label for="SafeFillLevel" class="form-label fw-bold">@L["Low stock alert below (L)"] <span class="text-danger">*</span></label>
                             <input type="number" step="0.01" class="form-control form-control-sm" id="SafeFillLevel" required>
                         </div>
                     </div>
@@ -176,7 +176,7 @@
                         <td class="fw-bold" data-label="Tank Name">${t.name}</td>
                         <td data-label="Product">${t.productName}</td>
                         <td data-label="Capacity">${t.capacity.toFixed(2)}</td>
-                        <td data-label="Safe Level">${t.safeFillLevel.toFixed(2)}</td>
+                        <td data-label="@L["Alert below"]">${t.safeFillLevel.toFixed(2)}</td>
                         <td data-label="Current Stock">${t.currentStock.toFixed(2)}</td>
                         <td data-label="Status">${statusBadge}</td>
                         <td class="text-center" data-label="Actions">

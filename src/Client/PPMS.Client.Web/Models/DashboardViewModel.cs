@@ -51,7 +51,17 @@ public sealed class DashboardViewModel
     /// gayab ho jaati hai.
     /// </summary>
     public SetupStatus Setup { get; set; } = new();
+
+    /// <summary>
+    /// Is mahine kitna tel bika (har product ka litre / kg) - pehle yahan "Net" (bikri - kharcha) tha, jo
+    /// tel ki kharid nahi ghatata tha aur lakhon ka jhootha munafa dikhata tha. Munafa P&amp;L report me hai.
+    /// </summary>
+    public IReadOnlyList<FuelSoldLine> MonthFuel { get; set; } = Array.Empty<FuelSoldLine>();
+    public IReadOnlyList<FuelSoldLine> TodayFuel { get; set; } = Array.Empty<FuelSoldLine>();
 }
+
+/// <summary>Ek tel ki bikri: naam, ikai (L / kg), matra, rakam.</summary>
+public sealed record FuelSoldLine(string Name, string Unit, decimal Qty, decimal Amount);
 
 public sealed class SetupStatus
 {

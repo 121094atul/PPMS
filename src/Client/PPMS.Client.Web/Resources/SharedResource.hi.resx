@@ -4120,4 +4120,19 @@
   <data name="Can cut up to {0} from advance" xml:space="preserve">
     <value>एडवांस से ज़्यादा से ज़्यादा {0} काट सकते हैं</value>
   </data>
+  <data name="Fuel sold" xml:space="preserve">
+    <value>बिका तेल</value>
+  </data>
+  <data name="Low stock alert below (L)" xml:space="preserve">
+    <value>कम स्टॉक की चेतावनी — इससे नीचे जाए तो (लीटर)</value>
+  </data>
+  <data name="Dashboard warns when stock goes below this. For example 3,000 L." xml:space="preserve">
+    <value>स्टॉक इससे नीचे जाते ही डैशबोर्ड चेतावनी देगा। जैसे 3,000 लीटर।</value>
+  </data>
+  <data name="Alert below" xml:space="preserve">
+    <value>चेतावनी इससे नीचे</value>
+  </data>
+  <data name="All tanks are above the alert level." xml:space="preserve">
+    <value>सब टैंक चेतावनी की सीमा से ऊपर हैं।</value>
+  </data>
 </root>

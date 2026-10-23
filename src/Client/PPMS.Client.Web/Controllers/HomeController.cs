@@ -191,8 +191,32 @@ public class HomeController(PPMSApiClient apiClient) : Controller
             HasAnyShift     = shifts.Count > 0
         };
 
+        // ── Is mahine kitna tel bika ─────────────────────────────────────────
+        // P&L wali hi ginti (band shift ki meter bikri, testing ke bina) - sirf nozzle wale product
+        // (petrol / diesel / CNG), mobil jaisa saaman nahi.
+        IReadOnlyList<FuelSoldLine> monthFuel = Array.Empty<FuelSoldLine>();
+        IReadOnlyList<FuelSoldLine> todayFuel = Array.Empty<FuelSoldLine>();
+        if (selectedPumpId > 0 && nozzles.Count > 0)
+        {
+            var fuelIds = nozzles.Select(n => n.ProductId).ToHashSet();
+            IReadOnlyList<FuelSoldLine> Fuel(IReadOnlyList<ApiProfitLossLineDto> lines) => lines
+                .Where(l => l.Section == "SALE" && l.ItemId is long id && fuelIds.Contains(id))
+                .Select(l => new FuelSoldLine(l.Name, PPMS.Client.Web.Services.ProductUnit.Abbr(l.Unit), l.Qty, l.Amount))
+                .ToList();
+
+            var monthTask = apiClient.GetProfitLossAsync(token, selectedPumpId, targetStartDay, targetEndDay, cancellationToken);
+            var todayTask = todayOnly >= targetStartDay && todayOnly <= targetEndDay
+                ? apiClient.GetProfitLossAsync(token, selectedPumpId, todayOnly, todayOnly, cancellationToken)
+                : Task.FromResult<IReadOnlyList<ApiProfitLossLineDto>>(Array.Empty<ApiProfitLossLineDto>());
+            await Task.WhenAll(monthTask, todayTask);
+            monthFuel = Fuel(monthTask.Result);
+            todayFuel = Fuel(todayTask.Result);
+        }
+
         var model = new DashboardViewModel
         {
+            MonthFuel = monthFuel,
+            TodayFuel = todayFuel,
             OwnerId = ownerId,
             PumpId = selectedPumpId,
             PumpName = pumps.FirstOrDefault(x => x.Id == selectedPumpId)?.Name ?? "All Pumps",
