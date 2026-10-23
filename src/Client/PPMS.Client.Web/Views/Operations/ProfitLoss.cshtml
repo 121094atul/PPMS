@@ -129,11 +129,11 @@ else
                     <tfoot>
                         <tr class="fw-bold">
                             <td colspan="2">@L["Total"]</td>
-                            <td class="text-end">@Rs(Model.TotalSale)</td>
-                            <td></td>
-                            <td class="text-end">@Rs(Model.TotalCost)</td>
-                            <td class="text-end">@Rs(Model.GrossMargin)</td>
-                            <td></td>
+                            <td class="text-end" data-label="@L["Sale"]">@Rs(Model.TotalSale)</td>
+                            <td class="d-none d-md-table-cell"></td>
+                            <td class="text-end" data-label="@L["Purchase cost"]">@Rs(Model.TotalCost)</td>
+                            <td class="text-end" data-label="@L["Margin"]">@Rs(Model.GrossMargin)</td>
+                            <td class="d-none d-md-table-cell"></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -145,7 +145,7 @@ else
         <div class="card-body">
             <h6 class="card-title">@L["Expenses and salary"]</h6>
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
+                <table class="table table-sm table-kv align-middle mb-0">
                     <tbody>
                         @foreach (var e in Model.Expenses)
                         {
@@ -173,10 +173,10 @@ else
 
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-body">
-            <table class="table table-sm mb-0">
+            <table class="table table-sm table-kv mb-0">
                 <tbody>
                     <tr><td>@L["Margin"]</td><td class="text-end">@Rs(Model.GrossMargin)</td></tr>
-                    <tr><td>@L["Expenses"]</td><td class="text-end">@Rs(-Model.TotalExpenses)</td></tr>
+                    <tr><td>@L["Expense"]</td><td class="text-end">@Rs(-Model.TotalExpenses)</td></tr>
                     <tr><td>@L["Salary"]</td><td class="text-end">@Rs(-Model.Salary)</td></tr>
                     <tr class="fw-bold fs-5"><td>@L["Net profit"]</td><td class="text-end @(Model.NetProfit < 0 ? "text-danger" : "text-success")">@Rs(Model.NetProfit)</td></tr>
                 </tbody>

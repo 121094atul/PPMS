@@ -59,7 +59,8 @@ public sealed class ActivityLogViewModel
     public DateOnly DateTo { get; set; }
     public string? Area { get; set; }
     public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 100;
+    // Phone par 100 line lambi thi (owner, 2026-10-23).
+    public int PageSize { get; set; } = 50;
     public int TotalCount { get; set; }
     public IReadOnlyList<ApiAuditLogEntryDto> Items { get; set; } = Array.Empty<ApiAuditLogEntryDto>();
     public IReadOnlyDictionary<long, string> PumpNames { get; set; } = new Dictionary<long, string>();

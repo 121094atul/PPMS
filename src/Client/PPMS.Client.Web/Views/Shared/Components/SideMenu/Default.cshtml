@@ -5,6 +5,21 @@
     var isSuperAdmin = string.Equals(HttpContextAccessor.HttpContext?.Session.GetString("is_super_admin"), "true", StringComparison.OrdinalIgnoreCase);
     var isAdmin = isSuperAdmin || !string.Equals(roleName, "Operator", StringComparison.OrdinalIgnoreCase);
     var currentPath = HttpContextAccessor.HttpContext?.Request.Path.Value ?? "/";
+
+    // Menu ka naam DB se angrezi me aata hai - Hindi me bhi dikhe. Kuch naam resx me alag case
+    // me pehle se hain ("Tank stock", "expenses") aur resx me case badal kar wahi naam dobara nahi
+    // ban sakta, isliye chaar roop aazmao. Na mile to DB wala naam hi.
+    string Tr(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) { return key; }
+        var sentence = char.ToUpperInvariant(key[0]) + key[1..].ToLowerInvariant();
+        foreach (var k in new[] { key, sentence, key.ToLowerInvariant(), key.ToUpperInvariant() })
+        {
+            var r = L[k];
+            if (!r.IsResourceNotFound) { return r.Value; }
+        }
+        return key;
+    }
 }
 @functions {
     private static string ResolveHref(string route)
@@ -133,7 +148,7 @@
     <div class="accordion-item">
         <h2 class="accordion-header">
             <button class="accordion-button @(isSuperAdminActive ? "" : "collapsed")" type="button" data-bs-toggle="collapse" data-bs-target="#superAdminMenuGroup" aria-expanded="@(isSuperAdminActive ? "true" : "false")">
-                <span class="menu-ico" aria-hidden="true">🛡️</span>Super Admin
+                <span class="menu-ico" aria-hidden="true">🛡️</span>@Tr("Super Admin")
             </button>
         </h2>
         <div id="superAdminMenuGroup" class="accordion-collapse collapse @(isSuperAdminActive ? "show" : "")" data-bs-parent="#appMenu">
@@ -157,12 +172,12 @@
     <div class="accordion-item">
         <h2 class="accordion-header">
             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#emptyMenu" aria-expanded="true">
-                Menu
+                @Tr("Menu")
             </button>
         </h2>
         <div id="emptyMenu" class="accordion-collapse collapse show" data-bs-parent="#appMenu">
             <div class="accordion-body">
-                <span class="menu-link disabled">No menu available</span>
+                <span class="menu-link disabled">@Tr("No menu available")</span>
             </div>
         </div>
     </div>
@@ -214,7 +229,7 @@ else
         <div class="accordion-item">
             <h2 class="accordion-header">
                 <button class="accordion-button @isCollapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="@isExpanded">
-                    <span class="menu-ico" aria-hidden="true">@GroupIcon(group.GroupName)</span>@group.GroupName
+                    <span class="menu-ico" aria-hidden="true">@GroupIcon(group.GroupName)</span>@Tr(group.GroupName)
                 </button>
             </h2>
             <div id="@collapseId" class="accordion-collapse collapse @showClass" data-bs-parent="#appMenu">
@@ -227,7 +242,7 @@ else
                         {
                             <a class="menu-link @(onTodayShift ? "active fw-bold text-primary" : "")" href="/Operations/TodayShift"><span class="menu-ico" aria-hidden="true">⛽</span>@L["Today's Shift"]</a>
                         }
-                        <a class="menu-link @activeClass" href="@resolvedHref"><span class="menu-ico" aria-hidden="true">@ResolveIcon(item.Route)</span>@item.MenuName</a>
+                        <a class="menu-link @activeClass" href="@resolvedHref"><span class="menu-ico" aria-hidden="true">@ResolveIcon(item.Route)</span>@Tr(item.MenuName)</a>
                     }
                 </div>
             </div>

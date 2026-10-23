@@ -1277,3 +1277,45 @@ table[data-pager] tbody tr.pager-hidden { display: none !important; }
   /* Kaagaz par poori list — sirf dikh raha page nahi */
   table[data-pager] tbody tr.pager-hidden { display: table-row !important; }
 }
+
+/* ── Naam - rakam wali chhoti list (table.table-kv) ─────────────────────────
+   Phone par har table card ban jaata hai (upar). P&L / Financials ki "kharcha:
+   rakam" jaisi do-khaane wali list ke liye ye bhaari tha - har line ek bada
+   dabba. Inhe phone par bhi seedhi line rehne do. */
+@media screen and (max-width: 767.98px) {
+  table.table.table-kv tbody tr,
+  table.table.table-kv tfoot tr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    margin: 0;
+    padding: 0.5rem 0.25rem;
+    box-shadow: none;
+  }
+
+  table.table.table-kv tbody tr:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  table.table.table-kv tbody td,
+  table.table.table-kv tfoot td {
+    display: block;
+    border: 0;
+    padding: 0;
+  }
+
+  table.table.table-kv tbody td:first-child,
+  table.table.table-kv tfoot td:first-child {
+    text-align: left;
+  }
+
+  table.table.table-kv td::before {
+    display: none !important;
+  }
+}

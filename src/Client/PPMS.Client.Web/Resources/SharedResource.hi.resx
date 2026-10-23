@@ -4033,4 +4033,91 @@
   <data name="Pick the employee, whether the advance was given or returned, and the amount." xml:space="preserve">
     <value>कर्मचारी, एडवांस दिया या वापस मिला, और रक़म चुनिए।</value>
   </data>
+  <data name="Dashboard" xml:space="preserve">
+    <value>डैशबोर्ड</value>
+  </data>
+  <data name="Pumps" xml:space="preserve">
+    <value>पंप</value>
+  </data>
+  <data name="Products" xml:space="preserve">
+    <value>प्रोडक्ट</value>
+  </data>
+  <data name="Tanks" xml:space="preserve">
+    <value>टैंक</value>
+  </data>
+  <data name="Nozzles" xml:space="preserve">
+    <value>नोज़ल</value>
+  </data>
+  <data name="Parties" xml:space="preserve">
+    <value>पार्टी</value>
+  </data>
+  <data name="Attendant Cash" xml:space="preserve">
+    <value>अटेंडेंट का कैश</value>
+  </data>
+  <data name="Party Ledger" xml:space="preserve">
+    <value>पार्टी का खाता</value>
+  </data>
+  <data name="Reports" xml:space="preserve">
+    <value>रिपोर्ट</value>
+  </data>
+  <data name="Vendors" xml:space="preserve">
+    <value>वेंडर</value>
+  </data>
+  <data name="Users" xml:space="preserve">
+    <value>यूज़र</value>
+  </data>
+  <data name="Stock Reconcile" xml:space="preserve">
+    <value>स्टॉक मिलान</value>
+  </data>
+  <data name="Roles" xml:space="preserve">
+    <value>रोल</value>
+  </data>
+  <data name="Day Book" xml:space="preserve">
+    <value>रोज़नामचा (Day Book)</value>
+  </data>
+  <data name="Fleet Contracts" xml:space="preserve">
+    <value>फ़्लीट कॉन्ट्रैक्ट</value>
+  </data>
+  <data name="Staff" xml:space="preserve">
+    <value>स्टाफ़</value>
+  </data>
+  <data name="Employees" xml:space="preserve">
+    <value>कर्मचारी</value>
+  </data>
+  <data name="Salary Register" xml:space="preserve">
+    <value>सैलरी रजिस्टर</value>
+  </data>
+  <data name="Dip &amp; Testing" xml:space="preserve">
+    <value>डिप और जाँच</value>
+  </data>
+  <data name="Daily Stock Register" xml:space="preserve">
+    <value>दैनिक स्टॉक रजिस्टर (DSR)</value>
+  </data>
+  <data name="Alerts" xml:space="preserve">
+    <value>अलर्ट</value>
+  </data>
+  <data name="User Manual" xml:space="preserve">
+    <value>मदद (मैनुअल)</value>
+  </data>
+  <data name="General" xml:space="preserve">
+    <value>सामान्य</value>
+  </data>
+  <data name="Operations" xml:space="preserve">
+    <value>रोज़ का काम</value>
+  </data>
+  <data name="Management" xml:space="preserve">
+    <value>प्रबंधन</value>
+  </data>
+  <data name="Super Admin" xml:space="preserve">
+    <value>सुपर एडमिन</value>
+  </data>
+  <data name="Menu" xml:space="preserve">
+    <value>मेनू</value>
+  </data>
+  <data name="No menu available" xml:space="preserve">
+    <value>कोई मेनू नहीं</value>
+  </data>
+  <data name="Can cut up to {0} from advance" xml:space="preserve">
+    <value>एडवांस से ज़्यादा से ज़्यादा {0} काट सकते हैं</value>
+  </data>
 </root>

@@ -320,7 +320,8 @@
         const T = @Json.Serialize(new Dictionary<string, string>
         {
             ["hint"] = L["Salary {0} · already paid {1} · advance pending {2}", "{0}", "{1}", "{2}"].Value,
-            ["cutHint"] = L["Advance pending: {0}"].Value,
+            // Kitna kaat sakte hain = baaki advance + is salary me pehle kata (dobara save me wapas milta hai).
+            ["cutHint"] = L["Can cut up to {0} from advance"].Value,
             ["cutTooMuch"] = L["This is more than the advance pending."].Value,
             ["delAsk"] = L["Delete this advance entry?"].Value
         });

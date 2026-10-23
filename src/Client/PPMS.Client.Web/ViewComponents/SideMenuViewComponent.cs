@@ -25,6 +25,13 @@ public sealed class SideMenuViewComponent(PPMSApiClient apiClient) : ViewCompone
 
     private static string ResolveGroup(string route)
     {
+        // "/pump-comparison" neeche "/pump" (Masters) se pehle hi pakdo - warna report Masters me
+        // chali jaati thi.
+        if (route.StartsWith("/pump-comparison", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Reports";
+        }
+
         if (route.StartsWith("/product", StringComparison.OrdinalIgnoreCase) ||
             route.StartsWith("/rate", StringComparison.OrdinalIgnoreCase) ||
             route.StartsWith("/pump", StringComparison.OrdinalIgnoreCase) ||
