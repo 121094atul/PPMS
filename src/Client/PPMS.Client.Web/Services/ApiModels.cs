@@ -1298,8 +1298,9 @@ public sealed record ApiCreditDuplicateDto(long PartyId, string PartyName, decim
 /// <summary>Karmchari ka advance (Section AQ5). EntryType: GIVEN / RETURNED / SALARY_CUT.</summary>
 public sealed record ApiEmployeeAdvanceDto(long Id, long EmployeeId, string EmployeeName, string EntryType, decimal Amount,
     DateTime EntryDate, string? PaymentMode, string? Notes, long? SalaryPaymentId);
+/// <summary>ShiftId / PaymentMode "Drawer" = galle se - shift me Cashbook entry SP khud likhta hai (Section AT).</summary>
 public sealed record ApiSaveEmployeeAdvanceRequest(long PumpId, long EmployeeId, string EntryType, decimal Amount,
-    DateOnly EntryDate, string? PaymentMode, string? Notes);
+    DateOnly EntryDate, string? PaymentMode, string? Notes, long? ShiftId = null);
 
 /// <summary>Mahine ka salary hisaab (Section AQ6).</summary>
 public sealed record ApiSalarySummaryDto(long EmployeeId, string? EmployeeCode, string FullName, decimal MonthlySalary,

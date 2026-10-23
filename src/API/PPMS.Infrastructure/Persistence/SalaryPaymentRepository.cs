@@ -66,7 +66,8 @@ public sealed class SalaryPaymentRepository(IOptions<DatabaseOptions> options) :
                 EntryDate = request.EntryDate.ToDateTime(TimeOnly.MinValue),
                 request.PaymentMode,
                 request.Notes,
-                UserId = userId
+                UserId = userId,
+                request.ShiftId
             },
             commandType: System.Data.CommandType.StoredProcedure);
     }

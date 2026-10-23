@@ -2458,7 +2458,9 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
         var f = model.AdvanceForm;
         object back = new { pumpId = f.PumpId, salaryYear = f.SalaryYear, salaryMonth = f.SalaryMonth };
         if (f.PumpId <= 0 || f.EmployeeId <= 0 || f.Amount <= 0
-            || !IsOneOf(f.EntryType, new[] { "GIVEN", "RETURNED" }) || !IsOneOf(f.PaymentMode, CashPaymentModes))
+            || !IsOneOf(f.EntryType, new[] { "GIVEN", "RETURNED" })
+            // "Drawer" = galle se: SP us din ki khuli shift me nakad nikala / daala khud likhta hai (Section AT).
+            || !(IsOneOf(f.PaymentMode, CashPaymentModes) || string.Equals(f.PaymentMode, "Drawer", StringComparison.OrdinalIgnoreCase)))
         {
             TempData["SalaryMessage"] = "Pick the employee, whether the advance was given or returned, and the amount.";
             return RedirectToAction(nameof(Salary), back);

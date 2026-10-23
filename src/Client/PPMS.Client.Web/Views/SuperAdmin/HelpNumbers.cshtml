@@ -8,7 +8,7 @@
 @if (!string.IsNullOrWhiteSpace(message))
 {
     <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show py-2 small" role="alert">
-        @L[message]
+        @L.GetString(message).Value
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button>
     </div>
 }

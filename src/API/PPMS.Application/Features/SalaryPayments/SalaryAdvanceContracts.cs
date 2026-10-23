@@ -18,7 +18,10 @@ public sealed record EmployeeAdvanceDto(
     long? SalaryPaymentId
 );
 
-/// <summary>Naya advance diya ya wapas mila. Owner hamesha JWT se.</summary>
+/// <summary>
+/// Naya advance diya ya wapas mila. Owner hamesha JWT se.
+/// PaymentMode "Drawer" ya ShiftId = galle se: SP us (khuli) shift me Cashbook entry khud likhta hai (Section AT).
+/// </summary>
 public sealed record SaveEmployeeAdvanceRequest(
     long PumpId,
     long EmployeeId,
@@ -26,7 +29,8 @@ public sealed record SaveEmployeeAdvanceRequest(
     decimal Amount,
     DateOnly EntryDate,
     string? PaymentMode,
-    string? Notes
+    string? Notes,
+    long? ShiftId = null
 );
 
 /// <summary>

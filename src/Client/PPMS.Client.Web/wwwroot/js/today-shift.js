@@ -100,6 +100,7 @@
     var slipBox = $('#tsSlips');
     var slipTpl = $('#tsSlipTpl');
     var expTpl = $('#tsExpTpl');
+    var advTpl = $('#tsAdvTpl');
     var hoTpl = $('#tsHoTpl');
     var cashEl = $('#tsCash');
     var upiEl = $('#tsUpi');
@@ -239,6 +240,23 @@
             box.firstChild.textContent = T.noExpense;
         }
         $('#tsExpTotal').textContent = rs(total);
+    }
+
+    // ── 3. Paisa: galle se karmchari ko advance (Section AT) - Salary page par apne aap ──
+    function renderAdvances(list) {
+        var box = $('#tsAdvList');
+        if (!box) { return; }
+        box.innerHTML = '';
+        var total = 0;
+        (list || []).forEach(function (a) {
+            var node = advTpl.content.firstElementChild.cloneNode(true);
+            $('.ts-a-note', node).textContent = a.note || '';
+            $('.ts-a-amt', node).textContent = rs(a.amount);
+            $('.ts-a-del', node).dataset.id = a.id;
+            box.appendChild(node);
+            total += a.amount;
+        });
+        $('#tsAdvTotal').textContent = rs(total);
     }
 
     // ── 3. Paisa: galle se nikala nakad (malik ko diya / bank me jama), seedha server par ──
@@ -644,6 +662,31 @@
         }
     }
 
+    // ── Advance (Section AT) ──────────────────────────────────────────────
+    async function advanceCall(url, body) {
+        var err = $('#tsAdvErr');
+        if (err) { err.hidden = true; }
+        try {
+            var r = await ppmsFetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            var j = await r.json();
+            if (!j.success) {
+                if (err) { err.textContent = j.message || T.serverError; err.hidden = false; }
+                return false;
+            }
+            renderAdvances(j.advances);
+            cash = j.cash || cash;
+            render();
+            return true;
+        } catch (e) {
+            if (err) { err.textContent = T.serverError; err.hidden = false; }
+            return false;
+        }
+    }
+
     // ── Kharcha ────────────────────────────────────────────────────────────
     async function expenseCall(url, body) {
         var err = $('#tsExpErr');
@@ -750,6 +793,14 @@
             return;
         }
 
+        var adel = el.closest('.ts-a-del');
+        if (adel) {
+            ppmsConfirm(T.deleteAdvance, { danger: true, okText: T.delete }).then(function (ok) {
+                if (ok) { advanceCall(B.urls.deleteAdvance, { id: +adel.dataset.id, shiftId: B.shiftId, pumpId: B.pumpId }); }
+            });
+            return;
+        }
+
         var edel = el.closest('.ts-e-del');
         if (edel) {
             ppmsConfirm(T.deleteExpense, { danger: true, okText: T.delete }).then(function (ok) {
@@ -816,6 +867,30 @@
         });
     }
 
+    var advAdd = $('#tsAdvAdd');
+    if (advAdd) {
+        advAdd.addEventListener('click', async function () {
+            var emp = parseInt($('#tsAdvEmp').value, 10) || 0;
+            var amt = num($('#tsAdvAmt')) || 0;
+            if (!emp || amt <= 0) {
+                var err = $('#tsAdvErr');
+                err.textContent = T.advanceNeeded;
+                err.hidden = false;
+                return;
+            }
+            advAdd.disabled = true;
+            var ok = await advanceCall(B.urls.addAdvance, {
+                shiftId: B.shiftId, pumpId: B.pumpId, employeeId: emp, amount: amt, note: $('#tsAdvNote').value
+            });
+            advAdd.disabled = false;
+            if (ok) {
+                $('#tsAdvEmp').value = '';
+                $('#tsAdvAmt').value = '';
+                $('#tsAdvNote').value = '';
+            }
+        });
+    }
+
     var hoAdd = $('#tsHoAdd');
     if (hoAdd) {
         hoAdd.addEventListener('click', async function () {
@@ -844,6 +919,8 @@
     renderExpenses(B.expenses);
     if (B.expenses && B.expenses.length) { $('#tsExpBox').open = true; }
     renderHandovers(B.handovers);
+    renderAdvances(B.advances);
+    if (B.advances && B.advances.length) { $('#tsExpBox').open = true; }
     var startStep = loadDraft();
     render();
     show(startStep);

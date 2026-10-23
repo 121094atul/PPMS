@@ -152,7 +152,12 @@ public partial class OperationsController
         var expensesTask = GetShiftExpensesAsync(token, ownerId, model.PumpId, shift, cancellationToken);
         var productsTask = Api.GetProductsAsync(token, ownerId, model.PumpId, cancellationToken);
         var handoversTask = GetShiftHandoversAsync(token, ownerId, model.PumpId, shift, cancellationToken);
-        await Task.WhenAll(readingsTask, lastTask, tanksTask, collectionTask, summaryTask, partiesTask, headsTask, expensesTask, productsTask, handoversTask);
+        var advancesTask = GetShiftAdvancesAsync(token, ownerId, model.PumpId, shift, cancellationToken);
+        var employeesTask = Api.GetEmployeesAsync(token, ownerId, model.PumpId, cancellationToken);
+        await Task.WhenAll(readingsTask, lastTask, tanksTask, collectionTask, summaryTask, partiesTask, headsTask, expensesTask, productsTask, handoversTask, advancesTask, employeesTask);
+
+        model.Advances = advancesTask.Result;
+        model.Employees = employeesTask.Result.Where(e => e.IsActive).OrderBy(e => e.FullName).ToList();
 
         // Naam se ikai; do product ka naam ek ho to pehla (ek pump par aisa hota nahi).
         model.ProductUnits = productsTask.Result
@@ -206,6 +211,25 @@ public partial class OperationsController
                 string.Equals(t.ReferenceNo, HandoverBankRef, StringComparison.Ordinal) ? "BANK" : "OWNER",
                 t.Amount,
                 t.Narration))
+            .ToList();
+    }
+
+    // Galle se karmchari ko advance (Section AT): SP Cashbook me OUT 'ADVANCE' isi ShiftId par likhta hai aur
+    // EmployeeAdvances se jodta hai. Shift ka "kitna hona chahiye" ise CashOut me pehle se ghatata hai.
+    private const string AdvanceRef = "ADVANCE";
+
+    private async Task<IReadOnlyList<TodayShiftAdvance>> GetShiftAdvancesAsync(string token, long ownerId, long pumpId, ApiShiftDto shift, CancellationToken cancellationToken)
+    {
+        var from = shift.ShiftDate.AddDays(-1).ToDateTime(TimeOnly.MinValue);
+        var to = shift.ShiftDate.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        var page = await Api.GetPagedCashTransactionsAsync(token, ownerId, pumpId, from, to, AdvanceRef, 1, 200, cancellationToken);
+        return page.Items
+            .Where(t => t.ShiftId == shift.Id && string.Equals(t.ReferenceNo, AdvanceRef, StringComparison.Ordinal)
+                        && string.Equals(t.TxnType, "OUT", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(t => t.Id)
+            // SP ka likha "Advance given - Raju - note": dabba khud "advance" kehta hai, to sirf naam aur note.
+            .Select(t => new TodayShiftAdvance(t.Id, t.Amount,
+                t.Narration is { } n && n.StartsWith("Advance given - ", StringComparison.Ordinal) ? n["Advance given - ".Length..] : t.Narration))
             .ToList();
     }
 
@@ -378,6 +402,71 @@ public partial class OperationsController
         if (!del.Success) return Json(new { success = false, message = del.ErrorMessage });
 
         return Json(await ExpenseStateAsync(token, ownerId, input.PumpId, shift, cancellationToken));
+    }
+
+    /// <summary>Galle se karmchari ko advance (Section AT) - ek entry: Salary page ka advance + shift ka nakad nikala.</summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddTodayShiftAdvance([FromBody] TodayShiftAdvanceInput input, CancellationToken cancellationToken)
+    {
+        var token = GetToken();
+        if (token is null) return Unauthorized();
+        if (input.EmployeeId <= 0 || input.Amount <= 0)
+        {
+            return Json(new { success = false, message = Loc["Pick the employee and enter the amount."].Value });
+        }
+
+        var ownerId = GetOwnerId();
+        var shift = await FindPumpShiftAsync(token, ownerId, input.PumpId, input.ShiftId, cancellationToken);
+        if (shift is null) return Json(new { success = false, message = Loc["That shift was not found."].Value });
+        if (!string.Equals(shift.Status, "OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return Json(new { success = false, message = Loc["This shift is already closed."].Value });
+        }
+
+        var save = await Api.SaveEmployeeAdvanceAsync(token,
+            new ApiSaveEmployeeAdvanceRequest(input.PumpId, input.EmployeeId, "GIVEN", input.Amount, shift.ShiftDate,
+                "Drawer", string.IsNullOrWhiteSpace(input.Note) ? null : input.Note.Trim(), shift.Id),
+            cancellationToken);
+        if (!save.Success) return Json(new { success = false, message = save.ErrorMessage });
+
+        return Json(await AdvanceStateAsync(token, ownerId, shift, cancellationToken));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteTodayShiftAdvance([FromBody] TodayShiftExpenseDeleteInput input, CancellationToken cancellationToken)
+    {
+        var token = GetToken();
+        if (token is null) return Unauthorized();
+
+        var ownerId = GetOwnerId();
+        var shift = await FindPumpShiftAsync(token, ownerId, input.PumpId, input.ShiftId, cancellationToken);
+        if (shift is null) return Json(new { success = false, message = Loc["That shift was not found."].Value });
+        if (!string.Equals(shift.Status, "OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return Json(new { success = false, message = Loc["This shift is already closed."].Value });
+        }
+
+        var mine = await GetShiftAdvancesAsync(token, ownerId, input.PumpId, shift, cancellationToken);
+        if (mine.All(a => a.Id != input.Id))
+        {
+            return Json(new { success = false, message = Loc["That entry is not part of this shift."].Value });
+        }
+
+        // Cashbook entry hatao - sp_CashTxn_Delete juda advance bhi hata deta hai (Section AT).
+        var del = await Api.DeleteCashTransactionAsync(token, input.Id, cancellationToken);
+        if (!del.Success) return Json(new { success = false, message = del.ErrorMessage });
+
+        return Json(await AdvanceStateAsync(token, ownerId, shift, cancellationToken));
+    }
+
+    private async Task<object> AdvanceStateAsync(string token, long ownerId, ApiShiftDto shift, CancellationToken cancellationToken)
+    {
+        var listTask = GetShiftAdvancesAsync(token, ownerId, shift.PumpId, shift, cancellationToken);
+        var cashTask = ReloadCashPartsAsync(token, ownerId, shift, cancellationToken);
+        await Task.WhenAll(listTask, cashTask);
+        return new { success = true, advances = listTask.Result, cash = cashTask.Result };
     }
 
     /// <summary>Galle se nakad nikala: malik ko diya (Cashbook OUT) ya bank me jama (BANK_DEPOSIT). Turant server par.</summary>

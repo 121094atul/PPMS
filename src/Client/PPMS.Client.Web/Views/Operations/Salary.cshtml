@@ -12,7 +12,7 @@
 
                 @if (!string.IsNullOrWhiteSpace(Model.Message))
                 {
-                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@L.GetString(Model.Message!).Value<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
                 }
 
                 <form asp-action="SaveSalary" asp-controller="Operations" method="post">
@@ -152,6 +152,7 @@
                         <div class="col-12 col-md-4">
                             <label class="form-label">@L["Payment Mode"]</label>
                             <select asp-for="AdvanceForm.PaymentMode" class="form-select" data-no-search>
+                                <option value="Drawer">@L["From the drawer (that day's shift)"]</option>
                                 <option value="Cash">@L["Cash"]</option>
                                 <option value="UPI">@L["UPI"]</option>
                                 <option value="Bank">@L["Bank"]</option>
@@ -161,7 +162,8 @@
                     <div class="mb-2">
                         <input asp-for="AdvanceForm.Notes" class="form-control" maxlength="200" placeholder="@L["Note"]" />
                     </div>
-                    <div class="form-text mb-2">@L["Advance given from the drawer during a shift? Also write it in that shift as cash taken out, or the shift will show it as short."]</div>
+                    @* Section AT: "galle se" par SP us din ki khuli shift me nakad nikala khud likhta hai. *@
+                    <div class="form-text mb-2">@L["From the drawer: it is also written in that day's open shift as cash taken out - no need to write it there again. Cash / UPI / Bank: money that did not come from the drawer."]</div>
                     <div class="d-grid">
                         <button type="submit" class="btn btn-outline-primary">@L["Save Advance"]</button>
                     </div>
@@ -179,7 +181,7 @@
                                     <tr>
                                         <td class="text-nowrap" data-label="@L["Date"]">@a.EntryDate.ToString("dd MMM yyyy")</td>
                                         <td data-label="@L["Employee"]">@a.EmployeeName</td>
-                                        <td data-label="@L["What"]">@typeLabel @if (a.EntryType != "SALARY_CUT" && !string.IsNullOrWhiteSpace(a.Notes)) {<span class="text-muted small">· @a.Notes</span>}</td>
+                                        <td data-label="@L["What"]">@typeLabel @if (string.Equals(a.PaymentMode, "Drawer", StringComparison.OrdinalIgnoreCase)) {<span class="badge text-bg-light border">@L["drawer"]</span>} @if (a.EntryType != "SALARY_CUT" && !string.IsNullOrWhiteSpace(a.Notes)) {<span class="text-muted small">· @a.Notes</span>}</td>
                                         <td class="text-end @(a.EntryType == "GIVEN" ? "" : "text-success")" data-label="@L["Amount"]">@(a.EntryType == "GIVEN" ? "" : "−")₹@a.Amount.ToString("N0")</td>
                                         <td class="text-end">
                                             @if (a.EntryType != "SALARY_CUT")

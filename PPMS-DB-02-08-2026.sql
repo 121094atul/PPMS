@@ -23016,3 +23016,212 @@ GO
 PRINT '  + AS1: sp_Report_DayBook - meter bikri, bill me sirf counter ka saaman';
 PRINT '=== Section AS done ===';
 GO
+
+
+/* ==========================================================================================
+   SECTION AT — Galle se diya advance: ek entry, dono jagah (2026-10-23)
+   ------------------------------------------------------------------------------------------
+   Owner ki list ka #9: in-charge galle se karmchari ko advance de to do jagah likhna padta tha -
+   Salary page par advance, aur shift me "nakad nikala". Ek bhoola to ya advance ka hisaab galat,
+   ya shift "kam" dikhati.
+
+   AT1 EmployeeAdvances.CashTransactionId - galle wale advance ki Cashbook entry.
+   AT2 sp_EmployeeAdvance_Save - PaymentMode 'Drawer' (ya @ShiftId) par us shift me Cashbook entry
+       apne aap: diya = OUT, wapas mila = IN, ReferenceNo 'ADVANCE', usi ShiftId par. Shift ka
+       "kitna hona chahiye" (sp_Shift_Close / summary ka CashOut / CashIn) ise pehle se ginta hai.
+       Shift khuli honi chahiye: @ShiftId na ho to us din (@EntryDate) ki khuli shift.
+       @ShiftId aakhir me, default NULL - purana API bina iske chalta rahe.
+   AT3 sp_EmployeeAdvance_Delete - saath me Cashbook entry bhi hatti hai. Shift band ho chuki ho
+       to mana (band shift ka hisaab peeche se nahi badalta).
+   AT4 sp_CashTxn_Delete - Cashbook / shift screen se 'ADVANCE' entry hatao to advance bhi hatta
+       hai (wahi rok: band shift, ya advance ka kuch hissa wapas / kat chuka).
+   ========================================================================================== */
+PRINT '=== Section AT: galle se advance - ek entry, dono jagah ===';
+GO
+
+IF COL_LENGTH('PUMP.EmployeeAdvances', 'CashTransactionId') IS NULL
+BEGIN
+    ALTER TABLE PUMP.EmployeeAdvances ADD CashTransactionId BIGINT NULL;
+    PRINT '  + AT1: EmployeeAdvances.CashTransactionId';
+END
+ELSE
+    PRINT '  = AT1: EmployeeAdvances.CashTransactionId pehle se hai';
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_EmpAdv_CashTxn' AND object_id = OBJECT_ID('PUMP.EmployeeAdvances'))
+    CREATE INDEX IX_EmpAdv_CashTxn ON PUMP.EmployeeAdvances (CashTransactionId);
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_EmployeeAdvance_Save
+(
+    @OwnerId     BIGINT,
+    @PumpId      BIGINT,
+    @EmployeeId  BIGINT,
+    @EntryType   NVARCHAR(12),      -- GIVEN / RETURNED (SALARY_CUT sirf salary se)
+    @Amount      DECIMAL(18,2),
+    @EntryDate   DATE,
+    @PaymentMode NVARCHAR(20) = NULL,   -- 'Drawer' = galle se (shift me Cashbook entry apne aap)
+    @Notes       NVARCHAR(250) = NULL,
+    @UserId      BIGINT = NULL,
+    @ShiftId     BIGINT = NULL          -- Section AT: shift ki screen se (tab galle se hi)
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @EmpName NVARCHAR(200);
+    SELECT @EmpName = FullName FROM PUMP.Employees
+    WHERE Id = @EmployeeId AND OwnerId = @OwnerId AND PumpId = @PumpId AND ISNULL(IsDeleted, 0) = 0;
+
+    IF @EmpName IS NULL
+        THROW 50152, 'Employee not found, or the employee does not belong to this pump.', 1;
+    IF @EntryType NOT IN ('GIVEN', 'RETURNED')
+        THROW 50160, 'Pick whether the advance was given or returned.', 1;
+    IF ISNULL(@Amount, 0) <= 0
+        THROW 50161, 'Enter the amount.', 1;
+    IF @EntryType = 'RETURNED' AND @Amount > PUMP.fn_EmployeeAdvanceBalance(@EmployeeId)
+        THROW 50162, 'More is being returned than the advance this employee has.', 1;
+
+    /* AT2: galle se? to kaunsi shift. */
+    DECLARE @FromDrawer BIT = CASE WHEN @ShiftId IS NOT NULL OR UPPER(ISNULL(@PaymentMode, '')) = 'DRAWER' THEN 1 ELSE 0 END;
+    DECLARE @ShiftDate DATE;
+    IF @FromDrawer = 1
+    BEGIN
+        IF @ShiftId IS NULL
+            SELECT TOP 1 @ShiftId = Id FROM PUMP.ShiftHeaders
+            WHERE OwnerId = @OwnerId AND PumpId = @PumpId AND ShiftDate = @EntryDate AND Status = 'OPEN'
+            ORDER BY Id DESC;
+
+        IF @ShiftId IS NULL
+            THROW 50168, 'There is no open shift on this date. Open that day''s shift first, or pick another payment mode.', 1;
+
+        DECLARE @Status NVARCHAR(20);
+        SELECT @Status = Status, @ShiftDate = ShiftDate FROM PUMP.ShiftHeaders
+        WHERE Id = @ShiftId AND OwnerId = @OwnerId AND PumpId = @PumpId;
+        IF @Status IS NULL OR @Status <> 'OPEN'
+            THROW 50169, 'That shift is closed. Cash from its drawer cannot be written now.', 1;
+
+        SET @EntryDate = @ShiftDate;
+        SET @PaymentMode = N'Drawer';
+    END
+
+    BEGIN TRANSACTION;
+
+        DECLARE @CashId BIGINT = NULL;
+        IF @FromDrawer = 1
+        BEGIN
+            INSERT INTO PUMP.CashTransactions (OwnerId, PumpId, ShiftId, TxnType, Amount, ReferenceNo, Narration, TxnDateTime)
+            VALUES (@OwnerId, @PumpId, @ShiftId,
+                    CASE WHEN @EntryType = 'GIVEN' THEN 'OUT' ELSE 'IN' END,
+                    @Amount, 'ADVANCE',
+                    LEFT(CONCAT(CASE WHEN @EntryType = 'GIVEN' THEN N'Advance given - ' ELSE N'Advance returned - ' END,
+                                @EmpName, ISNULL(N' - ' + NULLIF(@Notes, N''), N'')), 250),
+                    /* Purana din bhar rahe hain to entry usi din (shift screen ke kharche jaisa). */
+                    CASE WHEN @ShiftDate = CAST(SYSDATETIME() AS DATE) THEN SYSDATETIME()
+                         ELSE DATEADD(HOUR, 12, CAST(@ShiftDate AS DATETIME2)) END);
+            SET @CashId = CAST(SCOPE_IDENTITY() AS BIGINT);
+        END
+
+        INSERT INTO PUMP.EmployeeAdvances (OwnerId, PumpId, EmployeeId, EntryType, Amount, EntryDate, PaymentMode, Notes, CreatedBy, CashTransactionId)
+        VALUES (@OwnerId, @PumpId, @EmployeeId, @EntryType, @Amount, @EntryDate, NULLIF(@PaymentMode, N''), NULLIF(@Notes, N''), @UserId, @CashId);
+        DECLARE @Id BIGINT = CAST(SCOPE_IDENTITY() AS BIGINT);
+
+    COMMIT TRANSACTION;
+
+    DECLARE @Reason NVARCHAR(500) = CONCAT(@EntryType, ' Rs ', @Amount,
+        CASE WHEN @CashId IS NOT NULL THEN CONCAT(' (drawer, shift ', @ShiftId, ')') ELSE '' END,
+        ISNULL(' - ' + NULLIF(@Notes, N''), ''));
+    EXEC PUMP.sp_Audit_Log @OwnerId = @OwnerId, @PumpId = @PumpId, @UserId = @UserId,
+         @EntityName = 'EmployeeAdvances', @EntityId = @Id, @Action = 'CREATE', @Reason = @Reason;
+
+    SELECT @Id AS Id;
+END
+GO
+PRINT '  + AT2: sp_EmployeeAdvance_Save - galle se (Drawer) to shift me Cashbook entry';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_EmployeeAdvance_Delete
+(
+    @Id      BIGINT,
+    @OwnerId BIGINT,
+    @UserId  BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @PumpId BIGINT, @Type NVARCHAR(12), @EmployeeId BIGINT, @Amount DECIMAL(18,2), @CashId BIGINT;
+    SELECT @PumpId = PumpId, @Type = EntryType, @EmployeeId = EmployeeId, @Amount = Amount, @CashId = CashTransactionId
+    FROM PUMP.EmployeeAdvances WHERE Id = @Id AND OwnerId = @OwnerId AND IsDeleted = 0;
+
+    IF @PumpId IS NULL
+        THROW 50163, 'That advance entry was not found.', 1;
+    IF @Type = 'SALARY_CUT'
+        THROW 50164, 'This was cut from a salary - change it on that salary payment.', 1;
+    /* Diya hua advance hataane se baaki minus me na jaye (wapas / kata pehle se ho). */
+    IF @Type = 'GIVEN' AND PUMP.fn_EmployeeAdvanceBalance(@EmployeeId) - @Amount < 0
+        THROW 50165, 'Part of this advance is already returned or cut from salary. Remove those first.', 1;
+    /* AT3: galle wala advance - shift band ho chuki ho to nahi. */
+    IF @CashId IS NOT NULL AND EXISTS (SELECT 1 FROM PUMP.CashTransactions ct
+                                       JOIN PUMP.ShiftHeaders sh ON sh.Id = ct.ShiftId
+                                       WHERE ct.Id = @CashId AND sh.Status <> 'OPEN')
+        THROW 50171, 'This advance was given from the drawer of a shift that is now closed. It cannot be removed.', 1;
+
+    BEGIN TRANSACTION;
+        UPDATE PUMP.EmployeeAdvances SET IsDeleted = 1 WHERE Id = @Id AND OwnerId = @OwnerId;
+        IF @CashId IS NOT NULL
+            DELETE FROM PUMP.CashTransactions WHERE Id = @CashId AND OwnerId = @OwnerId;
+    COMMIT TRANSACTION;
+
+    EXEC PUMP.sp_Audit_Log @OwnerId = @OwnerId, @PumpId = @PumpId, @UserId = @UserId,
+         @EntityName = 'EmployeeAdvances', @EntityId = @Id, @Action = 'DELETE';
+
+    SELECT Deleted = 1;
+END
+GO
+PRINT '  + AT3: sp_EmployeeAdvance_Delete - Cashbook entry bhi';
+GO
+
+CREATE OR ALTER PROCEDURE [PUMP].[sp_CashTxn_Delete]
+(
+    @Id      BIGINT,
+    @OwnerId BIGINT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM PUMP.CashTransactions WHERE Id = @Id AND OwnerId = @OwnerId)
+    BEGIN
+        THROW 50013, 'Cash transaction not found or access denied.', 1;
+    END
+
+    /* AT4: ye kisi karmchari ka galle wala advance hai? To advance bhi - wahi rok jo Salary page par. */
+    DECLARE @AdvId BIGINT, @Type NVARCHAR(12), @EmployeeId BIGINT, @Amount DECIMAL(18,2);
+    SELECT @AdvId = Id, @Type = EntryType, @EmployeeId = EmployeeId, @Amount = Amount
+    FROM PUMP.EmployeeAdvances WHERE CashTransactionId = @Id AND OwnerId = @OwnerId AND IsDeleted = 0;
+
+    IF @AdvId IS NOT NULL
+    BEGIN
+        IF EXISTS (SELECT 1 FROM PUMP.CashTransactions ct JOIN PUMP.ShiftHeaders sh ON sh.Id = ct.ShiftId
+                   WHERE ct.Id = @Id AND sh.Status <> 'OPEN')
+            THROW 50171, 'This advance was given from the drawer of a shift that is now closed. It cannot be removed.', 1;
+        IF @Type = 'GIVEN' AND PUMP.fn_EmployeeAdvanceBalance(@EmployeeId) - @Amount < 0
+            THROW 50165, 'Part of this advance is already returned or cut from salary. Remove those first.', 1;
+    END
+
+    BEGIN TRANSACTION;
+        IF @AdvId IS NOT NULL
+            UPDATE PUMP.EmployeeAdvances SET IsDeleted = 1 WHERE Id = @AdvId;
+        DELETE FROM PUMP.CashTransactions WHERE Id = @Id AND OwnerId = @OwnerId;
+    COMMIT TRANSACTION;
+
+    SELECT @Id AS Id;
+END
+GO
+PRINT '  + AT4: sp_CashTxn_Delete - galle wala advance saath me';
+PRINT '=== Section AT done ===';
+GO

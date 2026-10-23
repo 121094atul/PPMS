@@ -1593,6 +1593,8 @@ app.MapPost("/api/employee-advances", async (SaveEmployeeAdvanceRequest request,
 {
     var ownerId = ResolveOwnerId(user, null);
     if (!await guard.OwnsAsync(ownerId, TenantEntities.Pump, request.PumpId, cancellationToken)) return Results.NotFound();
+    // Galle se (Section AT) - shift bhi isi owner ki ho. SP pump aur "khuli" bhi jaanchta hai.
+    if (request.ShiftId is long advShiftId && !await guard.OwnsAsync(ownerId, TenantEntities.Shift, advShiftId, cancellationToken)) return Results.NotFound();
     long? userId = long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var advUid) ? advUid : null;
     var id = await service.SaveAdvanceAsync(request, ownerId, userId, cancellationToken);
     return Results.Ok(new { Id = id });

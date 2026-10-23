@@ -4177,4 +4177,34 @@
   <data name="Count the cash in the drawer and write it in Closing Cash." xml:space="preserve">
     <value>गल्ले का नकद गिनिए और क्लोज़िंग कैश में लिखिए।</value>
   </data>
+  <data name="From the drawer (that day's shift)" xml:space="preserve">
+    <value>गल्ले से (उस दिन की शिफ़्ट)</value>
+  </data>
+  <data name="From the drawer: it is also written in that day's open shift as cash taken out - no need to write it there again. Cash / UPI / Bank: money that did not come from the drawer." xml:space="preserve">
+    <value>गल्ले से: उस दिन की खुली शिफ़्ट में भी "नकद निकाला" अपने आप लिखा जाता है - वहाँ दोबारा न लिखें। नकद / UPI / बैंक: जो पैसा गल्ले से नहीं गया।</value>
+  </data>
+  <data name="drawer" xml:space="preserve">
+    <value>गल्ले से</value>
+  </data>
+  <data name="Advance to an employee (from the drawer)" xml:space="preserve">
+    <value>कर्मचारी को एडवांस (गल्ले से)</value>
+  </data>
+  <data name="Written once here - it also shows on the Salary page as the employee's advance." xml:space="preserve">
+    <value>यहाँ एक बार लिखें - सैलरी पेज पर कर्मचारी के एडवांस में अपने आप दिखेगा।</value>
+  </data>
+  <data name="Pick the employee and enter the amount." xml:space="preserve">
+    <value>कर्मचारी चुनिए और रकम लिखिए।</value>
+  </data>
+  <data name="Delete this advance? It is removed from the Salary page too." xml:space="preserve">
+    <value>यह एडवांस हटाएँ? सैलरी पेज से भी हट जाएगा।</value>
+  </data>
+  <data name="There is no open shift on this date. Open that day's shift first, or pick another payment mode." xml:space="preserve">
+    <value>इस तारीख़ की कोई खुली शिफ़्ट नहीं है। पहले उस दिन की शिफ़्ट खोलिए, या भुगतान का दूसरा तरीका चुनिए।</value>
+  </data>
+  <data name="That shift is closed. Cash from its drawer cannot be written now." xml:space="preserve">
+    <value>वह शिफ़्ट बंद हो चुकी है। उसके गल्ले का नकद अब नहीं लिखा जा सकता।</value>
+  </data>
+  <data name="This advance was given from the drawer of a shift that is now closed. It cannot be removed." xml:space="preserve">
+    <value>यह एडवांस एक बंद हो चुकी शिफ़्ट के गल्ले से दिया गया था। इसे हटाया नहीं जा सकता।</value>
+  </data>
 </root>

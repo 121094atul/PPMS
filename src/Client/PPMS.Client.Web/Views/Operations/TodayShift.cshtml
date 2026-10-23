@@ -287,6 +287,7 @@
             slips = Model.Collection.Credits.Select(c => new { partyId = c.PartyId, amount = c.Amount, vehicleNo = c.VehicleNo, slipNote = c.SlipNote, productId = c.ProductId, quantity = c.Quantity }),
             expenses = Model.Expenses.Select(e => new { id = e.Id, expenseHeadName = e.ExpenseHeadName, amount = e.Amount, narration = e.Narration }),
             handovers = Model.Handovers.Select(h => new { id = h.Id, kind = h.Kind, amount = h.Amount, note = h.Note }),
+            advances = Model.Advances.Select(a => new { id = a.Id, amount = a.Amount, note = a.Note }),
             products,
             labels = new
             {
@@ -315,6 +316,8 @@
                 deleteExpense = Url.Action("DeleteTodayShiftExpense"),
                 addHandover = Url.Action("AddTodayShiftHandover"),
                 deleteHandover = Url.Action("DeleteTodayShiftHandover"),
+                addAdvance = Url.Action("AddTodayShiftAdvance"),
+                deleteAdvance = Url.Action("DeleteTodayShiftAdvance"),
                 finish = Url.Action("FinishTodayShift"),
                 dupCheck = Url.Action("CheckCreditDuplicates")
             }
@@ -355,6 +358,8 @@
             ["noExpense"] = L["No expense in this shift."].Value,
             ["expenseNeeded"] = L["Pick the expense type and enter the amount."].Value,
             ["deleteExpense"] = L["Delete this expense?"].Value,
+            ["advanceNeeded"] = L["Pick the employee and enter the amount."].Value,
+            ["deleteAdvance"] = L["Delete this advance? It is removed from the Salary page too."].Value,
             ["deleteHandover"] = L["Delete this entry?"].Value,
             ["hoNeedAmount"] = L["Enter the amount."].Value,
             ["hoTooMuch"] = L["The cash handed over is more than the cash in the drawer."].Value,
@@ -553,6 +558,43 @@
                     </div>
                     <div class="small text-danger mt-1" id="tsExpErr" hidden></div>
                 }
+
+                @* Section AT: galle se karmchari ko advance - yahin ek baar, Salary page par apne aap. *@
+                @if (Model.Employees.Count > 0)
+                {
+                    <div class="border-top mt-3 pt-2" id="tsAdvBox">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold small">@L["Advance to an employee (from the drawer)"]</span>
+                            <span id="tsAdvTotal" class="small">₹0</span>
+                        </div>
+                        <div class="form-text mt-0">@L["Written once here - it also shows on the Salary page as the employee's advance."]</div>
+                        <div id="tsAdvList" class="mt-1"></div>
+                        <div class="row g-2 align-items-end mt-1">
+                            <div class="col-12 col-sm-4">
+                                <label class="small text-muted mb-0" for="tsAdvEmp">@L["Employee"]</label>
+                                <select id="tsAdvEmp" class="form-select form-select-sm">
+                                    <option value="">--</option>
+                                    @foreach (var e in Model.Employees)
+                                    {
+                                        <option value="@e.Id">@e.FullName</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-5 col-sm-3">
+                                <label class="small text-muted mb-0" for="tsAdvAmt">@L["Amount"]</label>
+                                <input id="tsAdvAmt" type="number" class="form-control form-control-sm" step="0.01" min="0" inputmode="decimal" />
+                            </div>
+                            <div class="col-7 col-sm-3">
+                                <label class="small text-muted mb-0" for="tsAdvNote">@L["Note"]</label>
+                                <input id="tsAdvNote" type="text" class="form-control form-control-sm" maxlength="150" />
+                            </div>
+                            <div class="col-12 col-sm-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger w-100" id="tsAdvAdd">+ @L["Add"]</button>
+                            </div>
+                        </div>
+                        <div class="small text-danger mt-1" id="tsAdvErr" hidden></div>
+                    </div>
+                }
             </details>
 
             <div class="ts-box">
@@ -682,6 +724,13 @@
             <div class="d-flex justify-content-between align-items-center border-bottom py-1 small ts-ho-row">
                 <span><strong class="ts-h-kind"></strong> <span class="text-muted ts-h-note"></span></span>
                 <span class="d-flex align-items-center gap-2"><span class="ts-h-amt"></span><button type="button" class="btn btn-sm btn-link text-danger p-0 ts-h-del">@L["Delete"]</button></span>
+            </div>
+        </template>
+
+        <template id="tsAdvTpl">
+            <div class="d-flex justify-content-between align-items-center border-bottom py-1 small">
+                <span class="text-muted ts-a-note"></span>
+                <span class="d-flex align-items-center gap-2"><span class="ts-a-amt"></span><button type="button" class="btn btn-sm btn-link text-danger p-0 ts-a-del">@L["Delete"]</button></span>
             </div>
         </template>
 

@@ -67,6 +67,7 @@ public sealed class TodayShiftViewModel
 
     /// <summary>Is shift me galle se nikala nakad (malik ko diya / bank me jama).</summary>
     public IReadOnlyList<TodayShiftHandover> Handovers { get; set; } = Array.Empty<TodayShiftHandover>();
+    public IReadOnlyList<TodayShiftAdvance> Advances { get; set; } = Array.Empty<TodayShiftAdvance>();
 
     /// <summary>Shuru karte waqt: pichhli shift ke closing wala nakad (galle me jitna bacha tha).</summary>
     public decimal SuggestedOpeningCash { get; set; }
@@ -175,6 +176,11 @@ public sealed record TodayShiftMoneyInput(long ShiftId, long PumpId, decimal Upi
 public sealed record TodayShiftHandoverInput(long ShiftId, long PumpId, string Kind, decimal Amount, string? Note);
 
 public sealed record TodayShiftHandover(long Id, string Kind, decimal Amount, string? Note);
+
+/// <summary>Galle se karmchari ko advance (Section AT). Id = Cashbook entry ki id.</summary>
+public sealed record TodayShiftAdvance(long Id, decimal Amount, string? Note);
+
+public sealed record TodayShiftAdvanceInput(long ShiftId, long PumpId, long EmployeeId, decimal Amount, string? Note);
 
 public sealed record TodayShiftExpenseInput(long ShiftId, long PumpId, long ExpenseHeadId, decimal Amount, string? Narration);
 
