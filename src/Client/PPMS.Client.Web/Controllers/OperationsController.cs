@@ -1718,6 +1718,14 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
             return RedirectToAction("Login", "Account");
         }
 
+        // Gina hua nakad khaali aaye to decimal 0 ban jaata aur shift poori bikri "kam" ke saath band
+        // hoti. Page ka JS bhi rokta hai; ye purane / cache wale page ke liye.
+        if (string.IsNullOrWhiteSpace(Request.Form["CloseShift.ClosingCash"]))
+        {
+            TempData["ShiftMessage"] = localizer["Count the cash in the drawer and write it in Closing Cash."].Value;
+            return RedirectToAction(nameof(Shifts));
+        }
+
         var request = new ApiCloseShiftRequest(
             model.CloseShift.Id,
             model.CloseShift.ClosingCash,

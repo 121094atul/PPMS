@@ -4171,4 +4171,10 @@
   <data name="Call" xml:space="preserve">
     <value>कॉल करें:</value>
   </data>
+  <data name="Count and write" xml:space="preserve">
+    <value>गिनकर लिखिए</value>
+  </data>
+  <data name="Count the cash in the drawer and write it in Closing Cash." xml:space="preserve">
+    <value>गल्ले का नकद गिनिए और क्लोज़िंग कैश में लिखिए।</value>
+  </data>
 </root>

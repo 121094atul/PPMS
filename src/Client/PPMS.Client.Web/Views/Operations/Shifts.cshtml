@@ -675,13 +675,11 @@
         let openingCash = 0;
         let nonCashDeductions = 0;
 
-        // Auto-fill closing cash in real-time if user hasn't explicitly edited it
+        // Closing cash ab apne aap NAHI bharta. Pehle "jitna hona chahiye" bhar deta tha, to
+        // in-charge bina gine save kar deta aur kam/zyada hamesha 0 aata - asli kami chhup jaati.
+        // Ab gin kar likhna hai; "Expected" sirf neeche aur placeholder me dikhta hai.
         if (closeCashInput) {
-            closeCashInput.addEventListener('input', () => {
-                closeCashInput.dataset.userEdited = 'true';
-                if (!closeCashInput.value) delete closeCashInput.dataset.userEdited;
-                calculatePreview(); // Recalculate variance
-            });
+            closeCashInput.addEventListener('input', () => calculatePreview());
         }
 
         // ── Auto-fill Open Shift nozzle opening readings from last closed shift ──
@@ -748,19 +746,18 @@
 
             const expectedClose = openingCash + meterSales - nonCashDeductions;
             
-            // Auto fill if the user hasn't manually edited the cash field
-            if (closeCashInput && !closeCashInput.dataset.userEdited) {
-                closeCashInput.value = expectedClose.toFixed(2);
-                closeCashInput.dataset.lastAutoFill = expectedClose.toFixed(2);
+            if (closeCashInput) {
+                closeCashInput.placeholder = '@L["Count and write"] (@L["Expected"]: ' + expectedClose.toFixed(2) + ')';
             }
 
+            const hasCash       = closeCashInput && closeCashInput.value.trim() !== '';
             const enteredClose  = Number(closeCashInput?.value || 0);
             const variance      = enteredClose - expectedClose;
             if (expSales)      expSales.textContent      = meterSales.toFixed(2);
             if (expCloseCash)  expCloseCash.textContent  = expectedClose.toFixed(2);
             if (expVariance) {
-                expVariance.textContent  = variance.toFixed(2);
-                expVariance.style.color  = Math.abs(variance) > 100 ? 'crimson' : (Math.abs(variance) > 10 ? 'orange' : 'green');
+                expVariance.textContent  = hasCash ? variance.toFixed(2) : '-';
+                expVariance.style.color  = !hasCash ? '' : (Math.abs(variance) > 100 ? 'crimson' : (Math.abs(variance) > 10 ? 'orange' : 'green'));
             }
         };
 
@@ -1097,6 +1094,18 @@
                 if (closeVal > openVal) { soldCount++; }
             });
             const alertDiv = document.getElementById('shiftModalAlert');
+            // Gina hua nakad zaroori - khaali chhodne par server ise ₹0 maan leta (poori bikri "kam").
+            if (closeCashInput && closeCashInput.value.trim() === '') {
+                if (alertDiv) {
+                    alertDiv.className = 'alert alert-danger py-2 small';
+                    alertDiv.textContent = '@L["Count the cash in the drawer and write it in Closing Cash."]';
+                    alertDiv.classList.remove('d-none');
+                }
+                closeCashInput.classList.add('is-invalid');
+                closeCashInput.focus();
+                return;
+            }
+            closeCashInput?.classList.remove('is-invalid');
             if (hasError) {
                 if (alertDiv) {
                     alertDiv.className = 'alert alert-danger py-2 small';

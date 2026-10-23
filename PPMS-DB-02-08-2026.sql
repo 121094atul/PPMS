@@ -22867,3 +22867,152 @@ GO
 PRINT '  + AR1: Support.Phone1..3, sp_SupportContacts_Get / Save';
 PRINT '=== Section AR done ===';
 GO
+
+
+/* ==========================================================================================
+   SECTION AS — Day Book me meter ki bikri (2026-10-23)
+   ------------------------------------------------------------------------------------------
+   Owner ki list ka #7: Day Book me sirf bill / kharid / kharcha / cashbook aate the - pump ki
+   asli bikri (nozzle meter) aati hi nahi thi, to "Credit" din ki bikri ka chhota hissa dikhata.
+
+   AS1 sp_Report_DayBook - P&L (sp_Report_ProfitLoss) wala hi niyam:
+       * har BAND shift ki ek line 'METER SALE' = nozzle ki bikri (testing ke bina), shift ki
+         tareekh par (shift 2-6 din baad bhari jaaye to bhi usi din). Kaunsa tel kitna - likha.
+       * bill ('SALE') ka Credit = sirf counter ka saaman (jis product ka nozzle nahi - mobil
+         waghaira). Bill ka tel wala hissa meter bikri me pehle se hai - dobara nahi judta.
+         Udhaar parchi / UPI / card (COLL-) ki line dikhti hai, Credit 0, "meter bikri me" likha.
+       Column wahi chhe, kram wahi (DayBookEntryDto - CLAUDE.md niyam 5). API / client nahi badle.
+   ========================================================================================== */
+PRINT '=== Section AS: Day Book me meter bikri ===';
+GO
+
+CREATE OR ALTER PROCEDURE [PUMP].[sp_Report_DayBook]
+(
+    @OwnerId BIGINT,
+    @PumpId BIGINT,
+    @DateFrom DATE,
+    @DateTo DATE
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        x.EntryDateTime,
+        x.EntryType,
+        x.ReferenceNo,
+        x.Description,
+        x.Debit,
+        x.Credit
+    FROM
+    (
+        /* AS1: band shift ki meter bikri - din ke ant me (23:59) taaki us din ki baaki line upar rahein. */
+        SELECT
+            DATEADD(MINUTE, 1439, CAST(s.ShiftDate AS DATETIME)) AS EntryDateTime,
+            CAST('METER SALE' AS NVARCHAR(30)) AS EntryType,
+            s.ShiftCode AS ReferenceNo,
+            CAST(CONCAT('Meter sale - ', ISNULL(m.Detail, '')) AS NVARCHAR(500)) AS Description,
+            CAST(0 AS DECIMAL(18,2)) AS Debit,
+            CAST(ISNULL(m.Amount, 0) AS DECIMAL(18,2)) AS Credit
+        FROM PUMP.ShiftHeaders s
+        CROSS APPLY
+        (
+            SELECT Amount = SUM(p.Amount),
+                   Detail = STRING_AGG(CONCAT(p.ProductName, ' ', FORMAT(p.Qty, '0.##'), ' ', p.Unit), ', ')
+            FROM
+            (
+                SELECT ProductName = ISNULL(pr.Name, 'Fuel'), Unit = ISNULL(pr.Unit, ''),
+                       Qty = SUM(ISNULL(r.SoldQty, 0)), Amount = SUM(ISNULL(r.SoldAmount, 0))
+                FROM PUMP.ShiftNozzleReadings r
+                LEFT JOIN PUMP.Products pr ON pr.Id = r.ProductId
+                WHERE r.ShiftId = s.Id
+                GROUP BY pr.Name, pr.Unit
+                HAVING SUM(ISNULL(r.SoldAmount, 0)) <> 0 OR SUM(ISNULL(r.SoldQty, 0)) <> 0
+            ) p
+        ) m
+        WHERE s.OwnerId = @OwnerId
+          AND s.PumpId = @PumpId
+          AND s.Status = 'CLOSED'
+          AND s.ShiftDate BETWEEN @DateFrom AND @DateTo
+          AND m.Amount IS NOT NULL
+
+        UNION ALL
+
+        /* Bill: Credit me sirf counter ka saaman. Tel ka hissa upar meter bikri me hai. */
+        SELECT
+            sh.BillDateTime,
+            CAST('SALE' AS NVARCHAR(30)),
+            sh.BillNo,
+            CAST(CONCAT('Sale - ', ISNULL(sh.CustomerName, 'Walk-In'),
+                   CASE WHEN NULLIF(sh.PaymentMode, '') IS NOT NULL THEN CONCAT(' [', sh.PaymentMode, ']') ELSE '' END,
+                   CASE WHEN sh.TotalAmount - ISNULL(c.CounterAmount, 0) > 0.005
+                        THEN CONCAT(' - ', FORMAT(sh.TotalAmount - ISNULL(c.CounterAmount, 0), '0.00'), ' in meter sale')
+                        ELSE '' END) AS NVARCHAR(500)),
+            CAST(0 AS DECIMAL(18,2)),
+            CAST(ISNULL(c.CounterAmount, 0) AS DECIMAL(18,2))
+        FROM PUMP.SalesHeaders sh
+        OUTER APPLY
+        (
+            SELECT CounterAmount = SUM(ISNULL(d.Amount, 0))
+            FROM PUMP.SalesDetails d
+            WHERE d.SalesHeaderId = sh.Id
+              AND NOT EXISTS (SELECT 1 FROM PUMP.Nozzles n WHERE n.ProductId = d.ProductId)
+        ) c
+        WHERE sh.OwnerId = @OwnerId
+          AND sh.PumpId = @PumpId
+          AND CAST(sh.BillDateTime AS DATE) BETWEEN @DateFrom AND @DateTo
+          AND sh.IsVoid = 0
+
+        UNION ALL
+
+        SELECT
+            ph.CreatedOn,
+            CAST('PURCHASE' AS NVARCHAR(30)),
+            ph.InvoiceNo,
+            CAST(CONCAT('Purchase - ', v.VendorName) AS NVARCHAR(500)),
+            ph.TotalAmount,
+            CAST(0 AS DECIMAL(18,2))
+        FROM PUMP.PurchaseHeaders ph
+        INNER JOIN PUMP.Vendors v ON v.Id = ph.VendorId
+        WHERE ph.OwnerId = @OwnerId
+          AND ph.PumpId = @PumpId
+          AND CAST(ph.CreatedOn AS DATE) BETWEEN @DateFrom AND @DateTo
+
+        UNION ALL
+
+        SELECT
+            et.TxnDateTime,
+            CAST('EXPENSE' AS NVARCHAR(30)),
+            et.ReferenceNo,
+            CAST(CONCAT('Expense - ', eh.HeadName) AS NVARCHAR(500)),
+            et.Amount,
+            CAST(0 AS DECIMAL(18,2))
+        FROM PUMP.ExpenseTransactions et
+        INNER JOIN PUMP.ExpenseHeads eh ON eh.Id = et.ExpenseHeadId
+        WHERE et.OwnerId = @OwnerId
+          AND et.PumpId = @PumpId
+          AND CAST(et.TxnDateTime AS DATE) BETWEEN @DateFrom AND @DateTo
+
+        UNION ALL
+
+        SELECT
+            ct.TxnDateTime,
+            CAST('CASH' AS NVARCHAR(30)),
+            ct.ReferenceNo,
+            CAST(CONCAT('Cash ', UPPER(ct.TxnType), ' - ', ISNULL(ct.Narration, 'Manual')) AS NVARCHAR(500)),
+            CASE WHEN UPPER(ct.TxnType) = 'OUT' THEN ct.Amount ELSE CAST(0 AS DECIMAL(18,2)) END,
+            CASE WHEN UPPER(ct.TxnType) = 'IN' THEN ct.Amount ELSE CAST(0 AS DECIMAL(18,2)) END
+        FROM PUMP.CashTransactions ct
+        WHERE ct.OwnerId = @OwnerId
+          AND ct.PumpId = @PumpId
+          AND CAST(ct.TxnDateTime AS DATE) BETWEEN @DateFrom AND @DateTo
+          /* Section AN: shift band par apna aap bana "malik ko diya" yahan nahi - wo bikri ka hi paisa
+             galle se malik ke paas gaya, kharcha nahi. Cashbook me hai. */
+          AND ISNULL(ct.ReferenceNo, '') <> 'HANDOVER-AUTO'
+    ) x
+    ORDER BY x.EntryDateTime DESC;
+END
+GO
+PRINT '  + AS1: sp_Report_DayBook - meter bikri, bill me sirf counter ka saaman';
+PRINT '=== Section AS done ===';
+GO

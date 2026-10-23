@@ -9,6 +9,12 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     private string GetAccessToken() => HttpContext.Session.GetString("access_token") ?? string.Empty;
     private bool IsSuperAdmin() => bool.TryParse(HttpContext.Session.GetString("is_super_admin"), out var b) && b;
 
+    // Forbid() yahan 500 deta tha - client me koi auth scheme hi nahi (session se login hai).
+    // Bina login: Login page; kisi aur user ka: uska Dashboard. (JS wale action 403 lautate hain.)
+    private IActionResult NotAllowed() => string.IsNullOrEmpty(HttpContext.Session.GetString("access_token"))
+        ? RedirectToAction("Login", "Account")
+        : RedirectToAction("Index", "Home");
+
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
@@ -116,7 +122,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     {
         // Client side par bhi guard - API par SuperAdminOnly hai hi, lekin yahan
         // rok dene se aam user ko ye endpoint dikhta hi nahi.
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return StatusCode(StatusCodes.Status403Forbidden);
 
         var users = await apiClient.GetTenantUsersAsync(GetAccessToken(), ownerId, cancellationToken);
         return Json(users);
@@ -130,7 +136,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetUserPassword([FromBody] ResetUserPasswordInput model, CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return StatusCode(StatusCodes.Status403Forbidden);
 
         if (model is null || model.UserId <= 0 || string.IsNullOrWhiteSpace(model.NewPassword) || model.NewPassword.Length < 6)
         {
@@ -147,7 +153,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
 
     public async Task<IActionResult> HelpNumbers([FromServices] SupportContactService support, CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return NotAllowed();
         ViewData["Title"] = "Support Numbers";
 
         support.Invalidate();   // hamesha taaza dikhao
@@ -161,7 +167,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     public async Task<IActionResult> HelpNumbers(string? phone1, string? phone2, string? phone3,
         [FromServices] SupportContactService support, CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return NotAllowed();
 
         var result = await apiClient.SaveSupportContactsAsync(GetAccessToken(),
             new ApiSupportContacts(phone1, phone2, phone3), cancellationToken);
@@ -177,7 +183,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
 
     public async Task<IActionResult> Credits(CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return NotAllowed();
         ViewData["Title"] = "Message Credits";
 
         var token = GetAccessToken();
@@ -203,7 +209,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveCreditSettings(string? upiId, string? upiName, decimal? pricePerCredit, CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return NotAllowed();
 
         var result = await apiClient.SaveCreditSettingsAsync(GetAccessToken(),
             new ApiSaveCreditSettingsRequest(upiId, upiName, pricePerCredit), cancellationToken);
@@ -217,7 +223,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddPlatformCredit(decimal amountPaid, int creditsBought, string? provider, string? referenceNo, string? notes, CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return NotAllowed();
 
         var result = await apiClient.AddPlatformCreditAsync(GetAccessToken(),
             new ApiAddPlatformCreditRequest(amountPaid, creditsBought, provider, referenceNo, notes), cancellationToken);
@@ -233,7 +239,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveRecharge(long id, CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return NotAllowed();
 
         var result = await apiClient.ApproveRechargeAsync(GetAccessToken(), id, null, cancellationToken);
         // Stock kam pade to server ka asli message aata hai ("Not enough platform
@@ -247,7 +253,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectRecharge(long id, string? note, CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return NotAllowed();
 
         var result = await apiClient.RejectRechargeAsync(GetAccessToken(), id, note, cancellationToken);
         TempData["CreditMessage"] = result.Success ? "Recharge rejected." : (result.ErrorMessage ?? "Could not reject the recharge.");
@@ -268,7 +274,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     [HttpGet]
     public async Task<IActionResult> Support(long? ownerId, long? pumpId, int? days, CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return NotAllowed();
 
         var token = GetAccessToken();
         var owners = await apiClient.GetOwnersAsync(token, cancellationToken);
@@ -300,7 +306,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SupportReopenShift(long shiftId, long ownerId, long? pumpId, CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return NotAllowed();
 
         var result = await apiClient.ReopenShiftAsync(GetAccessToken(), shiftId, ownerId, cancellationToken);
         TempData["SupportMessage"] = result.Success
@@ -315,7 +321,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SupportDeleteShift(long shiftId, long ownerId, long? pumpId, string? reason, CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return NotAllowed();
 
         var result = await apiClient.DeleteShiftAsync(GetAccessToken(), shiftId, ownerId, reason, cancellationToken);
         TempData["SupportMessage"] = result.Success
@@ -341,7 +347,7 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SupportRecalculateParties(long ownerId, CancellationToken cancellationToken)
     {
-        if (!IsSuperAdmin()) return Forbid();
+        if (!IsSuperAdmin()) return NotAllowed();
 
         var result = await apiClient.RecalculatePartyBalancesAsync(GetAccessToken(), ownerId, cancellationToken);
         TempData["SupportMessage"] = result.Success
