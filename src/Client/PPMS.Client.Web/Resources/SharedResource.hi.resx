@@ -4207,4 +4207,7 @@
   <data name="This advance was given from the drawer of a shift that is now closed. It cannot be removed." xml:space="preserve">
     <value>यह एडवांस एक बंद हो चुकी शिफ़्ट के गल्ले से दिया गया था। इसे हटाया नहीं जा सकता।</value>
   </data>
+  <data name="Cashbook / advance" xml:space="preserve">
+    <value>कैशबुक / एडवांस</value>
+  </data>
 </root>

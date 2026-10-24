@@ -242,6 +242,8 @@ app.Use(async (ctx, next) =>
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseCors();
+// Rate limiter se PEHLE: client server se aayi request me grahak ka asli IP (dekho middleware).
+app.UseMiddleware<ClientIpForwardingMiddleware>();
 app.UseRateLimiter();
 app.UseAuthentication();
 

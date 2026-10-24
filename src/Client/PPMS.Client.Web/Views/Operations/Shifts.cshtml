@@ -504,7 +504,7 @@
                             <div class="col-4">Expected Cash: <strong id="expCloseCash">0.00</strong></div>
                             <div class="col-4">Variance: <strong id="expVariance">0.00</strong></div>
                             <div class="col-12 mt-1 border-top pt-1 text-muted">
-                                <em>Deductions:</em> Credit (<span id="detCredit">0.00</span>) | UPI (<span id="detUpi">0.00</span>) | Card (<span id="detCard">0.00</span>) | Bank Dep (<span id="detBank">0.00</span>) | Cash Exp (<span id="detExp">0.00</span>)
+                                <em>Deductions:</em> Credit (<span id="detCredit">0.00</span>) | UPI (<span id="detUpi">0.00</span>) | Card (<span id="detCard">0.00</span>) | Bank Dep (<span id="detBank">0.00</span>) | Cash Exp (<span id="detExp">0.00</span>) | @L["Cashbook / advance"] (<span id="detCashbook">0.00</span>)
                             </div>
                         </div>
                     </div>
@@ -822,7 +822,17 @@
                         document.getElementById('detBank').textContent   = bank.toFixed(2);
                         document.getElementById('detExp').textContent    = exp.toFixed(2);
 
-                        nonCashDeductions = credit + digital + upi + card + exp + bank;
+                        // Wahi formula jo sp_Shift_Close ExpectedCash ke liye lagata hai:
+                        //   opening + meter - udhaar - digital + vasooli + Cashbook IN - Cashbook OUT - kharcha - bank.
+                        // Pehle yahan UPI aur card "digital" ke upar alag se bhi ghatte the (do baar), aur
+                        // Cashbook (galle se advance, nikala / daala) bilkul nahi - isliye hint galat aata tha.
+                        const receipts = sumData?.partyReceiptsCash || 0;
+                        const cashIn   = sumData?.cashIn   || 0;
+                        const cashOut  = sumData?.cashOut  || 0;
+                        const cbEl = document.getElementById('detCashbook');
+                        if (cbEl) cbEl.textContent = (cashOut - cashIn - receipts).toFixed(2);
+
+                        nonCashDeductions = credit + digital + exp + bank + cashOut - cashIn - receipts;
                     }
 
                     if (resReadings.ok) {
