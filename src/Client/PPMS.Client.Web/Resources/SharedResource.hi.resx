@@ -1213,8 +1213,8 @@
   <data name="6-digit OTP" xml:space="preserve">
     <value>6 अंकों का OTP</value>
   </data>
-  <data name="7 Days" xml:space="preserve">
-    <value>7 दिन</value>
+  <data name="30 Days" xml:space="preserve">
+    <value>30 दिन</value>
   </data>
   <data name="ADJUSTMENT" xml:space="preserve">
     <value>समायोजन</value>
@@ -1321,8 +1321,8 @@
   <data name="City" xml:space="preserve">
     <value>शहर</value>
   </data>
-  <data name="Click to Request 7-Day Free Trial" xml:space="preserve">
-    <value>7 दिन का मुफ़्त ट्रायल माँगने के लिए दबाइए</value>
+  <data name="Click to Request 30-Day Free Trial" xml:space="preserve">
+    <value>30 दिन का मुफ़्त ट्रायल माँगने के लिए दबाइए</value>
   </data>
   <data name="Close Cash" xml:space="preserve">
     <value>बंद करते समय कैश</value>
@@ -1564,8 +1564,8 @@
   <data name="Full address" xml:space="preserve">
     <value>पूरा पता</value>
   </data>
-  <data name="Get Free 7-Day Trial" xml:space="preserve">
-    <value>7 दिन का मुफ़्त ट्रायल लीजिए</value>
+  <data name="Get Free 30-Day Trial" xml:space="preserve">
+    <value>30 दिन का मुफ़्त ट्रायल लीजिए</value>
   </data>
   <data name="HSN / Tax" xml:space="preserve">
     <value>HSN / कर</value>
@@ -2368,8 +2368,8 @@
   <data name="+ Quick Add Party" xml:space="preserve">
     <value>+ फटाफट पार्टी जोड़िए</value>
   </data>
-  <data name="7 Days Free Trial Available" xml:space="preserve">
-    <value>7 दिन का मुफ़्त ट्रायल उपलब्ध है</value>
+  <data name="30 Days Free Trial Available" xml:space="preserve">
+    <value>30 दिन का मुफ़्त ट्रायल उपलब्ध है</value>
   </data>
   <data name="A different man on every nozzle? Track each one separately — so one man&amp;#39;s shortage never hides behind another man&amp;#39;s excess." xml:space="preserve">
     <value>हर नोज़ल पर अलग आदमी? हर एक का हिसाब अलग रखिए — ताकि एक की कमी दूसरे की बचत के पीछे न छुप जाए।</value>
@@ -2542,8 +2542,8 @@
   <data name="6 Months" xml:space="preserve">
     <value>6 महीने</value>
   </data>
-  <data name="7 Days (Trial)" xml:space="preserve">
-    <value>7 दिन (ट्रायल)</value>
+  <data name="30 Days (Trial)" xml:space="preserve">
+    <value>30 दिन (ट्रायल)</value>
   </data>
   <data name="Account created!" xml:space="preserve">
     <value>खाता बन गया!</value>

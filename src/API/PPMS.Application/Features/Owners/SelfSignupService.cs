@@ -9,7 +9,9 @@ public sealed class SelfSignupService(
     IWhatsAppNotificationService notificationService,
     ISupportContactRepository supportContacts) : ISelfSignupService
 {
-    private const int TrialDays = 7;
+    // Owner (2026-10-24): trial 7 se 30 din. Isi se ValidUpto banta hai aur SMS me bhi yahi.
+    // (PlanCode '7_DAY_TRIAL' sirf andar ka naam hai - SP / plan table me wahi rehta hai.)
+    private const int TrialDays = 30;
 
     public async Task<SelfSignupResult> SignupAsync(SelfSignupRequest request, string? sourceIp, CancellationToken cancellationToken = default)
     {
