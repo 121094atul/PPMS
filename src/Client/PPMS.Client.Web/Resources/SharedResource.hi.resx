@@ -4210,4 +4210,31 @@
   <data name="Cashbook / advance" xml:space="preserve">
     <value>कैशबुक / एडवांस</value>
   </data>
+  <data name="The date printed on the bill. If the tanker was unloaded on another day, fill that below." xml:space="preserve">
+    <value>बिल पर छपी तारीख़। टैंकर किसी और दिन उतरा हो, तो वो तारीख़ नीचे भरिए।</value>
+  </data>
+  <data name="Tanker unloaded on" xml:space="preserve">
+    <value>टैंकर कब उतरा</value>
+  </data>
+  <data name="if not the bill date" xml:space="preserve">
+    <value>अगर बिल वाले दिन नहीं</value>
+  </data>
+  <data name="Tank stock, DSR and dip use this date. Leave empty if the tanker came on the bill date." xml:space="preserve">
+    <value>टैंक का स्टॉक, DSR और डिप इसी तारीख़ से चलते हैं। टैंकर बिल वाले दिन ही आया हो तो ख़ाली छोड़ दीजिए।</value>
+  </data>
+  <data name="This bill number is already entered for this company. The same tanker cannot be entered twice - check the purchase list." xml:space="preserve">
+    <value>इस कंपनी का यह बिल नंबर पहले से दर्ज है। एक ही टैंकर दो बार नहीं चढ़ सकता — ख़रीद की लिस्ट देखिए।</value>
+  </data>
+  <data name="The tanker unload date must be on or after the bill date, and within 30 days of it." xml:space="preserve">
+    <value>टैंकर उतरने की तारीख़ बिल की तारीख़ या उसके बाद की होनी चाहिए, और 30 दिन के अंदर।</value>
+  </data>
+  <data name="The selected tank does not hold this product. Pick the tank that stores this fuel." xml:space="preserve">
+    <value>चुना हुआ टैंक इस तेल का नहीं है। वो टैंक चुनिए जिसमें यह तेल रहता है।</value>
+  </data>
+  <data name="Unable to save purchase." xml:space="preserve">
+    <value>ख़रीद सेव नहीं हो सकी।</value>
+  </data>
+  <data name="Purchase updated successfully." xml:space="preserve">
+    <value>ख़रीद अपडेट हो गई।</value>
+  </data>
 </root>

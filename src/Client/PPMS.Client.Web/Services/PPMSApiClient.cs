@@ -1029,7 +1029,11 @@ public sealed class PPMSApiClient(HttpClient httpClient)
         return payload ?? new ApiPagedResponse<ApiPurchaseDto>(Array.Empty<ApiPurchaseDto>(), 0, pageNumber, pageSize);
     }
 
-    public async Task<long?> SavePurchaseAsync(string token, ApiSavePurchaseRequest requestModel, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Error ka asli sandesh bhi lautata hai - pehle sirf null aata tha aur screen par "Unable to
+    /// save purchase" hi dikhta (galat tank, wahi bill dobara - kuch pata nahi chalta tha).
+    /// </summary>
+    public async Task<(long? Id, string? Error)> SavePurchaseAsync(string token, ApiSavePurchaseRequest requestModel, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/purchase");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -1037,11 +1041,11 @@ public sealed class PPMSApiClient(HttpClient httpClient)
         var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            return null;
+            return (null, await ReadErrorMessageAsync(response, "Unable to save purchase.", cancellationToken));
         }
 
         var payload = await response.Content.ReadFromJsonAsync<SaveResult>(cancellationToken: cancellationToken);
-        return payload?.Id;
+        return (payload?.Id, null);
     }
 
     public async Task<ApiPurchaseDetailDto?> GetPurchaseByIdAsync(string token, long id, long ownerId, CancellationToken cancellationToken = default)

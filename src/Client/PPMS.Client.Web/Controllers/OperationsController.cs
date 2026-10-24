@@ -446,10 +446,12 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
             items.Select(x => new ApiPurchaseItemRequest(
                 x.ProductId, x.TankId, x.Quantity,
                 decimal.Round(x.Amount / x.Quantity, 4, MidpointRounding.AwayFromZero),
-                decimal.Round(x.Amount, 2, MidpointRounding.AwayFromZero))).ToList());
+                decimal.Round(x.Amount, 2, MidpointRounding.AwayFromZero))).ToList(),
+            // Section AV: tanker bill wale din hi utra to alag tareekh bhejne ki zaroorat nahi.
+            model.Form.ReceivedDate is { } rd && rd != model.Form.InvoiceDate ? rd : null);
 
-        var id = await apiClient.SavePurchaseAsync(token, request, cancellationToken);
-        TempData["PurchaseMessage"] = id is null ? "Unable to save purchase." : (model.Form.Id > 0 ? "Purchase updated successfully." : $"Purchase saved (Id: {id}).");
+        var (id, error) = await apiClient.SavePurchaseAsync(token, request, cancellationToken);
+        TempData["PurchaseMessage"] = id is null ? (error ?? "Unable to save purchase.") : (model.Form.Id > 0 ? "Purchase updated successfully." : $"Purchase saved (Id: {id}).");
         return RedirectToAction(nameof(Purchase), new { pumpId = model.Form.PumpId });
     }
 
@@ -3059,6 +3061,7 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
                     VendorId = purchase.VendorId,
                     InvoiceNo = purchase.InvoiceNo,
                     InvoiceDate = purchase.InvoiceDate,
+                    ReceivedDate = purchase.ReceivedDate,
                     VehicleNo = purchase.VehicleNo,
                     DriverName = purchase.DriverName,
                     Notes = purchase.Notes,

@@ -937,9 +937,10 @@ app.MapPost("/api/purchase", async (SavePurchaseRequest request, IPurchaseServic
         var id = await service.SaveAsync(request, cancellationToken);
         return Results.Ok(new { Id = id });
     }
-    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 50120)
+    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is >= 50120 and <= 50124)
     {
-        // "Galat tank" wali jaanch. Ye user ki galti hai, server ki nahi — isliye
+        // "Galat tank", matra / rakam, aur Section AV: wahi bill dobara (50123), tanker ki
+        // tareekh galat (50124). Ye user ki galti hai, server ki nahi — isliye
         // 500 "An unexpected error occurred" nahi, 400 ke saath asli wajah.
         return Results.BadRequest(new { Success = false, Message = ex.Message });
     }

@@ -10,7 +10,9 @@ public sealed record PurchaseDetailDto(
     string? VehicleNo,
     string? DriverName,
     string? Notes,
-    List<PurchaseDetailItemDto> Items
+    List<PurchaseDetailItemDto> Items,
+    // Section AV: tanker kab utra (null = bill wala din).
+    DateOnly? ReceivedDate = null
 );
 
 /// <summary>

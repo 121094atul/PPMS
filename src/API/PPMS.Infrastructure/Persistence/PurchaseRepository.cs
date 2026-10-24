@@ -46,7 +46,8 @@ public sealed class PurchaseRepository(IOptions<DatabaseOptions> options) : IPur
                         request.VehicleNo,
                         request.DriverName,
                         TotalAmount = total,
-                        request.Notes
+                        request.Notes,
+                        ReceivedDate = request.ReceivedDate?.ToDateTime(TimeOnly.MinValue)
                     },
                     transaction: transaction,
                     commandType: System.Data.CommandType.StoredProcedure);
@@ -65,7 +66,9 @@ public sealed class PurchaseRepository(IOptions<DatabaseOptions> options) : IPur
                         request.VehicleNo,
                         request.DriverName,
                         TotalAmount = total,
-                        request.Notes
+                        request.Notes,
+                        // Section AV: tank ki entry isi din (null = bill ka din).
+                        ReceivedDate = request.ReceivedDate?.ToDateTime(TimeOnly.MinValue)
                     },
                     transaction: transaction,
                     commandType: System.Data.CommandType.StoredProcedure);
@@ -133,8 +136,8 @@ public sealed class PurchaseRepository(IOptions<DatabaseOptions> options) : IPur
     {
         await using var connection = new SqlConnection(_options.ConnectionString);
         using var multi = await connection.QueryMultipleAsync(
-            sql: @"SELECT Id, OwnerId, PumpId, VendorId, InvoiceNo, InvoiceDate, VehicleNo, DriverName, Notes 
-                   FROM PUMP.PurchaseHeaders 
+            sql: @"SELECT Id, OwnerId, PumpId, VendorId, InvoiceNo, InvoiceDate, VehicleNo, DriverName, Notes, ReceivedDate
+                   FROM PUMP.PurchaseHeaders
                    WHERE Id = @Id AND OwnerId = @OwnerId;
                    
                    SELECT ProductId, TankId, Quantity, ISNULL(Rate, 0) AS Rate, Amount
@@ -157,7 +160,8 @@ public sealed class PurchaseRepository(IOptions<DatabaseOptions> options) : IPur
             VehicleNo: (string?)header.VehicleNo,
             DriverName: (string?)header.DriverName,
             Notes: (string?)header.Notes,
-            Items: items.ToList()
+            Items: items.ToList(),
+            ReceivedDate: header.ReceivedDate is DateTime rd ? DateOnly.FromDateTime(rd) : null
         );
     }
 }

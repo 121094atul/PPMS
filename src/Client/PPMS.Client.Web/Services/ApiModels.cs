@@ -485,7 +485,9 @@ public sealed record ApiSavePurchaseRequest(
     string? VehicleNo,
     string? DriverName,
     string? Notes,
-    List<ApiPurchaseItemRequest> Items
+    List<ApiPurchaseItemRequest> Items,
+    // Section AV: tanker kab utra - tank / DSR isi din. Null = bill wala din.
+    DateOnly? ReceivedDate = null
 );
 
 public sealed record ApiPurchaseDetailDto(
@@ -498,7 +500,9 @@ public sealed record ApiPurchaseDetailDto(
     string? VehicleNo,
     string? DriverName,
     string? Notes,
-    List<ApiPurchaseDetailItemDto> Items
+    List<ApiPurchaseDetailItemDto> Items,
+    // Section AV - purani API nahi bhejti (null = bill wala din).
+    DateOnly? ReceivedDate = null
 );
 
 public sealed record ApiPurchaseDetailItemDto(

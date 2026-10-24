@@ -23225,3 +23225,190 @@ GO
 PRINT '  + AT4: sp_CashTxn_Delete - galle wala advance saath me';
 PRINT '=== Section AT done ===';
 GO
+
+
+/* ==========================================================================================
+   SECTION AV — Kharid: ek bill do baar nahi, aur "tanker kab utra" alag tareekh (2026-10-24)
+   ------------------------------------------------------------------------------------------
+   AV1 PurchaseHeaders.ReceivedDate - tanker jis din utra / tel tank me gaya. NULL = bill wala din.
+   AV2 sp_Purchase_SaveHeader / sp_Purchase_UpdateHeader:
+       * wahi company (vendor) + wahi bill number dobara -> THROW 50123 (pichhle din bharte waqt
+         ek tanker do baar chadh jaata to stock aur kharid dugni ho jaati).
+       * naya aakhri param @ReceivedDate (default NULL - purana API bina iske chalta rahe).
+         Bill ke din se pehle ya 30 din se zyada baad -> THROW 50124.
+   AV3 sp_Purchase_SaveDetail - tank ki entry (TankTransactions) ab ISNULL(ReceivedDate, InvoiceDate)
+       par. DSR, dip ka "kitna hona chahiye", stock - sab tank ki entry se chalte hain, isliye bill
+       19 ka aur tanker 20 ko utra to 19 ko nakli "kami" aur 20 ko nakli "zyada" nahi dikhega.
+       Bill ki tareekh wahi rehti hai jahan paisa / bill dekha jaata hai: kharid ki list,
+       bikri-kharid register (CA / GST) aur P&L ka kharid rate.
+   ========================================================================================== */
+PRINT '=== Section AV: kharid - dobara bill nahi, tanker ki tareekh ===';
+GO
+
+IF COL_LENGTH('PUMP.PurchaseHeaders', 'ReceivedDate') IS NULL
+BEGIN
+    ALTER TABLE PUMP.PurchaseHeaders ADD ReceivedDate DATE NULL;
+    PRINT '  + AV1: PurchaseHeaders.ReceivedDate';
+END
+ELSE
+    PRINT '  = AV1: PurchaseHeaders.ReceivedDate pehle se hai';
+GO
+
+CREATE OR ALTER PROCEDURE [PUMP].[sp_Purchase_SaveHeader]
+(
+    @OwnerId BIGINT,
+    @PumpId BIGINT,
+    @VendorId BIGINT,
+    @InvoiceNo NVARCHAR(50),
+    @InvoiceDate DATE,
+    @VehicleNo NVARCHAR(30) = NULL,
+    @DriverName NVARCHAR(120) = NULL,
+    @TotalAmount DECIMAL(18,2),
+    @Notes NVARCHAR(250) = NULL,
+    @ReceivedDate DATE = NULL           -- Section AV
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    /* AV2: wahi company ka wahi bill pehle se? */
+    DECLARE @PrevDate DATE;
+    SELECT TOP 1 @PrevDate = InvoiceDate FROM PUMP.PurchaseHeaders
+    WHERE OwnerId = @OwnerId AND PumpId = @PumpId AND VendorId = @VendorId
+      AND UPPER(LTRIM(RTRIM(InvoiceNo))) = UPPER(LTRIM(RTRIM(@InvoiceNo)));
+    IF @PrevDate IS NOT NULL
+    BEGIN
+        THROW 50123, 'This bill number is already entered for this company. The same tanker cannot be entered twice - check the purchase list.', 1;
+    END
+
+    IF @ReceivedDate IS NOT NULL AND (@ReceivedDate < @InvoiceDate OR @ReceivedDate > DATEADD(DAY, 30, @InvoiceDate))
+        THROW 50124, 'The tanker unload date must be on or after the bill date, and within 30 days of it.', 1;
+
+    INSERT INTO PUMP.PurchaseHeaders
+        (OwnerId, PumpId, VendorId, InvoiceNo, InvoiceDate, VehicleNo, DriverName, TotalAmount, Notes, ReceivedDate)
+    VALUES
+        (@OwnerId, @PumpId, @VendorId, @InvoiceNo, @InvoiceDate, @VehicleNo, @DriverName, @TotalAmount, @Notes, @ReceivedDate);
+
+    SELECT CAST(SCOPE_IDENTITY() AS BIGINT) AS Id;
+END
+GO
+PRINT '  + AV2: sp_Purchase_SaveHeader - dobara bill nahi, @ReceivedDate';
+GO
+
+CREATE OR ALTER PROCEDURE [PUMP].[sp_Purchase_UpdateHeader]
+(
+    @Id          BIGINT,
+    @OwnerId     BIGINT,
+    @PumpId      BIGINT,
+    @VendorId    BIGINT,
+    @InvoiceNo   NVARCHAR(50),
+    @InvoiceDate DATE,
+    @VehicleNo   NVARCHAR(30) = NULL,
+    @DriverName  NVARCHAR(120) = NULL,
+    @TotalAmount DECIMAL(18,2),
+    @Notes       NVARCHAR(250) = NULL,
+    @ReceivedDate DATE = NULL           -- Section AV
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @PrevDate DATE;
+    SELECT TOP 1 @PrevDate = InvoiceDate FROM PUMP.PurchaseHeaders
+    WHERE OwnerId = @OwnerId AND PumpId = @PumpId AND VendorId = @VendorId AND Id <> @Id
+      AND UPPER(LTRIM(RTRIM(InvoiceNo))) = UPPER(LTRIM(RTRIM(@InvoiceNo)));
+    IF @PrevDate IS NOT NULL
+    BEGIN
+        THROW 50123, 'This bill number is already entered for this company. The same tanker cannot be entered twice - check the purchase list.', 1;
+    END
+
+    IF @ReceivedDate IS NOT NULL AND (@ReceivedDate < @InvoiceDate OR @ReceivedDate > DATEADD(DAY, 30, @InvoiceDate))
+        THROW 50124, 'The tanker unload date must be on or after the bill date, and within 30 days of it.', 1;
+
+    UPDATE PUMP.PurchaseHeaders
+    SET VendorId     = @VendorId,
+        InvoiceNo    = @InvoiceNo,
+        InvoiceDate  = @InvoiceDate,
+        VehicleNo    = @VehicleNo,
+        DriverName   = @DriverName,
+        TotalAmount  = @TotalAmount,
+        Notes        = @Notes,
+        ReceivedDate = @ReceivedDate
+    WHERE Id = @Id
+      AND OwnerId = @OwnerId
+      AND PumpId = @PumpId;
+END
+GO
+PRINT '  + AV2: sp_Purchase_UpdateHeader - dobara bill nahi, @ReceivedDate';
+GO
+
+CREATE OR ALTER PROCEDURE [PUMP].[sp_Purchase_SaveDetail]
+(
+    @PurchaseHeaderId BIGINT,
+    @ProductId        BIGINT,
+    @TankId           BIGINT = NULL,
+    @Quantity         DECIMAL(18,3),
+    @Rate             DECIMAL(18,4) = NULL,
+    @Amount           DECIMAL(18,2) = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF ISNULL(@Quantity, 0) <= 0
+        THROW 50121, 'Purchase quantity must be more than zero.', 1;
+
+    IF ISNULL(@Amount, 0) > 0
+        /* Bill ki rakam di hai - wahi sach. Rate sirf jaankari ke liye. */
+        SET @Rate = ROUND(@Amount / @Quantity, 4);
+    ELSE IF ISNULL(@Rate, 0) > 0
+        SET @Amount = ROUND(@Quantity * @Rate, 2);
+    ELSE
+        THROW 50122, 'Enter the bill amount for this purchase line.', 1;
+
+    /* AV3: tank me tel jis din gaya - tanker utarne ka din, na ho to bill ka din. */
+    DECLARE @OwnerId BIGINT, @PumpId BIGINT, @StockDate DATE;
+    SELECT @OwnerId = OwnerId, @PumpId = PumpId, @StockDate = ISNULL(ReceivedDate, InvoiceDate)
+    FROM PUMP.PurchaseHeaders
+    WHERE Id = @PurchaseHeaderId;
+
+    /* Tank usi product ka hona chahiye jiska tel aaya hai (G20). */
+    IF @TankId IS NOT NULL AND @TankId > 0
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM PUMP.Tanks
+            WHERE Id = @TankId
+              AND ProductId = @ProductId
+              AND (@OwnerId IS NULL OR OwnerId = @OwnerId)
+              AND (@PumpId  IS NULL OR PumpId  = @PumpId)
+        )
+            THROW 50120, 'The selected tank does not hold this product. Pick the tank that stores this fuel.', 1;
+    END
+
+    INSERT INTO PUMP.PurchaseDetails (PurchaseHeaderId, ProductId, TankId, Quantity, Rate, Amount)
+    VALUES (@PurchaseHeaderId, @ProductId, @TankId, @Quantity, @Rate, @Amount);
+
+    IF @TankId IS NOT NULL AND @TankId > 0
+    BEGIN
+        UPDATE PUMP.Tanks
+        SET CurrentStock = CurrentStock + @Quantity,
+            UpdatedOn    = SYSDATETIME()
+        WHERE Id = @TankId;
+
+        /* Purchase tank ledger me bhi jaati hai (G12). */
+        IF @OwnerId IS NOT NULL AND @PumpId IS NOT NULL
+        BEGIN
+            INSERT INTO PUMP.TankTransactions
+                (OwnerId, PumpId, TankId, TxnType, Quantity, ReferenceNo, Notes, TxnDateTime)
+            VALUES
+                (@OwnerId, @PumpId, @TankId, 'PURCHASE', @Quantity,
+                 CONCAT('PURCHASE-', @PurchaseHeaderId), 'Auto entry from purchase',
+                 ISNULL(CAST(@StockDate AS DATETIME2), SYSDATETIME()));
+        END
+    END
+END
+GO
+PRINT '  + AV3: sp_Purchase_SaveDetail - tank ki entry tanker utarne ke din';
+PRINT '=== Section AV done ===';
+GO

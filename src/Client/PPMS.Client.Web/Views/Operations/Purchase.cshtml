@@ -43,7 +43,7 @@
 
                 @if (!string.IsNullOrWhiteSpace(Model.Message))
                 {
-                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@Model.Message<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
+                    <div class="alert alert-info alert-dismissible fade show py-2" role="alert">@L.GetString(Model.Message!).Value<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button></div>
                 }
 
                 <form asp-action="SavePurchase" asp-controller="Operations" method="post" id="purchaseForm">
@@ -111,7 +111,7 @@
                                03 Oct ko ek bill galti se 01 AUGUST ka ban gaya tha. *@
                             <div id="invDateWords" class="fw-semibold small mt-1"></div>
                             <div id="invDateWarn" class="alert alert-warning py-1 px-2 small mt-1 mb-0" hidden></div>
-                            <div class="form-text">@L["Tank stock is added on this date. Save it before closing that day's shift. If the tanker was unloaded on a different day than the bill, the DSR shows + on one day and - on the other (the total stays correct)."]</div>
+                            <div class="form-text">@L["The date printed on the bill. If the tanker was unloaded on another day, fill that below."]</div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">@L["Vehicle No"]</label>
@@ -119,9 +119,18 @@
                         </div>
                     </div>
 
-                    <div class="mb-2">
-                        <label class="form-label">@L["Driver Name"]</label>
-                        <input asp-for="Form.DriverName" class="form-control form-control-sm" />
+                    <div class="row g-2 mb-2">
+                        @* Section AV: tank / DSR / dip isi din se. Khaali = bill wala din. Bill ki tareekh
+                           bill, bikri-kharid register aur P&L ke liye rehti hai. *@
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Tanker unloaded on"] <span class="text-muted fw-normal">(@L["if not the bill date"])</span></label>
+                            <input asp-for="Form.ReceivedDate" type="date" class="form-control form-control-sm" />
+                            <div class="form-text">@L["Tank stock, DSR and dip use this date. Leave empty if the tanker came on the bill date."]</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@L["Driver Name"]</label>
+                            <input asp-for="Form.DriverName" class="form-control form-control-sm" />
+                        </div>
                     </div>
 
                     <div class="mb-3">

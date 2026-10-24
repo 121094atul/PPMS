@@ -26,6 +26,8 @@ public sealed class PurchaseForm
     public long VendorId { get; set; }
     public string InvoiceNo { get; set; } = string.Empty;
     public DateOnly InvoiceDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    /// <summary>Section AV: tanker kab utra (tel tank me). Khaali = bill wala din.</summary>
+    public DateOnly? ReceivedDate { get; set; }
     public string? VehicleNo { get; set; }
     public string? DriverName { get; set; }
     public string? Notes { get; set; }

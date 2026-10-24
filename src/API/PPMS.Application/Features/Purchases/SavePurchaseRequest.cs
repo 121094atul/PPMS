@@ -10,5 +10,7 @@ public sealed record SavePurchaseRequest(
     string? VehicleNo,
     string? DriverName,
     string? Notes,
-    List<PurchaseItemRequest> Items
+    List<PurchaseItemRequest> Items,
+    // Section AV: tanker jis din utra (tel tank me gaya). Null = bill wala din.
+    DateOnly? ReceivedDate = null
 );
