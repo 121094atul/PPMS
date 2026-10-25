@@ -99,6 +99,31 @@
             to   { opacity: 1; transform: translateY(0) scale(1); }
         }
 
+        /* Bhasha - login se PEHLE bhi (pehle sirf andar header me thi). */
+        .lang-switch {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            display: inline-flex;
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 999px;
+            overflow: hidden;
+            z-index: 20;
+        }
+        .lang-switch a {
+            padding: 4px 11px;
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.65);
+            text-decoration: none;
+            line-height: 1.4;
+        }
+        .lang-switch a.on {
+            background: #f97316;
+            color: #fff;
+        }
+        .lang-switch a:not(.on):hover { color: #fff; background: rgba(255,255,255,0.08); }
+
         .login-logo {
             width: 64px;
             height: 64px;
@@ -430,6 +455,14 @@
 </head>
 <body class="login-page">
     <div class="login-card">
+        @{
+            var loginLang = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+            var loginReturn = Context.Request.Path + Context.Request.QueryString;
+        }
+        <div class="lang-switch" role="group" aria-label="Language / भाषा">
+            <a class="@(loginLang == "hi" ? "" : "on")" href="@Url.Action("Set", "Language", new { culture = "en", returnUrl = loginReturn })" lang="en">EN</a>
+            <a class="@(loginLang == "hi" ? "on" : "")" href="@Url.Action("Set", "Language", new { culture = "hi", returnUrl = loginReturn })" lang="hi">हिंदी</a>
+        </div>
 
         @* ---- App install ----
            Sabse upar hai kyunki nazar pehle yahin padti hai, aur ye pehli baar
