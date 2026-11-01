@@ -4444,4 +4444,43 @@
   <data name="This tenant has entries in the last 15 days. It cannot be deleted yet." xml:space="preserve">
     <value>इस टेनेंट की पिछले 15 दिन में एंट्री हुई है। अभी नहीं मिटेगा।</value>
   </data>
+  <data name="Sent when a shift is closed, with the day's sale and cash summary." xml:space="preserve">
+    <value>शिफ़्ट बंद होने पर — दिन की बिक्री और नक़द का जोड़।</value>
+  </data>
+  <data name="Stock purchase" xml:space="preserve">
+    <value>तेल की ख़रीद</value>
+  </data>
+  <data name="Sent when a tanker load is recorded." xml:space="preserve">
+    <value>टैंकर की ख़रीद दर्ज होने पर।</value>
+  </data>
+  <data name="High stock loss" xml:space="preserve">
+    <value>स्टॉक में बड़ी कमी</value>
+  </data>
+  <data name="Sent when a dip reconciliation shows a loss of more than 50 litres." xml:space="preserve">
+    <value>डिप मिलान में 50 लीटर से ज़्यादा कमी निकलने पर।</value>
+  </data>
+  <data name="Sent when cash is recorded as deposited into the bank." xml:space="preserve">
+    <value>गल्ले से बैंक में जमा दर्ज होने पर।</value>
+  </data>
+  <data name="Large expense" xml:space="preserve">
+    <value>बड़ा ख़र्च</value>
+  </data>
+  <data name="Sent when an expense above Rs. 5,000 is recorded." xml:space="preserve">
+    <value>₹5,000 से बड़ा ख़र्च दर्ज होने पर।</value>
+  </data>
+  <data name="Credit party entry" xml:space="preserve">
+    <value>उधार पार्टी की एंट्री</value>
+  </data>
+  <data name="A copy of the entry that goes to a credit customer's ledger." xml:space="preserve">
+    <value>उधार पार्टी के खाते में हुई एंट्री की कॉपी (आपको)।</value>
+  </data>
+  <data name="Message to the credit party" xml:space="preserve">
+    <value>उधार पार्टी को संदेश</value>
+  </data>
+  <data name="Sent to the party's own mobile when an entry is added to its ledger. Uses 1 credit per message." xml:space="preserve">
+    <value>पार्टी के खाते में एंट्री होने पर पार्टी के अपने मोबाइल पर। हर संदेश पर 1 क्रेडिट लगता है।</value>
+  </data>
+  <data name="Deposit to bank" xml:space="preserve">
+    <value>बैंक में जमा</value>
+  </data>
 </root>

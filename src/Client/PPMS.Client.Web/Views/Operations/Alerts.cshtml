@@ -66,8 +66,9 @@
                             {
                                 <tr>
                                     <td data-label="@L["Alert"]">
-                                        <div class="fw-semibold">@a.Title</div>
-                                        <div class="text-muted small">@a.Description</div>
+                                        @* Naam / bayan SP se English me aate hain - yahan Hindi (Section AY). *@
+                                        <div class="fw-semibold">@L.GetString(a.Title).Value</div>
+                                        <div class="text-muted small">@L.GetString(a.Description).Value</div>
                                     </td>
                                     <td class="text-end" data-label="@L["Status"]">
                                         @* Har switch apna chhota form hai — ek toggle, ek save.

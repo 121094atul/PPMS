@@ -24,6 +24,12 @@ public interface IWhatsAppNotificationService
     Task<bool> SendToOwnerAsync(long ownerId, string alertKey, string message, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Party (credit grahak) ke apne mobile par sandesh - owner ke 'PARTY_MESSAGE' switch
+    /// (default band) aur owner ke message credit ke saath, bilkul owner alert jaisa.
+    /// </summary>
+    Task<bool> SendToPartyAsync(long ownerId, string partyMobile, string message, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Bhejne ka intezaam hai bhi ya nahi (provider chuna hai aur uski key set hai).
     /// Config ki jaanch yahan Infrastructure me hoti hai — Application layer ko
     /// IConfiguration se joda nahi ja raha.

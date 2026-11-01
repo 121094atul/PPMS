@@ -139,7 +139,21 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
         }
     }
 
-    public async Task<bool> SendToOwnerAsync(long ownerId, string alertKey, string message, CancellationToken cancellationToken = default)
+    public Task<bool> SendToOwnerAsync(long ownerId, string alertKey, string message, CancellationToken cancellationToken = default)
+        => SendWithCreditAsync(ownerId, alertKey, toMobile: null, message, cancellationToken);
+
+    /// <summary>
+    /// Party (grahak) ko sandesh - Section AY. Pehle ye seedha SendMessageAsync tha: na credit
+    /// katta, na owner band kar sakta. Ab 'PARTY_MESSAGE' alert ke switch (default band) aur
+    /// owner ke credit se; number party ka.
+    /// </summary>
+    public Task<bool> SendToPartyAsync(long ownerId, string partyMobile, string message, CancellationToken cancellationToken = default)
+        => string.IsNullOrWhiteSpace(partyMobile)
+            ? Task.FromResult(false)
+            : SendWithCreditAsync(ownerId, "PARTY_MESSAGE", partyMobile, message, cancellationToken);
+
+    /// <summary>Switch dekho -> credit kaato -> bhejo -> fail par credit wapas. toMobile null = owner ka number.</summary>
+    private async Task<bool> SendWithCreditAsync(long ownerId, string alertKey, string? toMobile, string message, CancellationToken cancellationToken)
     {
         try
         {
@@ -157,7 +171,8 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(target.Mobile))
+            var mobile = toMobile ?? target.Mobile;
+            if (string.IsNullOrWhiteSpace(mobile))
             {
                 _logger.LogWarning(
                     "Alert {AlertKey} skipped: no mobile number set for owner {OwnerId} ({OwnerName}). "
@@ -178,7 +193,7 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
                 return false;
             }
 
-            var sent = await SendMessageAsync(target.Mobile, message, cancellationToken);
+            var sent = await SendMessageAsync(mobile, message, cancellationToken);
 
             if (!sent)
             {

@@ -18,9 +18,11 @@ public sealed class PartyLedgerService(
                 if (!string.IsNullOrWhiteSpace(request.ReferenceNo)) msg += $"\nRef: {request.ReferenceNo}";
                 msg += "\n- PUMP Management";
 
+                // Pehle seedha SendMessageAsync - bina credit, bina owner ke switch ke. Ab 'PARTY_MESSAGE'
+                // (Alerts page, default band) + owner ka credit (Section AY).
                 if (!string.IsNullOrWhiteSpace(party.Mobile))
                 {
-                    await notificationService.SendMessageAsync(party.Mobile, msg, cancellationToken);
+                    await notificationService.SendToPartyAsync(request.OwnerId, party.Mobile, msg, cancellationToken);
                 }
 
                 var ownerMsg = $"Party Ledger Update:\nParty: {party.PartyName}\nType: {request.EntryType}\nAmount: Rs.{request.Amount}";

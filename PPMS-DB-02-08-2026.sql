@@ -24090,3 +24090,131 @@ GO
 
 PRINT '=== Section AX done ===';
 GO
+
+
+/* ==========================================================================================
+   SECTION AY — Party ko sandesh bhi credit aur on/off ke niche (2026-11-01)
+   ------------------------------------------------------------------------------------------
+   Party ledger me entry par party ke apne mobile par sandesh jaata tha - bina credit kaate aur
+   bina owner ke band karne ke raaste ke. WhatsApp chalu hote hi har entry ka paisa platform
+   (Twilio) ke khaate se jaata, aur owner rok bhi nahi paata.
+
+   Ab naya alert 'PARTY_MESSAGE' ("Message to the credit party"):
+     * Alerts page par switch - DEFAULT BAND (grahak ko sandesh owner khud chalu kare).
+       Baaki alert pehle jaise default chalu.
+     * Har sandesh par owner ka 1 credit (sp_Wallet_Consume pehle se koi bhi AlertKey maanta hai);
+       na jaaye to wapas.
+   AY1 sp_Notification_GetOwnerTarget - IsEnabled ka default alert ke hisaab se (PARTY_MESSAGE = 0).
+   AY2 sp_OwnerAlert_List             - naya row + wahi default.
+   AY3 sp_OwnerAlert_Save             - PARTY_MESSAGE bhi maanya.
+   Purana build in SP par pehle jaisa chalta hai (columns / params nahi badle).
+   ========================================================================================== */
+PRINT '=== Section AY: party ko sandesh - credit + on/off ===';
+GO
+
+/* ---- AY1 ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_Notification_GetOwnerTarget
+(
+    @OwnerId  BIGINT,
+    @AlertKey NVARCHAR(40)
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP 1
+        /* Pehle Owners.ContactNo — malik khud yahi number settings me rakhta
+           hai. Khaali ho to usi owner ke owner-user ka mobile. Dono jagah
+           OwnerId ka filter hai, isliye doosre tenant ka number aa hi nahi sakta. */
+        Mobile = COALESCE(
+                    NULLIF(LTRIM(RTRIM(o.ContactNo)), ''),
+                    (SELECT TOP 1 NULLIF(LTRIM(RTRIM(u.Mobile)), '')
+                     FROM PUMP.Users u
+                     WHERE u.OwnerId = o.Id
+                       AND u.IsOwner = 1
+                       AND u.IsActive = 1
+                       AND ISNULL(u.IsDeleted, 0) = 0
+                       AND NULLIF(LTRIM(RTRIM(u.Mobile)), '') IS NOT NULL
+                     ORDER BY u.Id)
+                 ),
+        /* Grahak (party) ko sandesh default BAND - baaki alert default chalu. */
+        IsEnabled = CAST(ISNULL(s.IsEnabled, CASE WHEN @AlertKey = 'PARTY_MESSAGE' THEN 0 ELSE 1 END) AS BIT),
+        OwnerName = o.Name
+    FROM PUMP.Owners o
+    LEFT JOIN PUMP.OwnerAlertSettings s
+           ON s.OwnerId = o.Id AND s.AlertKey = @AlertKey
+    WHERE o.Id = @OwnerId
+      AND o.IsActive = 1
+      AND ISNULL(o.IsDeleted, 0) = 0;
+END
+GO
+PRINT '  + AY1: sp_Notification_GetOwnerTarget';
+GO
+
+/* ---- AY2 ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_OwnerAlert_List
+(
+    @OwnerId BIGINT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @All TABLE (AlertKey NVARCHAR(40), Title NVARCHAR(80), Description NVARCHAR(200), Sequence INT, DefaultOn BIT);
+    INSERT INTO @All (AlertKey, Title, Description, Sequence, DefaultOn) VALUES
+        ('SHIFT_CLOSE',   N'Shift closed',       N'Sent when a shift is closed, with the day''s sale and cash summary.', 1, 1),
+        ('PURCHASE',      N'Stock purchase',     N'Sent when a tanker load is recorded.', 2, 1),
+        ('STOCK_LOSS',    N'High stock loss',    N'Sent when a dip reconciliation shows a loss of more than 50 litres.', 3, 1),
+        ('BANK_DEPOSIT',  N'Deposit to bank',       N'Sent when cash is recorded as deposited into the bank.', 4, 1),
+        ('BIG_EXPENSE',   N'Large expense',      N'Sent when an expense above Rs. 5,000 is recorded.', 5, 1),
+        ('PARTY_LEDGER',  N'Credit party entry', N'A copy of the entry that goes to a credit customer''s ledger.', 6, 1),
+        ('PARTY_MESSAGE', N'Message to the credit party', N'Sent to the party''s own mobile when an entry is added to its ledger. Uses 1 credit per message.', 7, 0);
+
+    SELECT
+        a.AlertKey,
+        a.Title,
+        a.Description,
+        IsEnabled = CAST(ISNULL(s.IsEnabled, a.DefaultOn) AS BIT)
+    FROM @All a
+    LEFT JOIN PUMP.OwnerAlertSettings s
+           ON s.OwnerId = @OwnerId AND s.AlertKey = a.AlertKey
+    ORDER BY a.Sequence;
+END
+GO
+PRINT '  + AY2: sp_OwnerAlert_List';
+GO
+
+/* ---- AY3 ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_OwnerAlert_Save
+(
+    @OwnerId   BIGINT,
+    @AlertKey  NVARCHAR(40),
+    @IsEnabled BIT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM PUMP.Owners
+                   WHERE Id = @OwnerId AND ISNULL(IsDeleted, 0) = 0)
+        THROW 50190, 'Account not found.', 1;
+
+    IF @AlertKey NOT IN ('SHIFT_CLOSE','PURCHASE','STOCK_LOSS','BANK_DEPOSIT','BIG_EXPENSE','PARTY_LEDGER','PARTY_MESSAGE')
+        THROW 50191, 'Unknown alert type.', 1;
+
+    UPDATE PUMP.OwnerAlertSettings
+    SET IsEnabled = @IsEnabled, UpdatedOn = SYSDATETIME()
+    WHERE OwnerId = @OwnerId AND AlertKey = @AlertKey;
+
+    IF @@ROWCOUNT = 0
+        INSERT INTO PUMP.OwnerAlertSettings (OwnerId, AlertKey, IsEnabled, UpdatedOn)
+        VALUES (@OwnerId, @AlertKey, @IsEnabled, SYSDATETIME());
+
+    SELECT Result = 'OK';
+END
+GO
+PRINT '  + AY3: sp_OwnerAlert_Save - PARTY_MESSAGE bhi';
+GO
+
+PRINT '=== Section AY done ===';
+GO
