@@ -6,12 +6,18 @@ namespace PPMS.Client.Web.Controllers;
 
 public class AccountController(PPMSApiClient apiClient) : Controller
 {
+    private bool IsSuperAdminSession() => bool.TryParse(HttpContext.Session.GetString("is_super_admin"), out var b) && b;
+
     [HttpGet]
     public IActionResult Login()
     {
         if (!string.IsNullOrWhiteSpace(HttpContext.Session.GetString("access_token")))
         {
-            return RedirectToAction("Index", "Home");
+            // Login ke baad "back" dabane par yahin aate hain. Super Admin ka koi pump nahi -
+            // pehle use bhi Home bhejte the: khaali dashboard / "setup your pump" ya error.
+            return IsSuperAdminSession()
+                ? RedirectToAction("Index", "SuperAdmin")
+                : RedirectToAction("Index", "Home");
         }
 
         ViewData["Title"] = "Login";

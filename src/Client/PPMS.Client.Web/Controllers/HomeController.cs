@@ -17,6 +17,13 @@ public class HomeController(PPMSApiClient apiClient) : Controller
             return RedirectToAction("Login", "Account");
         }
 
+        // Super Admin ka koi pump nahi (SYSTEM owner) - dashboard khaali / "setup your pump" dikhata
+        // tha. Logo, "back" ya seedha "/" - sab uske apne page par.
+        if (bool.TryParse(HttpContext.Session.GetString("is_super_admin"), out var isSuperAdmin) && isSuperAdmin)
+        {
+            return RedirectToAction("Index", "SuperAdmin");
+        }
+
         var ownerId = GetOwnerId();
         var pumps = await apiClient.GetPumpsAsync(token, ownerId, cancellationToken);
         var selectedPumpId = pumpId ?? pumps.FirstOrDefault()?.Id ?? 0;
