@@ -61,6 +61,84 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
         }
     }
 
+    /// <summary>
+    /// OTP ka alag raasta (Fast2SMS "otp" route - ~₹0.25 / SMS, DLT ke bina). Isse alerts
+    /// waghairah par koi asar nahi - wo <c>Notification:Provider</c> se hi jaate hain.
+    /// </summary>
+    private bool UsesFast2SmsOtpRoute =>
+        string.Equals(_configuration["Notification:Otp_Provider"], "Fast2SMSOtp", StringComparison.OrdinalIgnoreCase)
+        && !string.IsNullOrWhiteSpace(_configuration["Notification:Fast2SMS_ApiKey"]);
+
+    public bool IsOtpConfigured => UsesFast2SmsOtpRoute || IsConfigured;
+
+    public async Task<bool> SendOtpAsync(string phoneNumber, string otp, string fullMessage, CancellationToken cancellationToken = default)
+    {
+        if (!UsesFast2SmsOtpRoute)
+        {
+            return await SendMessageAsync(phoneNumber, fullMessage, cancellationToken);
+        }
+
+        try
+        {
+            return await SendOtpViaFast2SmsAsync(phoneNumber, otp, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fast2SMS OTP could not be sent.");
+            return false;
+        }
+    }
+
+    private async Task<bool> SendOtpViaFast2SmsAsync(string phoneNumber, string otp, CancellationToken cancellationToken)
+    {
+        var cleanNumber = new string((phoneNumber ?? string.Empty).Where(char.IsDigit).ToArray());
+        if (cleanNumber.StartsWith("91") && cleanNumber.Length == 12) cleanNumber = cleanNumber.Substring(2);
+        if (cleanNumber.Length == 11 && cleanNumber.StartsWith('0')) cleanNumber = cleanNumber[1..];
+        if (cleanNumber.Length != 10)
+        {
+            _logger.LogWarning("Fast2SMS OTP skipped: mobile is not a 10-digit Indian number.");
+            return false;
+        }
+
+        // Base URL config se sirf test ke liye (nakli server); asli me hamesha fast2sms.com.
+        var baseUrl = (_configuration["Notification:Fast2SMS_BaseUrl"] ?? "https://www.fast2sms.com").TrimEnd('/');
+        using var request = new HttpRequestMessage(HttpMethod.Post, baseUrl + "/dev/bulkV2");
+        request.Headers.TryAddWithoutValidation("authorization", _configuration["Notification:Fast2SMS_ApiKey"]);
+        request.Content = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("route", "otp"),
+            new KeyValuePair<string, string>("variables_values", otp),
+            new KeyValuePair<string, string>("numbers", cleanNumber)
+        });
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        // Fast2SMS kabhi-kabhi 200 ke saath bhi "return": false deta hai (jaise wallet khaali).
+        var ok = response.IsSuccessStatusCode && Fast2SmsAccepted(body);
+        if (ok)
+        {
+            _logger.LogInformation("Password OTP sent via Fast2SMS (otp route).");
+            return true;
+        }
+
+        _logger.LogError("Fast2SMS OTP error ({Status}): {Body}", (int)response.StatusCode, body);
+        return false;
+    }
+
+    private static bool Fast2SmsAccepted(string body)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            return doc.RootElement.TryGetProperty("return", out var r) && r.ValueKind == System.Text.Json.JsonValueKind.True;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return false;
+        }
+    }
+
     public async Task<bool> SendToOwnerAsync(long ownerId, string alertKey, string message, CancellationToken cancellationToken = default)
     {
         try

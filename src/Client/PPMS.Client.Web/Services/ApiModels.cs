@@ -1084,6 +1084,40 @@ public sealed record ApiOwnerDto(
     decimal SalesThisMonth = 0
 );
 
+/// <summary>Super Admin ki tenant list ka ek row - server par page (Section AX).</summary>
+public sealed record ApiOwnerPageRowDto(
+    long Id,
+    string Name,
+    bool IsActive,
+    DateTime CreatedOn,
+    DateTime? ValidUpto,
+    string? ContactName,
+    string? ContactNo,
+    string? Email,
+    string? City,
+    string? StateCode,
+    string? GSTIN,
+    string? PlanCode,
+    bool IsTrial,
+    int PumpCount,
+    int UserCount,
+    int? DaysLeft,
+    DateTime? LastLoginOn,
+    DateTime? LastActivityOn,
+    decimal SalesThisMonth,
+    bool IsArchived,
+    DateTime? ArchivedOn,
+    int TotalCount);
+
+public sealed record ApiOwnerPageResult(IReadOnlyList<ApiOwnerPageRowDto> Items, int TotalCount, int PageNumber, int PageSize);
+
+public sealed record ApiOwnerStatusCountsDto(
+    int AllCount, int Active, int Suspended, int Trial, int Expired, int Expiring, int Idle, int Archived);
+
+public sealed record ApiTenantPurgeRowDto(string TableName, int RowsDeleted);
+
+public sealed record ApiPurgeOwnerResult(string OwnerName, string BackupFile, IReadOnlyList<ApiTenantPurgeRowDto> Deleted);
+
 /// <summary>Superadmin ko kisi tenant ke users chahiye - password reset ke liye.</summary>
 /// <summary>
 /// Pump par har nozzle par alag aadmi hota hai. Ye us aadmi ke cash ki ek line:

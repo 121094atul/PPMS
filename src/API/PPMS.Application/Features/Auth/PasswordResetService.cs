@@ -13,7 +13,7 @@ public sealed class PasswordResetService(
     /// Key set na ho to OTP kahin nahi jaata. Aise me "OTP bhej diya" likhna jhooth
     /// hai — user hamesha ke liye atka rehta hai. Isliye pehle hi jaanch lete hain.
     /// </summary>
-    public bool IsSmsConfigured => notificationService.IsConfigured;
+    public bool IsSmsConfigured => notificationService.IsOtpConfigured;
 
     /// <summary>
     /// OTP DB me plain nahi jaata. Agar kabhi DB dikh bhi jaye to us se kisi ka
@@ -74,7 +74,8 @@ public sealed class PasswordResetService(
         bool sent;
         try
         {
-            sent = await notificationService.SendMessageAsync(mobile, message, cancellationToken);
+            // OTP ka apna sasta raasta ho sakta hai (Fast2SMS otp route) - baaki sandesh nahi badalte.
+            sent = await notificationService.SendOtpAsync(mobile, otp, message, cancellationToken);
         }
         catch (Exception)
         {

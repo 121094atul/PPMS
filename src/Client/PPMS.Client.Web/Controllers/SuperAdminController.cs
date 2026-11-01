@@ -16,18 +16,101 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
         : RedirectToAction("Index", "Home");
 
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(string? q, string? status, string? sort, int page = 1, CancellationToken cancellationToken = default)
     {
         if (!IsSuperAdmin())
         {
             return RedirectToAction("Index", "Home");
         }
 
+        // Section AX: page / search / filter server par - list kitni bhi badi ho, ek baar me 25.
         var token = GetAccessToken();
-        var owners = await apiClient.GetOwnersAsync(token, cancellationToken);
-        var requests = await apiClient.GetSubscriptionRequestsAsync(token, cancellationToken);
-        ViewBag.SubscriptionRequests = requests;
-        return View(owners);
+        var model = new TenantListViewModel
+        {
+            Search = string.IsNullOrWhiteSpace(q) ? null : q.Trim(),
+            Status = string.IsNullOrWhiteSpace(status) ? "ALL" : status.Trim().ToUpperInvariant(),
+            Sort = TenantListViewModel.SortKeys.Contains((sort ?? "").ToUpperInvariant()) ? sort!.ToUpperInvariant() : "NEWEST"
+        };
+
+        var result = await apiClient.GetOwnerPageAsync(token, model.Search, model.Status, model.Sort, Math.Max(1, page), model.PageSize, cancellationToken);
+        model.Items = result.Items;
+        model.TotalCount = result.TotalCount;
+        model.PageNumber = result.PageNumber;
+        model.Counts = await apiClient.GetOwnerStatusCountsAsync(token, cancellationToken);
+        model.Requests = await apiClient.GetSubscriptionRequestsAsync(token, cancellationToken);
+        return View(model);
+    }
+
+    /// <summary>List par wapas - wahi search / filter / page.</summary>
+    private IActionResult BackToList(string? q, string? status, string? sort, int page)
+        => RedirectToAction(nameof(Index), new { q, status, sort, page });
+
+    /// <summary>"Hatao" - list se hata, login band; data rehta hai (Section AX).</summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Archive(long id, bool archive, string? q, string? status, string? sort, int page = 1, CancellationToken cancellationToken = default)
+    {
+        if (!IsSuperAdmin())
+        {
+            return RedirectToAction("Index", "Home");
+        }
+
+        var (ok, error) = await apiClient.SetOwnerArchivedAsync(GetAccessToken(), id, archive, cancellationToken);
+        if (ok)
+        {
+            TempData["SuperAdminOk"] = archive
+                ? "Tenant removed. Its users cannot sign in. Find it under \"Removed\" to restore or delete it."
+                : "Tenant restored. It is suspended - press Activate when it should work again.";
+        }
+        else
+        {
+            TempData["SuperAdminMessage"] = error;
+        }
+
+        return BackToList(q, status, sort, page);
+    }
+
+    /// <summary>Tenant ka saara data JSON me - mitane se pehle apne paas rakh lo.</summary>
+    [HttpGet]
+    public async Task<IActionResult> ExportTenant(long id, CancellationToken cancellationToken)
+    {
+        if (!IsSuperAdmin())
+        {
+            return RedirectToAction("Index", "Home");
+        }
+
+        var file = await apiClient.ExportOwnerAsync(GetAccessToken(), id, cancellationToken);
+        if (file is null)
+        {
+            TempData["SuperAdminMessage"] = "Could not download the data of this tenant.";
+            return RedirectToAction(nameof(Index), new { status = "ARCHIVED" });
+        }
+
+        return File(file.Value.Content, "application/json", file.Value.FileName);
+    }
+
+    /// <summary>"Poora mitao" - sirf hataya hua tenant, naam type karke. Server pehle backup file banata hai.</summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PurgeTenant(long id, string? confirmName, string? q, string? status, string? sort, int page = 1, CancellationToken cancellationToken = default)
+    {
+        if (!IsSuperAdmin())
+        {
+            return RedirectToAction("Index", "Home");
+        }
+
+        var (result, error) = await apiClient.PurgeOwnerAsync(GetAccessToken(), id, confirmName ?? string.Empty, cancellationToken);
+        if (result is null)
+        {
+            TempData["SuperAdminMessage"] = error;
+        }
+        else
+        {
+            var rows = result.Deleted.Sum(x => x.RowsDeleted);
+            TempData["SuperAdminOk"] = $"\"{result.OwnerName}\" deleted for ever ({rows} rows). Backup saved on the server: {result.BackupFile}";
+        }
+
+        return BackToList(q, status, sort, page);
     }
 
     [HttpGet]
@@ -62,16 +145,15 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
             return RedirectToAction("Index");
         }
 
-        // Server ka asli sandesh dikhao — pehle sirf generic error milta tha.
-        TempData["SuperAdminMessage"] = success.ErrorMessage ?? "Could not save the owner.";
-
-        ModelState.AddModelError("", "Failed to create tenant. Ensure username is unique.");
+        // Server ka asli sandesh isi form par - pehle TempData me jaata tha jo kahin dikhta hi
+        // nahi tha, aur form par sirf "username unique rakhein" likha aata tha.
+        ModelState.AddModelError("", success.ErrorMessage ?? "Failed to create tenant. Ensure username is unique.");
         return View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleStatus(long id, CancellationToken cancellationToken)
+    public async Task<IActionResult> ToggleStatus(long id, string? q, string? status, string? sort, int page = 1, CancellationToken cancellationToken = default)
     {
         if (!IsSuperAdmin())
         {
@@ -79,14 +161,19 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
         }
 
         var token = GetAccessToken();
-        await apiClient.ToggleOwnerStatusAsync(token, id, cancellationToken);
-        
-        return RedirectToAction("Index");
+        // Galti (jaise hataye hue tenant ko Activate) ab dikhti hai - pehle chup-chaap gum.
+        var (ok, error) = await apiClient.ToggleOwnerStatusAsync(token, id, cancellationToken);
+        if (!ok)
+        {
+            TempData["SuperAdminMessage"] = error;
+        }
+
+        return BackToList(q, status, sort, page);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ExtendTrial(long id, string newValidUpto, CancellationToken cancellationToken)
+    public async Task<IActionResult> ExtendTrial(long id, string newValidUpto, string? q, string? status, string? sort, int page = 1, CancellationToken cancellationToken = default)
     {
         if (!IsSuperAdmin())
         {
@@ -98,8 +185,8 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
             var token = GetAccessToken();
             await apiClient.ExtendOwnerTrialAsync(token, id, parsedDate, cancellationToken);
         }
-        
-        return RedirectToAction("Index");
+
+        return BackToList(q, status, sort, page);
     }
 
     [HttpPost]

@@ -57,4 +57,71 @@ public sealed class OwnerRepository(IOptions<DatabaseOptions> options) : IOwnerR
 
         return rows.AsList();
     }
+
+    // ---- Section AX ----
+
+    public async Task<IReadOnlyList<OwnerPageRowDto>> GetPageAsync(string? search, string? status, string? sort, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        var rows = await connection.QueryAsync<OwnerPageRowDto>(new CommandDefinition(
+            "PUMP.sp_Owner_GetPage",
+            new { Search = search, Status = status, Sort = sort, PageNumber = pageNumber, PageSize = pageSize },
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
+    public async Task<OwnerStatusCountsDto> GetStatusCountsAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        return await connection.QuerySingleAsync<OwnerStatusCountsDto>(new CommandDefinition(
+            "PUMP.sp_Owner_StatusCounts",
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken));
+    }
+
+    public async Task SetArchivedAsync(long ownerId, bool archive, long? byUserId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "PUMP.sp_Owner_SetArchived",
+            new { OwnerId = ownerId, Archive = archive, ByUserId = byUserId },
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken));
+    }
+
+    public async Task<IReadOnlyList<TenantExportTableDto>> ExportAsync(long ownerId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        var rows = await connection.QueryAsync<TenantExportTableDto>(new CommandDefinition(
+            "PUMP.sp_Owner_Export",
+            new { OwnerId = ownerId },
+            commandType: CommandType.StoredProcedure,
+            commandTimeout: 300,
+            cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
+    public async Task CheckPurgeAsync(long ownerId, string confirmName, long? byUserId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "PUMP.sp_Owner_Purge",
+            new { OwnerId = ownerId, ConfirmName = confirmName, ByUserId = byUserId, CheckOnly = true },
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken));
+    }
+
+    public async Task<IReadOnlyList<TenantPurgeRowDto>> PurgeAsync(long ownerId, string confirmName, long? byUserId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        var rows = await connection.QueryAsync<TenantPurgeRowDto>(new CommandDefinition(
+            "PUMP.sp_Owner_Purge",
+            new { OwnerId = ownerId, ConfirmName = confirmName, ByUserId = byUserId },
+            commandType: CommandType.StoredProcedure,
+            commandTimeout: 300,
+            // Beech me request kat jaaye to bhi SP ka transaction poora ho ya poora wapas - token nahi.
+            cancellationToken: CancellationToken.None));
+        return rows.AsList();
+    }
 }

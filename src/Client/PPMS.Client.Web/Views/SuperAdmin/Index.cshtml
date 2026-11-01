@@ -1,15 +1,31 @@
-﻿@model IReadOnlyList<PPMS.Client.Web.Services.ApiOwnerDto>
+﻿@model PPMS.Client.Web.Models.TenantListViewModel
 @using PPMS.Client.Web.Services
 @{
     ViewData["Title"] = "Tenant Subscriptions";
-    var subRequests = ViewBag.SubscriptionRequests as IReadOnlyList<ApiSubscriptionRequestDto> ?? new List<ApiSubscriptionRequestDto>();
+    var subRequests = Model.Requests;
     var pendingCount = subRequests.Count(r => r.Status == "PENDING");
+    // List par wapas aane ke liye - har form me yahi chaar chhupe khaane.
+    var keep = new Dictionary<string, string?>
+    {
+        ["q"] = Model.Search, ["status"] = Model.Status, ["sort"] = Model.Sort, ["page"] = Model.PageNumber.ToString()
+    };
+    string PageUrl(int p) => Url.Action("Index", new { q = Model.Search, status = Model.Status, sort = Model.Sort, page = p })!;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>@L["Tenant Subscriptions (Super Admin)"]</h2>
     <a asp-action="CreateTenant" class="btn btn-primary">@L["Create New Tenant"]</a>
 </div>
+
+@if (TempData["SuperAdminOk"] is string okMsg)
+{
+    @* GetString(...).Value - sandesh me tenant ka naam ho sakta hai; @L[..] use HTML-encode nahi karta. *@
+    <div class="alert alert-success py-2" style="word-break:break-word;">@L.GetString(okMsg).Value</div>
+}
+@if (TempData["SuperAdminMessage"] is string errMsg && !string.IsNullOrWhiteSpace(errMsg))
+{
+    <div class="alert alert-danger py-2">@L.GetString(errMsg).Value</div>
+}
 
 @if (subRequests.Count > 0)
 {
@@ -89,10 +105,74 @@
     </div>
 }
 
+@* ---- Section AX: search + filter + sort - sab server par ---- *@
+<form method="get" asp-action="Index" class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6">
+                <label class="form-label small mb-1" for="tenantSearch">@L["Search"]</label>
+                <input id="tenantSearch" name="q" value="@Model.Search" class="form-control" maxlength="100"
+                       placeholder="@L["Name, mobile, username, pump, city, GSTIN or ID"]" />
+            </div>
+            <div class="col-7 col-md-3">
+                <label class="form-label small mb-1" for="tenantSort">@L["Sort"]</label>
+                <select id="tenantSort" name="sort" class="form-select">
+                    <option value="NEWEST" selected="@(Model.Sort == "NEWEST")">@L["Newest first"]</option>
+                    <option value="OLDEST" selected="@(Model.Sort == "OLDEST")">@L["Oldest first"]</option>
+                    <option value="NAME" selected="@(Model.Sort == "NAME")">@L["Name (A-Z)"]</option>
+                    <option value="VALIDUPTO" selected="@(Model.Sort == "VALIDUPTO")">@L["Plan ends soonest"]</option>
+                    <option value="LASTENTRY" selected="@(Model.Sort == "LASTENTRY")">@L["Latest entry first"]</option>
+                </select>
+            </div>
+            <div class="col-5 col-md-3 d-flex gap-2">
+                <input type="hidden" name="status" value="@Model.Status" />
+                <button type="submit" class="btn btn-primary flex-fill">@L["Search"]</button>
+                @if (Model.Search is not null)
+                {
+                    <a class="btn btn-outline-secondary" href="@Url.Action("Index", new { status = Model.Status, sort = Model.Sort })" title="@L["Clear"]">&times;</a>
+                }
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-1 mt-2">
+            @foreach (var chip in Model.StatusChips())
+            {
+                var on = chip.Key == Model.Status;
+                <a href="@Url.Action("Index", new { q = Model.Search, status = chip.Key, sort = Model.Sort })"
+                   class="btn btn-sm @(on ? (chip.Key == "ARCHIVED" ? "btn-secondary" : "btn-primary") : "btn-outline-secondary")">
+                    @L[chip.Label] @if (chip.Count is not null) { <span class="badge @(on ? "bg-light text-dark" : "bg-secondary") ms-1">@chip.Count</span> }
+                </a>
+            }
+        </div>
+    </div>
+</form>
+
+@if (Model.IsArchivedView)
+{
+    <div class="alert alert-secondary py-2 small">
+        @L["Removed tenants cannot sign in, but all their data is still kept. Restore brings one back (suspended). Delete for ever removes all its data - a backup file is saved on the server first, and it is allowed only if there was no entry in the last 15 days."]
+    </div>
+}
+
 <div class="card shadow-sm">
+    <div class="card-header bg-white small text-muted d-flex justify-content-between flex-wrap gap-2">
+        <span>
+            @if (Model.TotalCount == 0)
+            {
+                @L["No tenants found."]
+            }
+            else
+            {
+                @string.Format(L.GetString("Showing {0}-{1} of {2}").Value, Model.FirstRow, Model.LastRow, Model.TotalCount)
+            }
+        </span>
+        @if (Model.Search is not null)
+        {
+            <span>@L["Search"]: <strong>@Model.Search</strong></span>
+        }
+    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table data-pager="25" class="table table-hover table-striped mb-0">
+            <table class="table table-hover table-striped mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>@L["ID"]</th>
@@ -110,9 +190,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @if (Model != null && Model.Count > 0)
+                    @if (Model.Items.Count > 0)
                     {
-                        foreach (var item in Model)
+                        foreach (var item in Model.Items)
                         {
                             <tr>
                                 <td data-label="@L["ID"]">@item.Id</td>
@@ -121,6 +201,7 @@
                                     <div class="small text-muted">
                                         @(item.City ?? "-")
                                         @if (item.IsTrial) { <span class="badge bg-warning text-dark ms-1">@L["TRIAL"]</span> }
+                                        <span class="ms-1">· @item.PumpCount @L["pump"] · @item.UserCount @L["users"]</span>
                                     </div>
                                 </td>
                                 <td data-label="@L["Contact"]">
@@ -131,17 +212,18 @@
                                     }
                                 </td>
                                 <td data-label="@L["Valid Upto"]">
-                                    @{
-                                        var isValid = item.ValidUpto.HasValue && item.ValidUpto.Value.Date >= DateTime.Today;
-                                        var validDate = item.ValidUpto?.ToString("dd MMM yyyy") ?? "N/A";
-                                    }
-                                    @if (isValid)
+                                    @if (item.ValidUpto is null)
                                     {
-                                        <span class="text-success fw-bold">@validDate</span>
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                    else if (item.ValidUpto.Value.Date >= DateTime.Today)
+                                    {
+                                        <span class="text-success fw-bold">@item.ValidUpto.Value.ToString("dd MMM yyyy")</span>
+                                        @if (item.DaysLeft is <= 7) { <div class="small text-warning">@item.DaysLeft @L["days left"]</div> }
                                     }
                                     else
                                     {
-                                        <span class="text-danger fw-bold">@validDate (Expired)</span>
+                                        <span class="text-danger fw-bold">@item.ValidUpto.Value.ToString("dd MMM yyyy") (@L["Expired"])</span>
                                     }
                                 </td>
                                 @{
@@ -167,52 +249,92 @@
                                     }
                                     else if (daysSinceEntry > 7)
                                     {
-                                        <span class="badge bg-danger">@daysSinceEntry days ago</span>
+                                        <span class="badge bg-danger">@daysSinceEntry @L["days ago"]</span>
                                     }
                                     else if (daysSinceEntry > 2)
                                     {
-                                        <span class="badge bg-warning text-dark">@daysSinceEntry days ago</span>
+                                        <span class="badge bg-warning text-dark">@daysSinceEntry @L["days ago"]</span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-success">@(daysSinceEntry == 0 ? "Today" : daysSinceEntry + " days ago")</span>
+                                        <span class="badge bg-success">@(daysSinceEntry == 0 ? L["Today"].Value : daysSinceEntry + " " + L["days ago"].Value)</span>
                                     }
                                 </td>
                                 <td class="text-end" data-label="@L["Sales (This Month)"]">
-                                    @(item.SalesThisMonth > 0 ? "\u20B9" + item.SalesThisMonth.ToString("N0") : "-")
+                                    @(item.SalesThisMonth > 0 ? "₹" + item.SalesThisMonth.ToString("N0") : "-")
                                 </td>
                                 <td data-label="@L["Status"]">
-                                    @if (item.IsActive)
+                                    @if (item.IsArchived)
+                                    {
+                                        <span class="badge bg-secondary">@L["Removed"]</span>
+                                        @if (item.ArchivedOn.HasValue) { <div class="small text-muted">@item.ArchivedOn.Value.ToString("dd MMM yyyy")</div> }
+                                    }
+                                    else if (item.IsActive)
                                     {
                                         <span class="badge bg-success">@L["Active"]</span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-danger">@L["Inactive"]</span>
+                                        <span class="badge bg-danger">@L["Suspended"]</span>
                                     }
                                 </td>
-                                <td class="text-end" data-label="@L["Actions"]">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="openExtendModal('@item.Id', '@item.Name', '@(item.ValidUpto?.ToString("yyyy-MM-dd") ?? "")')">@L["Extend Trial"]</button>
-                                    @* Grahak ka phone aata hai "password bhool gaya" - pehle iske
-                                       liye seedha DB kholni padti thi. *@
-                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-1"
-                                            onclick="openUsersModal('@item.Id', '@item.Name')">@L["Users / Password"]</button>
-                                    
-                                    <form asp-action="ToggleStatus" asp-route-id="@item.Id" method="post" style="display:inline;" class="ms-1">
-                                        @if (item.IsActive)
-                                        {
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Suspend this tenant? Their users will not be able to sign in."
-                                                    data-confirm-title="@L["Suspend tenant"]"
-                                                    data-confirm-ok="Suspend"
-                                                    data-confirm-danger="true">@L["Suspend"]</button>
-                                        }
-                                        else
-                                        {
-                                            <button type="submit" class="btn btn-sm btn-outline-success" data-confirm="Activate this tenant?"
-                                                    data-confirm-title="@L["Activate tenant"]"
-                                                    data-confirm-ok="Activate">@L["Activate"]</button>
-                                        }
-                                    </form>
+                                <td class="text-end text-nowrap" data-label="@L["Actions"]">
+                                    @* Naam / id data- me - onclick me naam likhne se naam ke ' ya script se
+                                       Super Admin ke browser me code chal sakta tha (naam self-signup wala likhta hai). *@
+                                    @if (item.IsArchived)
+                                    {
+                                        <form asp-action="Archive" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@item.Id" />
+                                            <input type="hidden" name="archive" value="false" />
+                                            @foreach (var k in keep) { <input type="hidden" name="@k.Key" value="@k.Value" /> }
+                                            <button type="submit" class="btn btn-sm btn-outline-success"
+                                                    data-confirm="@L["Bring this tenant back? It stays suspended until you press Activate."]"
+                                                    data-confirm-title="@L["Restore tenant"]"
+                                                    data-confirm-ok="@L["Restore"]">@L["Restore"]</button>
+                                        </form>
+                                        <a class="btn btn-sm btn-outline-primary ms-1" asp-action="ExportTenant" asp-route-id="@item.Id">@L["Download data"]</a>
+                                        <button type="button" class="btn btn-sm btn-danger ms-1 js-purge"
+                                                data-id="@item.Id" data-name="@item.Name">@L["Delete for ever"]</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-primary js-extend"
+                                                data-id="@item.Id" data-name="@item.Name"
+                                                data-valid="@(item.ValidUpto?.ToString("yyyy-MM-dd") ?? "")">@L["Extend Trial"]</button>
+                                        @* Grahak ka phone aata hai "password bhool gaya" - pehle iske
+                                           liye seedha DB kholni padti thi. *@
+                                        <button type="button" class="btn btn-sm btn-outline-secondary ms-1 js-users"
+                                                data-id="@item.Id" data-name="@item.Name">@L["Users / Password"]</button>
+
+                                        <form asp-action="ToggleStatus" method="post" class="d-inline ms-1">
+                                            <input type="hidden" name="id" value="@item.Id" />
+                                            @foreach (var k in keep) { <input type="hidden" name="@k.Key" value="@k.Value" /> }
+                                            @if (item.IsActive)
+                                            {
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@L["Suspend this tenant? Their users will not be able to sign in."]"
+                                                        data-confirm-title="@L["Suspend tenant"]"
+                                                        data-confirm-ok="@L["Suspend"]"
+                                                        data-confirm-danger="true">@L["Suspend"]</button>
+                                            }
+                                            else
+                                            {
+                                                <button type="submit" class="btn btn-sm btn-outline-success" data-confirm="@L["Activate this tenant?"]"
+                                                        data-confirm-title="@L["Activate tenant"]"
+                                                        data-confirm-ok="@L["Activate"]">@L["Activate"]</button>
+                                            }
+                                        </form>
+
+                                        <form asp-action="Archive" method="post" class="d-inline ms-1">
+                                            <input type="hidden" name="id" value="@item.Id" />
+                                            <input type="hidden" name="archive" value="true" />
+                                            @foreach (var k in keep) { <input type="hidden" name="@k.Key" value="@k.Value" /> }
+                                            <button type="submit" class="btn btn-sm btn-outline-dark"
+                                                    data-confirm="@L["Remove this tenant? It goes off the list and its users cannot sign in. All data is kept - you can restore it later from Removed."]"
+                                                    data-confirm-title="@L["Remove tenant"]"
+                                                    data-confirm-ok="@L["Remove"]"
+                                                    data-confirm-danger="true">@L["Remove"]</button>
+                                        </form>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -220,11 +342,72 @@
                     else
                     {
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">@L["No tenants found."]</td>
+                            <td colspan="9" class="text-center text-muted py-4">@L["No tenants found."]</td>
                         </tr>
                     }
                 </tbody>
             </table>
+        </div>
+    </div>
+    @if (Model.TotalPages > 1)
+    {
+        var from = Math.Max(1, Model.PageNumber - 2);
+        var to = Math.Min(Model.TotalPages, Model.PageNumber + 2);
+        <div class="card-footer bg-white">
+            <nav aria-label="@L["Pages"]">
+                <ul class="pagination pagination-sm justify-content-center flex-wrap mb-0">
+                    <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="@PageUrl(Model.PageNumber - 1)">&laquo; @L["Previous"]</a>
+                    </li>
+                    @if (from > 1)
+                    {
+                        <li class="page-item"><a class="page-link" href="@PageUrl(1)">1</a></li>
+                        @if (from > 2) { <li class="page-item disabled"><span class="page-link">&hellip;</span></li> }
+                    }
+                    @for (var p = from; p <= to; p++)
+                    {
+                        <li class="page-item @(p == Model.PageNumber ? "active" : "")"><a class="page-link" href="@PageUrl(p)">@p</a></li>
+                    }
+                    @if (to < Model.TotalPages)
+                    {
+                        @if (to < Model.TotalPages - 1) { <li class="page-item disabled"><span class="page-link">&hellip;</span></li> }
+                        <li class="page-item"><a class="page-link" href="@PageUrl(Model.TotalPages)">@Model.TotalPages</a></li>
+                    }
+                    <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" href="@PageUrl(Model.PageNumber + 1)">@L["Next"] &raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+<!-- Poora mitao: naam type karke -->
+<div class="modal fade" id="purgeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="PurgeTenant" method="post" id="purgeForm">
+                <input type="hidden" name="id" id="purgeId" />
+                @foreach (var k in keep) { <input type="hidden" name="@k.Key" value="@k.Value" /> }
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">@L["Delete tenant for ever"]</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2"><strong id="purgeName"></strong></p>
+                    <ul class="small mb-3">
+                        <li>@L["All its pumps, shifts, sales, purchases, parties, staff, users and every other entry will be deleted. This cannot be undone."]</li>
+                        <li>@L["A backup file of all its data is saved on the server first. If that fails, nothing is deleted."]</li>
+                        <li>@L["Not allowed if it had any entry in the last 15 days."]</li>
+                    </ul>
+                    <label class="form-label" for="purgeConfirm">@L["Type the tenant name to confirm"]</label>
+                    <input class="form-control" id="purgeConfirm" name="confirmName" autocomplete="off" required />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@L["Cancel"]</button>
+                    <button type="submit" class="btn btn-danger" id="purgeGo" disabled>@L["Delete for ever"]</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -272,6 +455,7 @@
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="extendTenantId" name="id" />
+                    @foreach (var k in keep) { <input type="hidden" name="@k.Key" value="@k.Value" /> }
                     <div class="mb-3">
                         <label class="form-label">@L["Tenant Name"]</label>
                         <input type="text" id="extendTenantName" class="form-control" readonly />
@@ -309,11 +493,42 @@
             if (currentValidUpto) {
                 document.getElementById('newValidUpto').value = currentValidUpto;
             } else {
-                setQuickDate(7, 'days');
+                setQuickDate(30, 'days');   // trial ab 30 din ka hai
             }
-            
+
             new bootstrap.Modal(document.getElementById('extendTrialModal')).show();
         }
+
+        // Section AX: buttons ka naam / id data- se. Pehle onclick="openExtendModal('@@item.Name')"
+        // tha - naam me ' ya script ho to Super Admin ke browser me chal jaata.
+        document.addEventListener('click', function (e) {
+            var b = e.target.closest('.js-extend, .js-users, .js-purge');
+            if (!b) { return; }
+            if (b.classList.contains('js-extend')) { openExtendModal(b.dataset.id, b.dataset.name, b.dataset.valid); }
+            else if (b.classList.contains('js-users')) { openUsersModal(b.dataset.id, b.dataset.name); }
+            else { openPurgeModal(b.dataset.id, b.dataset.name); }
+        });
+
+        // "Poora mitao": button tabhi chalu jab naam theek type ho (server bhi jaanchta hai).
+        var purgeExpected = '';
+        // Server jaisa hi: aage-peeche ki khaali jagah hata ke, bade-chhote akshar ka farak nahi.
+        function normName(v) { return String(v || '').trim().toUpperCase(); }
+        function openPurgeModal(id, name) {
+            purgeExpected = normName(name);
+            document.getElementById('purgeId').value = id;
+            document.getElementById('purgeName').textContent = name;
+            document.getElementById('purgeConfirm').value = '';
+            document.getElementById('purgeGo').disabled = true;
+            new bootstrap.Modal(document.getElementById('purgeModal')).show();
+        }
+        document.getElementById('purgeConfirm').addEventListener('input', function () {
+            document.getElementById('purgeGo').disabled = normName(this.value) !== purgeExpected;
+        });
+        document.getElementById('purgeForm').addEventListener('submit', function () {
+            var go = document.getElementById('purgeGo');
+            go.disabled = true;   // do baar click se do request nahi
+            go.textContent = @Json.Serialize(L["Deleting..."].Value);
+        });
 
         function setQuickDate(amount, unit) {
             let d = new Date();

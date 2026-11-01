@@ -4306,4 +4306,142 @@
   <data name="No. of bills" xml:space="preserve">
     <value>बिल</value>
   </data>
+  <data name="Name, mobile, username, pump, city, GSTIN or ID" xml:space="preserve">
+    <value>नाम, मोबाइल, यूज़रनेम, पंप, शहर, GSTIN या ID</value>
+  </data>
+  <data name="Sort" xml:space="preserve">
+    <value>क्रम</value>
+  </data>
+  <data name="Newest first" xml:space="preserve">
+    <value>नए पहले</value>
+  </data>
+  <data name="Oldest first" xml:space="preserve">
+    <value>पुराने पहले</value>
+  </data>
+  <data name="Name (A-Z)" xml:space="preserve">
+    <value>नाम (A-Z)</value>
+  </data>
+  <data name="Plan ends soonest" xml:space="preserve">
+    <value>जिसका प्लान जल्दी ख़त्म</value>
+  </data>
+  <data name="Latest entry first" xml:space="preserve">
+    <value>हाल की एंट्री पहले</value>
+  </data>
+  <data name="Clear" xml:space="preserve">
+    <value>साफ़ करें</value>
+  </data>
+  <data name="Trial" xml:space="preserve">
+    <value>ट्रायल</value>
+  </data>
+  <data name="Ends in 7 days" xml:space="preserve">
+    <value>7 दिन में ख़त्म</value>
+  </data>
+  <data name="Expired" xml:space="preserve">
+    <value>ख़त्म</value>
+  </data>
+  <data name="No entry for 7 days" xml:space="preserve">
+    <value>7 दिन से एंट्री नहीं</value>
+  </data>
+  <data name="Suspended" xml:space="preserve">
+    <value>रोका हुआ</value>
+  </data>
+  <data name="Removed" xml:space="preserve">
+    <value>हटाए गए</value>
+  </data>
+  <data name="Removed tenants cannot sign in, but all their data is still kept. Restore brings one back (suspended). Delete for ever removes all its data - a backup file is saved on the server first, and it is allowed only if there was no entry in the last 15 days." xml:space="preserve">
+    <value>हटाए गए टेनेंट लॉगिन नहीं कर सकते, पर उनका सारा डेटा रखा है। 'वापस लाएँ' से टेनेंट लौट आता है (रोका हुआ)। 'हमेशा के लिए मिटाएँ' सारा डेटा मिटा देता है — पहले सर्वर पर बैकअप फ़ाइल बनती है, और ये तभी होता है जब पिछले 15 दिन में कोई एंट्री न हो।</value>
+  </data>
+  <data name="days left" xml:space="preserve">
+    <value>दिन बाक़ी</value>
+  </data>
+  <data name="days ago" xml:space="preserve">
+    <value>दिन पहले</value>
+  </data>
+  <data name="Restore" xml:space="preserve">
+    <value>वापस लाएँ</value>
+  </data>
+  <data name="Restore tenant" xml:space="preserve">
+    <value>टेनेंट वापस लाएँ</value>
+  </data>
+  <data name="Bring this tenant back? It stays suspended until you press Activate." xml:space="preserve">
+    <value>ये टेनेंट वापस लाएँ? 'चालू करें' दबाने तक ये रुका रहेगा।</value>
+  </data>
+  <data name="Download data" xml:space="preserve">
+    <value>डेटा डाउनलोड</value>
+  </data>
+  <data name="Delete for ever" xml:space="preserve">
+    <value>हमेशा के लिए मिटाएँ</value>
+  </data>
+  <data name="Delete tenant for ever" xml:space="preserve">
+    <value>टेनेंट हमेशा के लिए मिटाएँ</value>
+  </data>
+  <data name="Remove tenant" xml:space="preserve">
+    <value>टेनेंट हटाएँ</value>
+  </data>
+  <data name="Remove this tenant? It goes off the list and its users cannot sign in. All data is kept - you can restore it later from Removed." xml:space="preserve">
+    <value>ये टेनेंट हटाएँ? ये सूची से हट जाएगा और इसके यूज़र लॉगिन नहीं कर पाएँगे। सारा डेटा रहेगा — बाद में 'हटाए गए' से वापस ला सकते हैं।</value>
+  </data>
+  <data name="Suspend this tenant? Their users will not be able to sign in." xml:space="preserve">
+    <value>ये टेनेंट रोकें? इसके यूज़र लॉगिन नहीं कर पाएँगे।</value>
+  </data>
+  <data name="Activate this tenant?" xml:space="preserve">
+    <value>ये टेनेंट चालू करें?</value>
+  </data>
+  <data name="Pages" xml:space="preserve">
+    <value>पेज</value>
+  </data>
+  <data name="All its pumps, shifts, sales, purchases, parties, staff, users and every other entry will be deleted. This cannot be undone." xml:space="preserve">
+    <value>इसके सारे पंप, शिफ़्ट, बिक्री, ख़रीद, पार्टी, स्टाफ़, यूज़र और हर एंट्री मिट जाएगी। ये वापस नहीं होगा।</value>
+  </data>
+  <data name="A backup file of all its data is saved on the server first. If that fails, nothing is deleted." xml:space="preserve">
+    <value>पहले इसके सारे डेटा की बैकअप फ़ाइल सर्वर पर बनती है। वो न बने तो कुछ नहीं मिटता।</value>
+  </data>
+  <data name="Not allowed if it had any entry in the last 15 days." xml:space="preserve">
+    <value>पिछले 15 दिन में कोई एंट्री हुई हो तो नहीं मिटेगा।</value>
+  </data>
+  <data name="Type the tenant name to confirm" xml:space="preserve">
+    <value>पक्का करने के लिए टेनेंट का नाम लिखिए</value>
+  </data>
+  <data name="Deleting..." xml:space="preserve">
+    <value>मिटा रहे हैं...</value>
+  </data>
+  <data name="Tenant removed. Its users cannot sign in. Find it under &quot;Removed&quot; to restore or delete it." xml:space="preserve">
+    <value>टेनेंट हटा दिया। इसके यूज़र लॉगिन नहीं कर सकते। वापस लाने या मिटाने के लिए "हटाए गए" में देखिए।</value>
+  </data>
+  <data name="Tenant restored. It is suspended - press Activate when it should work again." xml:space="preserve">
+    <value>टेनेंट वापस आ गया। अभी रुका हुआ है — चलाना हो तो 'चालू करें' दबाइए।</value>
+  </data>
+  <data name="Tenant not found." xml:space="preserve">
+    <value>टेनेंट नहीं मिला।</value>
+  </data>
+  <data name="This tenant cannot be removed." xml:space="preserve">
+    <value>ये टेनेंट हटाया नहीं जा सकता।</value>
+  </data>
+  <data name="This tenant is removed. Restore it first." xml:space="preserve">
+    <value>ये टेनेंट हटाया हुआ है। पहले वापस लाइए।</value>
+  </data>
+  <data name="Remove the tenant first. Only a removed tenant can be deleted for ever." xml:space="preserve">
+    <value>पहले टेनेंट को हटाइए। सिर्फ़ हटाया हुआ टेनेंट ही हमेशा के लिए मिटता है।</value>
+  </data>
+  <data name="The name typed does not match the tenant name." xml:space="preserve">
+    <value>लिखा हुआ नाम टेनेंट के नाम से नहीं मिलता।</value>
+  </data>
+  <data name="Some other data is still linked to this tenant, so nothing was deleted. Please contact the developer." xml:space="preserve">
+    <value>किसी और का डेटा अभी इस टेनेंट से जुड़ा है, इसलिए कुछ नहीं मिटाया। डेवलपर से बात कीजिए।</value>
+  </data>
+  <data name="The backup file could not be saved on the server, so nothing was deleted. Check TenantBackup:Path." xml:space="preserve">
+    <value>सर्वर पर बैकअप फ़ाइल नहीं बन पाई, इसलिए कुछ नहीं मिटाया। TenantBackup:Path देखिए।</value>
+  </data>
+  <data name="Could not download the data of this tenant." xml:space="preserve">
+    <value>इस टेनेंट का डेटा डाउनलोड नहीं हो पाया।</value>
+  </data>
+  <data name="Could not change the tenant." xml:space="preserve">
+    <value>टेनेंट नहीं बदल पाया।</value>
+  </data>
+  <data name="Could not delete the tenant." xml:space="preserve">
+    <value>टेनेंट नहीं मिट पाया।</value>
+  </data>
+  <data name="This tenant has entries in the last 15 days. It cannot be deleted yet." xml:space="preserve">
+    <value>इस टेनेंट की पिछले 15 दिन में एंट्री हुई है। अभी नहीं मिटेगा।</value>
+  </data>
 </root>

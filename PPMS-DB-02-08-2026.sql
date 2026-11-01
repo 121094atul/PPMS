@@ -23591,3 +23591,502 @@ GO
 
 PRINT '=== Section AW done ===';
 GO
+
+
+/* ==========================================================================================
+   SECTION AX — Super Admin: tenant list me paging + search, "Hatao" aur "Poora mitao" (2026-11-01)
+   ------------------------------------------------------------------------------------------
+   Owner: "paging, search, aur kisi bhi pump ko delete kar saku". Pehle /api/owners saare tenant
+   ek saath laata tha (browser me 25-25 ke page) aur delete tha hi nahi - sirf Suspend.
+
+   AX1 sp_Owner_GetPage      - server par page + search (naam, sampark, mobile, email, shehar, GSTIN,
+                               username, pump ka naam, Id) + filter (ACTIVE / SUSPENDED / TRIAL / EXPIRED /
+                               EXPIRING 7 din / IDLE 7 din se entry nahi / ARCHIVED) + sort.
+                               Bhaari ginti (login, is mahine ki bikri) sirf page wali rows ki.
+   AX2 sp_Owner_StatusCounts - har filter ki ginti (chip par).
+   AX3 sp_Owner_SetArchived  - "Hatao": IsDeleted = 1 + IsActive = 0 (login band), refresh token khatam.
+                               Data DB me hi rehta hai; "wapas lao" se laut aata hai (suspended rehta hai).
+   AX4 sp_Owner_ToggleStatus - hataye hue tenant ko seedha Activate nahi (pehle wapas lao).
+   AX5 sp_Owner_Export       - us tenant ka saara data, table-table JSON (mitane se pehle backup).
+                               OwnerId wali har table apne aap + unki child table (FK se) - nayi table
+                               jude to bhi chhootegi nahi.
+   AX6 sp_Owner_Purge        - "Poora mitao": sirf hataya hua tenant, naam type karke, aur pichhle 15 din
+                               me koi entry na ho. Ek transaction - kahin bhi galti to kuch nahi mitta.
+                               Aakhir me jaanch: OwnerId wali kisi table me row bachi to ROLLBACK.
+   Purana sp_Owner_GetList nahi badla (purana build usi par chalta hai).
+   ========================================================================================== */
+PRINT '=== Section AX: tenant list, hatao, poora mitao ===';
+GO
+
+/* ---- AX1 ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_Owner_GetPage
+(
+    @Search     NVARCHAR(100) = NULL,
+    @Status     NVARCHAR(20)  = N'ALL',
+    @Sort       NVARCHAR(20)  = N'NEWEST',
+    @PageNumber INT = 1,
+    @PageSize   INT = 25
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Today DATE = CAST(SYSDATETIME() AS DATE);
+    DECLARE @MonthStart DATE = DATEFROMPARTS(YEAR(@Today), MONTH(@Today), 1);
+
+    SET @Search = NULLIF(LTRIM(RTRIM(@Search)), N'');
+    SET @Status = UPPER(ISNULL(NULLIF(LTRIM(RTRIM(@Status)), N''), N'ALL'));
+    IF @Status NOT IN (N'ALL', N'ACTIVE', N'SUSPENDED', N'TRIAL', N'EXPIRED', N'EXPIRING', N'IDLE', N'ARCHIVED')
+        SET @Status = N'ALL';
+    SET @Sort = UPPER(ISNULL(NULLIF(LTRIM(RTRIM(@Sort)), N''), N'NEWEST'));
+    IF @PageSize IS NULL OR @PageSize < 10 SET @PageSize = 10;
+    IF @PageSize > 100 SET @PageSize = 100;
+    IF @PageNumber IS NULL OR @PageNumber < 1 SET @PageNumber = 1;
+
+    /* LIKE ke khaas akshar ([ % _) seedhe akshar maane jaayein. '[' pehle - baad wale '[' na badlein. */
+    DECLARE @Like NVARCHAR(400) =
+        N'%' + REPLACE(REPLACE(REPLACE(@Search, N'[', N'[[]'), N'%', N'[%]'), N'_', N'[_]') + N'%';
+    DECLARE @SearchId BIGINT = TRY_CAST(@Search AS BIGINT);
+
+    DECLARE @f TABLE (Id BIGINT PRIMARY KEY, LastActivityOn DATETIME2 NULL);
+
+    INSERT INTO @f (Id, LastActivityOn)
+    SELECT o.Id, a.LastActivityOn
+    FROM PUMP.Owners o
+    OUTER APPLY (
+        /* sp_Owner_GetList jaisa hi - aakhri bill ya shift. */
+        SELECT LastActivityOn = (
+            SELECT MAX(x.D) FROM (
+                SELECT MAX(sh.BillDateTime) AS D FROM PUMP.SalesHeaders sh WHERE sh.OwnerId = o.Id
+                UNION ALL
+                SELECT CAST(MAX(s.ShiftDate) AS DATETIME2) FROM PUMP.ShiftHeaders s WHERE s.OwnerId = o.Id
+            ) x)
+    ) a
+    WHERE o.Name <> N'-- SYSTEM --'
+      AND (   (@Status = N'ARCHIVED' AND o.IsDeleted = 1)
+           OR (@Status <> N'ARCHIVED' AND o.IsDeleted = 0))
+      AND (   @Status IN (N'ALL', N'ARCHIVED')
+           OR (@Status = N'ACTIVE'    AND o.IsActive = 1 AND (o.ValidUpto IS NULL OR o.ValidUpto >= @Today))
+           OR (@Status = N'SUSPENDED' AND o.IsActive = 0)
+           OR (@Status = N'TRIAL'     AND o.IsTrial = 1)
+           OR (@Status = N'EXPIRED'   AND o.ValidUpto < @Today)
+           OR (@Status = N'EXPIRING'  AND o.ValidUpto BETWEEN @Today AND DATEADD(DAY, 7, @Today))
+           OR (@Status = N'IDLE'      AND (a.LastActivityOn IS NULL OR a.LastActivityOn < DATEADD(DAY, -7, @Today))))
+      AND (   @Search IS NULL
+           OR o.Id = @SearchId
+           OR o.Name LIKE @Like OR o.ContactName LIKE @Like OR o.ContactNo LIKE @Like
+           OR o.Email LIKE @Like OR o.City LIKE @Like OR o.GSTIN LIKE @Like
+           OR EXISTS (SELECT 1 FROM PUMP.Users u
+                      WHERE u.OwnerId = o.Id
+                        AND (u.Username LIKE @Like OR u.Mobile LIKE @Like OR u.FullName LIKE @Like))
+           OR EXISTS (SELECT 1 FROM PUMP.Pumps p WHERE p.OwnerId = o.Id AND p.Name LIKE @Like));
+
+    DECLARE @Total INT = (SELECT COUNT(*) FROM @f);
+
+    DECLARE @p TABLE (Id BIGINT PRIMARY KEY, RowNo INT NOT NULL, LastActivityOn DATETIME2 NULL);
+
+    INSERT INTO @p (Id, RowNo, LastActivityOn)
+    SELECT x.Id, x.RowNo, x.LastActivityOn
+    FROM (
+        SELECT f.Id, f.LastActivityOn,
+               RowNo = CAST(ROW_NUMBER() OVER (ORDER BY
+                           CASE WHEN @Sort = N'NAME'      THEN o.Name END,
+                           CASE WHEN @Sort = N'VALIDUPTO' THEN ISNULL(o.ValidUpto, '9999-12-31') END,
+                           CASE WHEN @Sort = N'LASTENTRY' THEN ISNULL(f.LastActivityOn, '0001-01-01') END DESC,
+                           CASE WHEN @Sort = N'OLDEST'    THEN o.Id END,
+                           o.Id DESC) AS INT)
+        FROM @f f
+        JOIN PUMP.Owners o ON o.Id = f.Id
+    ) x
+    WHERE x.RowNo >  (@PageNumber - 1) * @PageSize
+      AND x.RowNo <=  @PageNumber      * @PageSize;
+
+    /* NOTE (CLAUDE.md niyam 5): OwnerPageRowDto ke param theek isi kram / type me hain. */
+    SELECT
+        o.Id, o.Name, o.IsActive, o.CreatedOn,
+        o.ValidUpto, o.ContactName, o.ContactNo, o.Email, o.City, o.StateCode,
+        o.GSTIN, o.PlanCode, o.IsTrial,
+        PumpCount = (SELECT COUNT(*) FROM PUMP.Pumps pm
+                     WHERE pm.OwnerId = o.Id AND ISNULL(pm.IsDeleted, 0) = 0),
+        UserCount = (SELECT COUNT(*) FROM PUMP.Users u
+                     WHERE u.OwnerId = o.Id AND ISNULL(u.IsDeleted, 0) = 0),
+        DaysLeft  = DATEDIFF(DAY, @Today, o.ValidUpto),
+        LastLoginOn = (SELECT MAX(la.AttemptedOn)
+                       FROM PUMP.LoginAttempts la
+                       WHERE la.IsSuccess = 1
+                         AND la.Username IN (SELECT u.Username FROM PUMP.Users u WHERE u.OwnerId = o.Id)),
+        LastActivityOn = p.LastActivityOn,
+        SalesThisMonth = CAST(ISNULL((SELECT SUM(sh.TotalAmount)
+                                      FROM PUMP.SalesHeaders sh
+                                      WHERE sh.OwnerId = o.Id AND sh.IsVoid = 0
+                                        AND CAST(sh.BillDateTime AS DATE) >= @MonthStart), 0) AS DECIMAL(18,2)),
+        IsArchived = CAST(o.IsDeleted AS BIT),
+        ArchivedOn = o.DeletedOn,
+        TotalCount = @Total
+    FROM @p p
+    JOIN PUMP.Owners o ON o.Id = p.Id
+    ORDER BY p.RowNo;
+END
+GO
+PRINT '  + AX1: sp_Owner_GetPage';
+GO
+
+/* ---- AX2 ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_Owner_StatusCounts
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Today DATE = CAST(SYSDATETIME() AS DATE);
+
+    /* NOTE: OwnerStatusCountsDto ke param theek isi kram me. */
+    SELECT
+        AllCount  = ISNULL(SUM(CASE WHEN o.IsDeleted = 0 THEN 1 ELSE 0 END), 0),
+        Active    = ISNULL(SUM(CASE WHEN o.IsDeleted = 0 AND o.IsActive = 1
+                                     AND (o.ValidUpto IS NULL OR o.ValidUpto >= @Today) THEN 1 ELSE 0 END), 0),
+        Suspended = ISNULL(SUM(CASE WHEN o.IsDeleted = 0 AND o.IsActive = 0 THEN 1 ELSE 0 END), 0),
+        Trial     = ISNULL(SUM(CASE WHEN o.IsDeleted = 0 AND o.IsTrial = 1 THEN 1 ELSE 0 END), 0),
+        Expired   = ISNULL(SUM(CASE WHEN o.IsDeleted = 0 AND o.ValidUpto < @Today THEN 1 ELSE 0 END), 0),
+        Expiring  = ISNULL(SUM(CASE WHEN o.IsDeleted = 0
+                                     AND o.ValidUpto BETWEEN @Today AND DATEADD(DAY, 7, @Today) THEN 1 ELSE 0 END), 0),
+        Idle      = ISNULL(SUM(CASE WHEN o.IsDeleted = 0
+                                     AND (a.LastActivityOn IS NULL OR a.LastActivityOn < DATEADD(DAY, -7, @Today))
+                                    THEN 1 ELSE 0 END), 0),
+        Archived  = ISNULL(SUM(CASE WHEN o.IsDeleted = 1 THEN 1 ELSE 0 END), 0)
+    FROM PUMP.Owners o
+    OUTER APPLY (
+        SELECT LastActivityOn = (
+            SELECT MAX(x.D) FROM (
+                SELECT MAX(sh.BillDateTime) AS D FROM PUMP.SalesHeaders sh WHERE sh.OwnerId = o.Id
+                UNION ALL
+                SELECT CAST(MAX(s.ShiftDate) AS DATETIME2) FROM PUMP.ShiftHeaders s WHERE s.OwnerId = o.Id
+            ) x)
+    ) a
+    WHERE o.Name <> N'-- SYSTEM --';
+END
+GO
+PRINT '  + AX2: sp_Owner_StatusCounts';
+GO
+
+/* ---- AX3: "Hatao" / "wapas lao" ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_Owner_SetArchived
+(
+    @OwnerId  BIGINT,
+    @Archive  BIT,
+    @ByUserId BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM PUMP.Owners WHERE Id = @OwnerId)
+        THROW 50300, N'Tenant not found.', 1;
+
+    /* '-- SYSTEM --' (superadmin ka ghar) aur khud ka tenant kabhi nahi. */
+    IF EXISTS (SELECT 1 FROM PUMP.Owners WHERE Id = @OwnerId AND Name = N'-- SYSTEM --')
+       OR EXISTS (SELECT 1 FROM PUMP.Users WHERE Id = @ByUserId AND OwnerId = @OwnerId)
+        THROW 50301, N'This tenant cannot be removed.', 1;
+
+    BEGIN TRAN;
+
+    IF @Archive = 1
+    BEGIN
+        UPDATE PUMP.Owners
+        SET IsDeleted = 1, IsActive = 0, DeletedOn = SYSDATETIME(), DeletedBy = @ByUserId,
+            ModifiedOn = SYSDATETIME(), ModifiedBy = @ByUserId
+        WHERE Id = @OwnerId;
+
+        /* Login pehle hi band (IsActive = 0); khule hue session agle refresh par band. */
+        DELETE t
+        FROM PUMP.UserRefreshTokens t
+        JOIN PUMP.Users u ON u.Id = t.UserId
+        WHERE u.OwnerId = @OwnerId;
+    END
+    ELSE
+    BEGIN
+        /* Wapas aata hai par SUSPENDED - chalu karna superadmin ka alag faisla. */
+        UPDATE PUMP.Owners
+        SET IsDeleted = 0, DeletedOn = NULL, DeletedBy = NULL,
+            ModifiedOn = SYSDATETIME(), ModifiedBy = @ByUserId
+        WHERE Id = @OwnerId;
+    END
+
+    COMMIT;
+END
+GO
+PRINT '  + AX3: sp_Owner_SetArchived';
+GO
+
+/* ---- AX4: hataya hua tenant seedha Activate nahi ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_Owner_ToggleStatus
+(
+    @OwnerId BIGINT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    /* Hataye hue ko Activate karne se wo list se chhupa rehta par login chal padta. */
+    IF EXISTS (SELECT 1 FROM PUMP.Owners WHERE Id = @OwnerId AND IsDeleted = 1)
+        THROW 50302, N'This tenant is removed. Restore it first.', 1;
+
+    UPDATE PUMP.Owners
+    SET IsActive = CASE WHEN IsActive = 1 THEN 0 ELSE 1 END
+    WHERE Id = @OwnerId;
+END
+GO
+PRINT '  + AX4: sp_Owner_ToggleStatus - hataya hua tenant nahi';
+GO
+
+/* ---- AX5: tenant ka saara data, table-table JSON ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_Owner_Export
+(
+    @OwnerId BIGINT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM PUMP.Owners WHERE Id = @OwnerId)
+        THROW 50300, N'Tenant not found.', 1;
+
+    DECLARE @t TABLE (Seq INT IDENTITY(1,1), FullName NVARCHAR(300), WhereSql NVARCHAR(MAX));
+
+    /* OwnerId wali har table (Owners ke siwa). */
+    INSERT INTO @t (FullName, WhereSql)
+    SELECT QUOTENAME(s.name) + N'.' + QUOTENAME(t.name), N'OwnerId = @OwnerId'
+    FROM sys.tables t
+    JOIN sys.schemas s ON s.schema_id = t.schema_id
+    WHERE s.name = N'PUMP' AND t.name <> N'Owners'
+      AND EXISTS (SELECT 1 FROM sys.columns c WHERE c.object_id = t.object_id AND c.name = N'OwnerId')
+    ORDER BY t.name;
+
+    /* Bina OwnerId wali child table - FK se (SalesDetails, Receipts, PurchaseDetails, UserRoles,
+       RoleMenus ...). Token / OTP ke hash backup me nahi chahiye. */
+    INSERT INTO @t (FullName, WhereSql)
+    SELECT QUOTENAME(s.name) + N'.' + QUOTENAME(t.name),
+           STUFF((
+               SELECT N' OR ' + QUOTENAME(pc.name) + N' IN (SELECT ' + QUOTENAME(rc.name)
+                      + N' FROM ' + QUOTENAME(rs.name) + N'.' + QUOTENAME(rt.name) + N' WHERE OwnerId = @OwnerId)'
+               FROM sys.foreign_key_columns fkc
+               JOIN sys.columns pc ON pc.object_id = fkc.parent_object_id AND pc.column_id = fkc.parent_column_id
+               JOIN sys.columns rc ON rc.object_id = fkc.referenced_object_id AND rc.column_id = fkc.referenced_column_id
+               JOIN sys.tables rt ON rt.object_id = fkc.referenced_object_id
+               JOIN sys.schemas rs ON rs.schema_id = rt.schema_id
+               WHERE fkc.parent_object_id = t.object_id
+                 AND EXISTS (SELECT 1 FROM sys.columns c2 WHERE c2.object_id = rt.object_id AND c2.name = N'OwnerId')
+               FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 4, N'')
+    FROM sys.tables t
+    JOIN sys.schemas s ON s.schema_id = t.schema_id
+    WHERE s.name = N'PUMP'
+      AND t.name NOT IN (N'Owners', N'UserRefreshTokens', N'PasswordResetOtps')
+      AND NOT EXISTS (SELECT 1 FROM sys.columns c WHERE c.object_id = t.object_id AND c.name = N'OwnerId')
+      AND EXISTS (SELECT 1
+                  FROM sys.foreign_key_columns fkc
+                  JOIN sys.columns c2 ON c2.object_id = fkc.referenced_object_id AND c2.name = N'OwnerId'
+                  WHERE fkc.parent_object_id = t.object_id)
+    ORDER BY t.name;
+
+    /* Login ki koshish username se judi hai, OwnerId se nahi. */
+    INSERT INTO @t (FullName, WhereSql)
+    VALUES (N'[PUMP].[LoginAttempts]', N'Username IN (SELECT Username FROM [PUMP].[Users] WHERE OwnerId = @OwnerId)');
+
+    DECLARE @out TABLE (TableName NVARCHAR(300), RowsCount INT, Data NVARCHAR(MAX));
+
+    INSERT INTO @out (TableName, RowsCount, Data)
+    SELECT N'PUMP.Owners', 1,
+           (SELECT * FROM PUMP.Owners WHERE Id = @OwnerId FOR JSON PATH, INCLUDE_NULL_VALUES);
+
+    DECLARE @i INT = 1, @n INT = (SELECT MAX(Seq) FROM @t),
+            @name NVARCHAR(300), @w NVARCHAR(MAX), @sql NVARCHAR(MAX), @json NVARCHAR(MAX), @cnt INT;
+
+    WHILE @i <= @n
+    BEGIN
+        SELECT @name = FullName, @w = WhereSql FROM @t WHERE Seq = @i;
+        SET @json = NULL;
+        SET @cnt = 0;
+        SET @sql = N'SELECT @c = COUNT(*) FROM ' + @name + N' WHERE ' + @w + N';'
+                 + N' SET @j = (SELECT * FROM ' + @name + N' WHERE ' + @w + N' FOR JSON PATH, INCLUDE_NULL_VALUES);';
+        EXEC sys.sp_executesql @sql,
+             N'@OwnerId BIGINT, @c INT OUTPUT, @j NVARCHAR(MAX) OUTPUT',
+             @OwnerId = @OwnerId, @c = @cnt OUTPUT, @j = @json OUTPUT;
+
+        INSERT INTO @out (TableName, RowsCount, Data)
+        VALUES (REPLACE(REPLACE(@name, N'[', N''), N']', N''), @cnt, ISNULL(@json, N'[]'));
+
+        SET @i += 1;
+    END
+
+    /* NOTE: TenantExportTableDto(TableName, RowsCount, Data). */
+    SELECT TableName, RowsCount, Data FROM @out ORDER BY CASE WHEN TableName = N'PUMP.Owners' THEN 0 ELSE 1 END, TableName;
+END
+GO
+PRINT '  + AX5: sp_Owner_Export';
+GO
+
+/* ---- AX6: "Poora mitao" ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_Owner_Purge
+(
+    @OwnerId     BIGINT,
+    @ConfirmName NVARCHAR(200),
+    @ByUserId    BIGINT = NULL,
+    @MinIdleDays INT = 15,
+    @CheckOnly   BIT = 0     -- 1 = sirf rok jaancho (backup file banane se pehle), kuch mat mitao
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @Name NVARCHAR(200), @IsDeleted BIT;
+    SELECT @Name = Name, @IsDeleted = IsDeleted FROM PUMP.Owners WHERE Id = @OwnerId;
+
+    IF @Name IS NULL
+        THROW 50300, N'Tenant not found.', 1;
+
+    IF @Name = N'-- SYSTEM --' OR EXISTS (SELECT 1 FROM PUMP.Users WHERE Id = @ByUserId AND OwnerId = @OwnerId)
+        THROW 50301, N'This tenant cannot be removed.', 1;
+
+    IF @IsDeleted = 0
+        THROW 50303, N'Remove the tenant first. Only a removed tenant can be deleted for ever.', 1;
+
+    IF UPPER(LTRIM(RTRIM(ISNULL(@ConfirmName, N'')))) <> UPPER(LTRIM(RTRIM(@Name)))
+        THROW 50304, N'The name typed does not match the tenant name.', 1;
+
+    /* Haal me kaam hua ho to nahi. Entry ka asli waqt (shift khuli / band hui, bill, tank ki entry) -
+       ShiftDate nahi, kyunki shift aksar din baad likhi jaati hai. */
+    DECLARE @Last DATETIME2 = (
+        SELECT MAX(x.D) FROM (
+            SELECT MAX(sh.OpenedOn) AS D FROM PUMP.ShiftHeaders sh WHERE sh.OwnerId = @OwnerId
+            UNION ALL SELECT MAX(sh.ClosedOn) FROM PUMP.ShiftHeaders sh WHERE sh.OwnerId = @OwnerId
+            UNION ALL SELECT MAX(s.BillDateTime) FROM PUMP.SalesHeaders s WHERE s.OwnerId = @OwnerId
+            UNION ALL SELECT MAX(tt.CreatedOn) FROM PUMP.TankTransactions tt WHERE tt.OwnerId = @OwnerId
+        ) x);
+
+    /* Sandesh me tareekh nahi - fixed rahe to Hindi ho sakta hai; aakhri entry list me dikhti hi hai. */
+    IF @Last IS NOT NULL AND @Last >= DATEADD(DAY, -@MinIdleDays, SYSDATETIME())
+        THROW 50305, N'This tenant has entries in the last 15 days. It cannot be deleted yet.', 1;
+
+    IF @CheckOnly = 1
+        RETURN;
+
+    DECLARE @d TABLE (Seq INT IDENTITY(1,1), TableName NVARCHAR(128), RowsDeleted INT);
+
+    BEGIN TRY
+        BEGIN TRAN;
+
+        /* Bikri */
+        DELETE FROM PUMP.CouponTransactions WHERE OwnerId = @OwnerId;              INSERT @d VALUES (N'CouponTransactions', @@ROWCOUNT);
+        DELETE x FROM PUMP.Receipts x JOIN PUMP.SalesHeaders h ON h.Id = x.SalesHeaderId
+        WHERE h.OwnerId = @OwnerId;                                                 INSERT @d VALUES (N'Receipts', @@ROWCOUNT);
+        DELETE x FROM PUMP.SalesDetails x JOIN PUMP.SalesHeaders h ON h.Id = x.SalesHeaderId
+        WHERE h.OwnerId = @OwnerId;                                                 INSERT @d VALUES (N'SalesDetails', @@ROWCOUNT);
+        DELETE FROM PUMP.SalesHeaders WHERE OwnerId = @OwnerId;                    INSERT @d VALUES (N'SalesHeaders', @@ROWCOUNT);
+
+        /* Kharid */
+        DELETE x FROM PUMP.PurchaseDetails x JOIN PUMP.PurchaseHeaders h ON h.Id = x.PurchaseHeaderId
+        WHERE h.OwnerId = @OwnerId;                                                 INSERT @d VALUES (N'PurchaseDetails', @@ROWCOUNT);
+        DELETE FROM PUMP.PurchaseHeaders WHERE OwnerId = @OwnerId;                 INSERT @d VALUES (N'PurchaseHeaders', @@ROWCOUNT);
+
+        /* Shift ke andar ka */
+        DELETE FROM PUMP.ShiftNozzleReadings WHERE OwnerId = @OwnerId;             INSERT @d VALUES (N'ShiftNozzleReadings', @@ROWCOUNT);
+        DELETE FROM PUMP.ShiftCashDenominations WHERE OwnerId = @OwnerId;          INSERT @d VALUES (N'ShiftCashDenominations', @@ROWCOUNT);
+        DELETE FROM PUMP.DipReadings WHERE OwnerId = @OwnerId;                     INSERT @d VALUES (N'DipReadings', @@ROWCOUNT);
+        DELETE FROM PUMP.TestingLosses WHERE OwnerId = @OwnerId;                   INSERT @d VALUES (N'TestingLosses', @@ROWCOUNT);
+        DELETE FROM PUMP.TankTransactions WHERE OwnerId = @OwnerId;                INSERT @d VALUES (N'TankTransactions', @@ROWCOUNT);
+        DELETE FROM PUMP.StockReconciliations WHERE OwnerId = @OwnerId;            INSERT @d VALUES (N'StockReconciliations', @@ROWCOUNT);
+
+        /* Paisa, karmchari, kharcha, party */
+        DELETE FROM PUMP.EmployeeAdvances WHERE OwnerId = @OwnerId;                INSERT @d VALUES (N'EmployeeAdvances', @@ROWCOUNT);
+        DELETE FROM PUMP.SalaryPayments WHERE OwnerId = @OwnerId;                  INSERT @d VALUES (N'SalaryPayments', @@ROWCOUNT);
+        DELETE FROM PUMP.CashTransactions WHERE OwnerId = @OwnerId;                INSERT @d VALUES (N'CashTransactions', @@ROWCOUNT);
+        DELETE FROM PUMP.BankDeposits WHERE OwnerId = @OwnerId;                    INSERT @d VALUES (N'BankDeposits', @@ROWCOUNT);
+        DELETE FROM PUMP.BankAccounts WHERE OwnerId = @OwnerId;                    INSERT @d VALUES (N'BankAccounts', @@ROWCOUNT);
+        DELETE FROM PUMP.ExpenseTransactions WHERE OwnerId = @OwnerId;             INSERT @d VALUES (N'ExpenseTransactions', @@ROWCOUNT);
+        DELETE FROM PUMP.ExpenseHeads WHERE OwnerId = @OwnerId;                    INSERT @d VALUES (N'ExpenseHeads', @@ROWCOUNT);
+        DELETE FROM PUMP.PartyLedger WHERE OwnerId = @OwnerId;                     INSERT @d VALUES (N'PartyLedger', @@ROWCOUNT);
+        DELETE FROM PUMP.FleetContracts WHERE OwnerId = @OwnerId;                  INSERT @d VALUES (N'FleetContracts', @@ROWCOUNT);
+        DELETE FROM PUMP.CouponBooks WHERE OwnerId = @OwnerId;                     INSERT @d VALUES (N'CouponBooks', @@ROWCOUNT);
+        DELETE FROM PUMP.ShiftHeaders WHERE OwnerId = @OwnerId;                    INSERT @d VALUES (N'ShiftHeaders', @@ROWCOUNT);
+        DELETE FROM PUMP.Employees WHERE OwnerId = @OwnerId;                       INSERT @d VALUES (N'Employees', @@ROWCOUNT);
+
+        /* Master */
+        DELETE FROM PUMP.Nozzles WHERE OwnerId = @OwnerId;                         INSERT @d VALUES (N'Nozzles', @@ROWCOUNT);
+        DELETE FROM PUMP.Tanks WHERE OwnerId = @OwnerId;                           INSERT @d VALUES (N'Tanks', @@ROWCOUNT);
+        DELETE FROM PUMP.ProductRateHistory WHERE OwnerId = @OwnerId;              INSERT @d VALUES (N'ProductRateHistory', @@ROWCOUNT);
+        DELETE FROM PUMP.Products WHERE OwnerId = @OwnerId;                        INSERT @d VALUES (N'Products', @@ROWCOUNT);
+        DELETE FROM PUMP.Parties WHERE OwnerId = @OwnerId;                         INSERT @d VALUES (N'Parties', @@ROWCOUNT);
+        DELETE FROM PUMP.Vendors WHERE OwnerId = @OwnerId;                         INSERT @d VALUES (N'Vendors', @@ROWCOUNT);
+        DELETE FROM PUMP.NumberSeries WHERE OwnerId = @OwnerId;                    INSERT @d VALUES (N'NumberSeries', @@ROWCOUNT);
+        DELETE FROM PUMP.AppSettings WHERE OwnerId = @OwnerId;                     INSERT @d VALUES (N'AppSettings', @@ROWCOUNT);
+        DELETE FROM PUMP.TaxRates WHERE OwnerId = @OwnerId;                        INSERT @d VALUES (N'TaxRates', @@ROWCOUNT);
+        DELETE FROM PUMP.AuditLog WHERE OwnerId = @OwnerId;                        INSERT @d VALUES (N'AuditLog', @@ROWCOUNT);
+
+        /* Plan, credit, alert */
+        DELETE FROM PUMP.OwnerAlertSettings WHERE OwnerId = @OwnerId;              INSERT @d VALUES (N'OwnerAlertSettings', @@ROWCOUNT);
+        DELETE FROM PUMP.OwnerCreditLedger WHERE OwnerId = @OwnerId;               INSERT @d VALUES (N'OwnerCreditLedger', @@ROWCOUNT);
+        DELETE FROM PUMP.OwnerCreditWallet WHERE OwnerId = @OwnerId;               INSERT @d VALUES (N'OwnerCreditWallet', @@ROWCOUNT);
+        DELETE FROM PUMP.OwnerSubscriptions WHERE OwnerId = @OwnerId;              INSERT @d VALUES (N'OwnerSubscriptions', @@ROWCOUNT);
+        DELETE FROM PUMP.PaymentTransactions WHERE OwnerId = @OwnerId;             INSERT @d VALUES (N'PaymentTransactions', @@ROWCOUNT);
+        DELETE FROM PUMP.CreditRechargeRequests WHERE OwnerId = @OwnerId;          INSERT @d VALUES (N'CreditRechargeRequests', @@ROWCOUNT);
+        DELETE FROM PUMP.SubscriptionRequests WHERE OwnerId = @OwnerId;            INSERT @d VALUES (N'SubscriptionRequests', @@ROWCOUNT);
+
+        /* Log-in wale */
+        DELETE FROM PUMP.LoginAttempts
+        WHERE Username IN (SELECT Username FROM PUMP.Users WHERE OwnerId = @OwnerId); INSERT @d VALUES (N'LoginAttempts', @@ROWCOUNT);
+        DELETE x FROM PUMP.PasswordResetOtps x JOIN PUMP.Users u ON u.Id = x.UserId
+        WHERE u.OwnerId = @OwnerId;                                                 INSERT @d VALUES (N'PasswordResetOtps', @@ROWCOUNT);
+        DELETE x FROM PUMP.UserRefreshTokens x JOIN PUMP.Users u ON u.Id = x.UserId
+        WHERE u.OwnerId = @OwnerId;                                                 INSERT @d VALUES (N'UserRefreshTokens', @@ROWCOUNT);
+        DELETE FROM PUMP.UserRoles
+        WHERE UserId IN (SELECT Id FROM PUMP.Users WHERE OwnerId = @OwnerId)
+           OR RoleId IN (SELECT Id FROM PUMP.Roles WHERE OwnerId = @OwnerId);      INSERT @d VALUES (N'UserRoles', @@ROWCOUNT);
+        DELETE x FROM PUMP.RoleMenus x JOIN PUMP.Roles r ON r.Id = x.RoleId
+        WHERE r.OwnerId = @OwnerId;                                                 INSERT @d VALUES (N'RoleMenus', @@ROWCOUNT);
+        DELETE FROM PUMP.Users WHERE OwnerId = @OwnerId;                           INSERT @d VALUES (N'Users', @@ROWCOUNT);
+        DELETE FROM PUMP.Roles WHERE OwnerId = @OwnerId;                           INSERT @d VALUES (N'Roles', @@ROWCOUNT);
+        DELETE FROM PUMP.Pumps WHERE OwnerId = @OwnerId;                           INSERT @d VALUES (N'Pumps', @@ROWCOUNT);
+
+        /* Jaanch: OwnerId wali kisi table me (nayi table jo upar ki suchi me nahi) kuch bacha? */
+        DECLARE @left NVARCHAR(MAX) = N'', @sql NVARCHAR(MAX), @c INT,
+                @tn NVARCHAR(300), @k INT = 1, @kn INT;
+        DECLARE @own TABLE (Seq INT IDENTITY(1,1), FullName NVARCHAR(300));
+        INSERT INTO @own (FullName)
+        SELECT QUOTENAME(s.name) + N'.' + QUOTENAME(t.name)
+        FROM sys.tables t JOIN sys.schemas s ON s.schema_id = t.schema_id
+        WHERE s.name = N'PUMP' AND t.name <> N'Owners'
+          AND EXISTS (SELECT 1 FROM sys.columns c WHERE c.object_id = t.object_id AND c.name = N'OwnerId');
+        SET @kn = (SELECT MAX(Seq) FROM @own);
+        WHILE @k <= @kn
+        BEGIN
+            SELECT @tn = FullName FROM @own WHERE Seq = @k;
+            SET @sql = N'SELECT @c = COUNT(*) FROM ' + @tn + N' WHERE OwnerId = @OwnerId;';
+            EXEC sys.sp_executesql @sql, N'@OwnerId BIGINT, @c INT OUTPUT', @OwnerId = @OwnerId, @c = @c OUTPUT;
+            IF @c > 0 SET @left += CONCAT(N' ', @tn, N'(', @c, N')');
+            SET @k += 1;
+        END
+
+        IF @left <> N''
+        BEGIN
+            DECLARE @lm NVARCHAR(2000) = N'Delete stopped - data still left in:' + @left + N'. Nothing was deleted.';
+            THROW 50306, @lm, 1;
+        END
+
+        DELETE FROM PUMP.Owners WHERE Id = @OwnerId;                               INSERT @d VALUES (N'Owners', @@ROWCOUNT);
+
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
+
+    /* NOTE: TenantPurgeRowDto(TableName, RowsDeleted). */
+    SELECT TableName, RowsDeleted FROM @d WHERE RowsDeleted > 0 ORDER BY Seq;
+END
+GO
+PRINT '  + AX6: sp_Owner_Purge';
+GO
+
+PRINT '=== Section AX done ===';
+GO

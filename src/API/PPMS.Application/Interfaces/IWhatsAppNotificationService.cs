@@ -32,4 +32,17 @@ public interface IWhatsAppNotificationService
     /// hai; user hamesha ke liye atka rehta hai.
     /// </summary>
     bool IsConfigured { get; }
+
+    /// <summary>
+    /// Password reset ka OTP bhejne ka intezaam hai ya nahi. <c>Notification:Otp_Provider</c> =
+    /// <c>Fast2SMSOtp</c> + Fast2SMS key ho to OTP apne saste raaste se; warna wahi provider jo
+    /// baaki sandeshon ka hai (<see cref="IsConfigured"/>).
+    /// </summary>
+    bool IsOtpConfigured { get; }
+
+    /// <summary>
+    /// Sirf OTP. Fast2SMS ke OTP raaste par sirf ank jaate hain ("Your OTP: 123456" - sandesh
+    /// Fast2SMS ka); baaki provider par <paramref name="fullMessage"/>.
+    /// </summary>
+    Task<bool> SendOtpAsync(string phoneNumber, string otp, string fullMessage, CancellationToken cancellationToken = default);
 }

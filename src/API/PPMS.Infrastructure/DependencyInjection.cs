@@ -104,6 +104,10 @@ public static class DependencyInjection
         services.AddScoped<PPMS.Application.Features.Owners.ISelfSignupService, PPMS.Application.Features.Owners.SelfSignupService>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IOwnerRepository, OwnerRepository>();
+        // Section AX: "poora mitao" se pehle tenant ka data file me.
+        services.Configure<PPMS.Infrastructure.Services.TenantBackupOptions>(
+            configuration.GetSection(PPMS.Infrastructure.Services.TenantBackupOptions.SectionName));
+        services.AddScoped<PPMS.Application.Features.Owners.ITenantBackupWriter, PPMS.Infrastructure.Services.TenantBackupWriter>();
         services.AddScoped<ISubscriptionRequestRepository, SubscriptionRequestRepository>();
 
         // Tenant ownership check (ITenantGuard) — cache ke liye IMemoryCache chahiye.

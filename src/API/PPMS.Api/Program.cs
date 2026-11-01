@@ -553,8 +553,16 @@ app.MapPost("/api/owners", async (PPMS.Application.Features.Owners.SaveOwnerRequ
 
 app.MapPut("/api/owners/{id}/toggle-status", async (long id, PPMS.Application.Features.Owners.IOwnerService service, CancellationToken cancellationToken) =>
 {
-    await service.ToggleStatusAsync(id, cancellationToken);
-    return Results.NoContent();
+    try
+    {
+        await service.ToggleStatusAsync(id, cancellationToken);
+        return Results.NoContent();
+    }
+    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 50302)
+    {
+        // Section AX: hataya hua tenant seedha Activate nahi.
+        return Results.BadRequest(new { Success = false, Message = ex.Message });
+    }
 }).RequireAuthorization("SuperAdminOnly");
 
 // Grahak ka phone aata hai "password bhool gaya" — superadmin ko us tenant ke users
@@ -569,6 +577,77 @@ app.MapPut("/api/owners/{id}/extend-trial", async (long id, PPMS.Application.Fea
 {
     await service.ExtendTrialAsync(id, request.NewValidUpto, cancellationToken);
     return Results.NoContent();
+}).RequireAuthorization("SuperAdminOnly");
+
+// ---- Section AX: tenant list (server par page + search), "Hatao", "Poora mitao" ----
+// Pehle /api/owners saare tenant ek saath deta tha; wo purane build ke liye waisa hi hai.
+app.MapGet("/api/owners/page", async (string? search, string? status, string? sort, int? page, int? pageSize,
+    PPMS.Application.Features.Owners.IOwnerService service, CancellationToken cancellationToken) =>
+{
+    var result = await service.GetPageAsync(search, status, sort, page ?? 1, pageSize ?? 25, cancellationToken);
+    return Results.Ok(result);
+}).RequireAuthorization("SuperAdminOnly");
+
+app.MapGet("/api/owners/status-counts", async (PPMS.Application.Features.Owners.IOwnerService service, CancellationToken cancellationToken) =>
+    Results.Ok(await service.GetStatusCountsAsync(cancellationToken))).RequireAuthorization("SuperAdminOnly");
+
+app.MapPut("/api/owners/{id:long}/archive", async (long id, PPMS.Application.Features.Owners.ArchiveOwnerRequest request,
+    ClaimsPrincipal user, PPMS.Application.Features.Owners.IOwnerService service, ILogger<Program> logger, CancellationToken cancellationToken) =>
+{
+    long? byUserId = long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var uid) ? uid : null;
+    try
+    {
+        await service.SetArchivedAsync(id, request.Archive, byUserId, cancellationToken);
+        logger.LogWarning("Tenant {OwnerId} {Action} by user {UserId}.", id, request.Archive ? "removed (archived)" : "restored", byUserId);
+        return Results.NoContent();
+    }
+    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is >= 50300 and <= 50309)
+    {
+        return Results.BadRequest(new { Success = false, Message = ex.Message });
+    }
+}).RequireAuthorization("SuperAdminOnly");
+
+// Tenant ka saara data JSON me - mitane se pehle (ya kabhi bhi) Super Admin apne paas rakh le.
+app.MapGet("/api/owners/{id:long}/export", async (long id, PPMS.Application.Features.Owners.IOwnerService service, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var (fileName, json) = await service.ExportAsync(id, cancellationToken);
+        return Results.File(json, "application/json", fileName);
+    }
+    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 50300)
+    {
+        return Results.NotFound(new { Success = false, Message = ex.Message });
+    }
+}).RequireAuthorization("SuperAdminOnly");
+
+app.MapPost("/api/owners/{id:long}/purge", async (long id, PPMS.Application.Features.Owners.PurgeOwnerRequest request,
+    ClaimsPrincipal user, PPMS.Application.Features.Owners.IOwnerService service, ILogger<Program> logger, CancellationToken cancellationToken) =>
+{
+    long? byUserId = long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var uid) ? uid : null;
+    try
+    {
+        var result = await service.PurgeAsync(id, request.ConfirmName, byUserId, cancellationToken);
+        logger.LogWarning("Tenant {OwnerId} ({OwnerName}) DELETED for ever by user {UserId}. Backup: {File}. Rows: {Rows}",
+            id, result.OwnerName, byUserId, result.BackupFile, result.Deleted.Sum(x => x.RowsDeleted));
+        return Results.Ok(result);
+    }
+    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is >= 50300 and <= 50309)
+    {
+        return Results.BadRequest(new { Success = false, Message = ex.Message });
+    }
+    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 547)
+    {
+        // Kisi doosre tenant ki row is tenant se judi hai. SP ka transaction poora wapas ho chuka.
+        logger.LogError(ex, "Tenant {OwnerId} purge blocked by a reference from other data.", id);
+        return Results.BadRequest(new { Success = false, Message = "Some other data is still linked to this tenant, so nothing was deleted. Please contact the developer." });
+    }
+    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+    {
+        // Backup file nahi bani - to mitaya bhi nahi.
+        logger.LogError(ex, "Tenant {OwnerId} backup file could not be written; nothing deleted.", id);
+        return Results.BadRequest(new { Success = false, Message = "The backup file could not be saved on the server, so nothing was deleted. Check TenantBackup:Path." });
+    }
 }).RequireAuthorization("SuperAdminOnly");
 
 // Subscription Requests — public POST (no auth needed), admin GET/PUT

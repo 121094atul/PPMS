@@ -2339,6 +2339,89 @@ public sealed class PPMSApiClient(HttpClient httpClient)
         return (false, error);
     }
 
+    // ---- Section AX: tenant list ka page, hatao, data download, poora mitao ----
+
+    public async Task<ApiOwnerPageResult> GetOwnerPageAsync(string token, string? search, string? status, string? sort, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var url = $"/api/owners/page?search={Uri.EscapeDataString(search ?? string.Empty)}"
+                + $"&status={Uri.EscapeDataString(status ?? string.Empty)}&sort={Uri.EscapeDataString(sort ?? string.Empty)}"
+                + $"&page={page}&pageSize={pageSize}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new ApiOwnerPageResult(Array.Empty<ApiOwnerPageRowDto>(), 0, page, pageSize);
+        }
+
+        return await response.Content.ReadFromJsonAsync<ApiOwnerPageResult>(cancellationToken: cancellationToken)
+               ?? new ApiOwnerPageResult(Array.Empty<ApiOwnerPageRowDto>(), 0, page, pageSize);
+    }
+
+    public async Task<ApiOwnerStatusCountsDto?> GetOwnerStatusCountsAsync(string token, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/owners/status-counts");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<ApiOwnerStatusCountsDto>(cancellationToken: cancellationToken)
+            : null;
+    }
+
+    public async Task<(bool Success, string? ErrorMessage)> SetOwnerArchivedAsync(string token, long ownerId, bool archive, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/owners/{ownerId}/archive")
+        {
+            Content = JsonContent.Create(new { Archive = archive })
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            return (true, null);
+        }
+
+        return (false, await ReadErrorMessageAsync(response, "Could not change the tenant.", cancellationToken));
+    }
+
+    /// <summary>Tenant ka saara data (JSON file). Null = nahi mila.</summary>
+    public async Task<(byte[] Content, string FileName)?> ExportOwnerAsync(string token, long ownerId, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/owners/{ownerId}/export");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var name = response.Content.Headers.ContentDisposition?.FileNameStar
+                   ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+                   ?? $"tenant-{ownerId}.json";
+        return (await response.Content.ReadAsByteArrayAsync(cancellationToken), name);
+    }
+
+    public async Task<(ApiPurgeOwnerResult? Result, string? ErrorMessage)> PurgeOwnerAsync(string token, long ownerId, string confirmName, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/owners/{ownerId}/purge")
+        {
+            Content = JsonContent.Create(new { ConfirmName = confirmName })
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            return (await response.Content.ReadFromJsonAsync<ApiPurgeOwnerResult>(cancellationToken: cancellationToken), null);
+        }
+
+        return (null, await ReadErrorMessageAsync(response, "Could not delete the tenant.", cancellationToken));
+    }
+
     public async Task<(bool Success, string? ErrorMessage)> ToggleOwnerStatusAsync(string token, long ownerId, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/owners/{ownerId}/toggle-status");
