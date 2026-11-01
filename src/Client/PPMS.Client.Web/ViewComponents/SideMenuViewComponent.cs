@@ -78,7 +78,8 @@ public sealed class SideMenuViewComponent(PPMSApiClient apiClient) : ViewCompone
             // milta hi nahi (Operations wali shart "/sales" dhoondhti hai).
             route.StartsWith("/sale-purchase-register", StringComparison.OrdinalIgnoreCase) ||
             route.StartsWith("/profit-loss", StringComparison.OrdinalIgnoreCase) ||
-            route.StartsWith("/financials", StringComparison.OrdinalIgnoreCase))
+            route.StartsWith("/financials", StringComparison.OrdinalIgnoreCase) ||
+            route.StartsWith("/gst-report", StringComparison.OrdinalIgnoreCase))
         {
             return "Reports";
         }

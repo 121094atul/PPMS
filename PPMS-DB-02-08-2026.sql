@@ -23412,3 +23412,182 @@ GO
 PRINT '  + AV3: sp_Purchase_SaveDetail - tank ki entry tanker utarne ke din';
 PRINT '=== Section AV done ===';
 GO
+
+
+/* ==========================================================================================
+   SECTION AW — GST report (2026-11-01)
+   ------------------------------------------------------------------------------------------
+   Owner: "GST report bana do". Mobil / oil jaise product par bill me CGST / SGST pehle se banta hai
+   (SalesDetails.BaseAmount / CGSTAmount / SGSTAmount / IGSTAmount), par mahine ka jod kahin nahi
+   tha - CA ko bill-bill jodna padta.
+
+   AW1 sp_Report_Gst(@OwnerId, @PumpId, @DateFrom, @DateTo) - ek hi result, Section se:
+       RATE   - kar ki dar (5 / 12 / 18 / 28 %) ke hisaab se: taxable, CGST, SGST, IGST, kul, bill
+       HSN    - HSN + product ke hisaab se (GSTR-1 ka HSN summary): matra, taxable, kar
+       BILL   - har GST wala bill: tareekh, bill no, grahak / party, party ka GSTIN (B2B / B2C)
+       NONGST - GST ke bahar wali bikri (GSTR-3B 3.1(e)): petrol / diesel / CNG ki meter bikri
+                (band shift, testing ke bina) aur bina kar wale product ke bill
+       Sirf chaalu (void nahi) bill. Kar ki dar = us line ka kar / taxable (bill banate waqt jo laga),
+       product ki aaj ki dar nahi - beech me dar badli ho to bhi purana bill purani dar par.
+   AW2 menu "GST Report" (Reports) - jin role ko "Users" milta hai (owner / admin).
+   Sirf naya SP aur menu; koi table / purana SP nahi badla.
+   ========================================================================================== */
+PRINT '=== Section AW: GST report ===';
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_Report_Gst
+(
+    @OwnerId  BIGINT,
+    @PumpId   BIGINT,
+    @DateFrom DATE,
+    @DateTo   DATE
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    /* Bill ki har line - taxable aur kar wahi jo bill banate waqt save hua. */
+    DECLARE @ln TABLE
+    (
+        HeaderId BIGINT, BillNo NVARCHAR(50), BillDateTime DATETIME2, CustomerName NVARCHAR(200),
+        PaymentMode NVARCHAR(20), PartyId BIGINT, ProductId BIGINT, Quantity DECIMAL(18,3),
+        Taxable DECIMAL(18,2), Cgst DECIMAL(18,2), Sgst DECIMAL(18,2), Igst DECIMAL(18,2), Rate DECIMAL(5,2),
+        Amount DECIMAL(18,2)   -- bill ki asli rakam (Qty x Rate, GST samet)
+    );
+
+    INSERT INTO @ln
+    SELECT h.Id, h.BillNo, h.BillDateTime, h.CustomerName, h.PaymentMode, h.PartyId, d.ProductId,
+           ISNULL(d.Quantity, 0),
+           ISNULL(NULLIF(d.BaseAmount, 0), d.Amount),
+           ISNULL(d.CGSTAmount, 0), ISNULL(d.SGSTAmount, 0), ISNULL(d.IGSTAmount, 0),
+           CASE WHEN ISNULL(d.CGSTAmount, 0) + ISNULL(d.SGSTAmount, 0) + ISNULL(d.IGSTAmount, 0) > 0
+                     AND ISNULL(NULLIF(d.BaseAmount, 0), d.Amount) > 0
+                THEN CAST(ROUND((ISNULL(d.CGSTAmount, 0) + ISNULL(d.SGSTAmount, 0) + ISNULL(d.IGSTAmount, 0)) * 100.0
+                                / ISNULL(NULLIF(d.BaseAmount, 0), d.Amount), 0) AS DECIMAL(5,2))
+                ELSE 0 END,
+           /* Total isi se - taxable + kar jodne par paise ka rounding ₹900 ke bill ko ₹899.99 dikhata tha. */
+           ISNULL(NULLIF(d.Amount, 0), ISNULL(d.BaseAmount, 0) + ISNULL(d.CGSTAmount, 0) + ISNULL(d.SGSTAmount, 0) + ISNULL(d.IGSTAmount, 0))
+    FROM PUMP.SalesHeaders h
+    JOIN PUMP.SalesDetails d ON d.SalesHeaderId = h.Id
+    WHERE h.OwnerId = @OwnerId AND h.PumpId = @PumpId AND h.IsVoid = 0
+      AND CAST(h.BillDateTime AS DATE) BETWEEN @DateFrom AND @DateTo;
+
+    /* NOTE (CLAUDE.md niyam 5): GstLineDto ke param theek isi kram / type me hain. */
+    /* UNION me ROW_NUMBER (BIGINT) aur COUNT mil kar type badal dete hain - Dapper record exact type
+       maangta hai, isliye yahan har khaana pakka. */
+    SELECT Section      = CAST(Section AS NVARCHAR(10)),
+           SortOrder    = CAST(SortOrder AS INT),
+           Code         = CAST(Code AS NVARCHAR(30)),
+           Name         = CAST(Name AS NVARCHAR(200)),
+           Unit         = CAST(Unit AS NVARCHAR(20)),
+           Rate         = CAST(Rate AS DECIMAL(5,2)),
+           Qty          = CAST(Qty AS DECIMAL(18,3)),
+           TaxableValue = CAST(TaxableValue AS DECIMAL(18,2)),
+           Cgst         = CAST(Cgst AS DECIMAL(18,2)),
+           Sgst         = CAST(Sgst AS DECIMAL(18,2)),
+           Igst         = CAST(Igst AS DECIMAL(18,2)),
+           Total        = CAST(Total AS DECIMAL(18,2)),
+           BillDate     = CAST(BillDate AS DATETIME2),
+           BillNo       = CAST(BillNo AS NVARCHAR(50)),
+           PartyGstin   = CAST(PartyGstin AS NVARCHAR(20)),
+           Mode         = CAST(Mode AS NVARCHAR(20)),
+           Lines        = CAST(Lines AS INT)
+    FROM
+    (
+        /* RATE */
+        SELECT Section = CAST('RATE' AS NVARCHAR(10)), SortOrder = CAST(l.Rate AS INT),
+               Code = CAST(NULL AS NVARCHAR(30)), Name = CAST(CONCAT(CAST(l.Rate AS INT), '%') AS NVARCHAR(200)),
+               Unit = CAST(NULL AS NVARCHAR(20)), Rate = CAST(l.Rate AS DECIMAL(5,2)),
+               Qty = CAST(SUM(l.Quantity) AS DECIMAL(18,3)),
+               TaxableValue = CAST(SUM(l.Taxable) AS DECIMAL(18,2)),
+               Cgst = CAST(SUM(l.Cgst) AS DECIMAL(18,2)), Sgst = CAST(SUM(l.Sgst) AS DECIMAL(18,2)),
+               Igst = CAST(SUM(l.Igst) AS DECIMAL(18,2)),
+               Total = CAST(SUM(l.Amount) AS DECIMAL(18,2)),
+               BillDate = CAST(NULL AS DATETIME2), BillNo = CAST(NULL AS NVARCHAR(50)),
+               PartyGstin = CAST(NULL AS NVARCHAR(20)), Mode = CAST(NULL AS NVARCHAR(20)),
+               Lines = COUNT(DISTINCT l.HeaderId)
+        FROM @ln l
+        WHERE l.Cgst + l.Sgst + l.Igst > 0
+        GROUP BY l.Rate
+
+        UNION ALL
+
+        /* HSN */
+        SELECT 'HSN', ROW_NUMBER() OVER (ORDER BY ISNULL(p.HSNCode, ''), p.Name, l.Rate),
+               NULLIF(LTRIM(RTRIM(p.HSNCode)), ''), ISNULL(p.Name, 'Product'), p.Unit, l.Rate,
+               SUM(l.Quantity), SUM(l.Taxable), SUM(l.Cgst), SUM(l.Sgst), SUM(l.Igst),
+               SUM(l.Amount),
+               NULL, NULL, NULL, NULL, COUNT(DISTINCT l.HeaderId)
+        FROM @ln l
+        LEFT JOIN PUMP.Products p ON p.Id = l.ProductId
+        WHERE l.Cgst + l.Sgst + l.Igst > 0
+        GROUP BY p.HSNCode, p.Name, p.Unit, l.Rate
+
+        UNION ALL
+
+        /* BILL */
+        SELECT 'BILL', ROW_NUMBER() OVER (ORDER BY MIN(l.BillDateTime), l.HeaderId),
+               NULL, ISNULL(MAX(pt.PartyName), ISNULL(NULLIF(MAX(l.CustomerName), ''), 'Walk-In')), NULL,
+               CASE WHEN MIN(l.Rate) = MAX(l.Rate) THEN MAX(l.Rate) END,
+               SUM(l.Quantity), SUM(l.Taxable), SUM(l.Cgst), SUM(l.Sgst), SUM(l.Igst),
+               SUM(l.Amount),
+               MIN(l.BillDateTime), MAX(l.BillNo), NULLIF(LTRIM(RTRIM(MAX(pt.GSTIN))), ''), MAX(l.PaymentMode), COUNT(*)
+        FROM @ln l
+        LEFT JOIN PUMP.Parties pt ON pt.Id = l.PartyId
+        WHERE l.Cgst + l.Sgst + l.Igst > 0
+        GROUP BY l.HeaderId
+
+        UNION ALL
+
+        /* NONGST - meter bikri (petrol / diesel / CNG): band shift, testing ke bina. */
+        SELECT 'NONGST', 1, 'METER', ISNULL(p.Name, 'Fuel'), p.Unit, 0,
+               SUM(ISNULL(r.SoldQty, 0)), SUM(ISNULL(r.SoldAmount, 0)), 0, 0, 0, SUM(ISNULL(r.SoldAmount, 0)),
+               NULL, NULL, NULL, NULL, COUNT(DISTINCT sh.Id)
+        FROM PUMP.ShiftNozzleReadings r
+        JOIN PUMP.ShiftHeaders sh ON sh.Id = r.ShiftId
+        LEFT JOIN PUMP.Products p ON p.Id = r.ProductId
+        WHERE sh.OwnerId = @OwnerId AND sh.PumpId = @PumpId AND sh.Status = 'CLOSED'
+          AND sh.ShiftDate BETWEEN @DateFrom AND @DateTo
+          AND ISNULL(p.CGSTRate, 0) + ISNULL(p.SGSTRate, 0) + ISNULL(p.IGSTRate, 0) = 0
+        GROUP BY p.Name, p.Unit
+        HAVING SUM(ISNULL(r.SoldAmount, 0)) <> 0
+
+        UNION ALL
+
+        /* NONGST - bina kar wale product ka bill (jinka nozzle nahi - nozzle wale ka bill meter bikri me hai). */
+        SELECT 'NONGST', 2, 'BILL', ISNULL(p.Name, 'Product'), p.Unit, 0,
+               SUM(l.Quantity), SUM(l.Taxable), 0, 0, 0, SUM(l.Taxable),
+               NULL, NULL, NULL, NULL, COUNT(DISTINCT l.HeaderId)
+        FROM @ln l
+        LEFT JOIN PUMP.Products p ON p.Id = l.ProductId
+        WHERE l.Cgst + l.Sgst + l.Igst = 0
+          AND NOT EXISTS (SELECT 1 FROM PUMP.Nozzles n WHERE n.ProductId = l.ProductId)
+        GROUP BY p.Name, p.Unit
+    ) x
+    ORDER BY CASE Section WHEN 'RATE' THEN 1 WHEN 'HSN' THEN 2 WHEN 'BILL' THEN 3 ELSE 4 END, SortOrder;
+END
+GO
+PRINT '  + AW1: sp_Report_Gst';
+GO
+
+/* ---- AW2: menu - jinhe "Users" milta hai (owner / admin) ---- */
+IF NOT EXISTS (SELECT 1 FROM PUMP.Menus WHERE Route = '/gst-report')
+BEGIN
+    DECLARE @UsersMenu BIGINT = (SELECT TOP 1 Id FROM PUMP.Menus WHERE Route = '/users');
+    INSERT INTO PUMP.Menus (ParentId, MenuName, Route, Icon, Sequence, IsVisible, IsActive)
+    VALUES (NULL, N'GST Report', '/gst-report', N'receipt', 25, 1, 1);
+    DECLARE @NewId BIGINT = CAST(SCOPE_IDENTITY() AS BIGINT);
+
+    INSERT INTO PUMP.RoleMenus (RoleId, MenuId, CanView, CanCreate, CanEdit, CanDelete)
+    SELECT rm.RoleId, @NewId, rm.CanView, 0, 0, 0
+    FROM PUMP.RoleMenus rm
+    WHERE rm.MenuId = @UsersMenu
+      AND NOT EXISTS (SELECT 1 FROM PUMP.RoleMenus x WHERE x.RoleId = rm.RoleId AND x.MenuId = @NewId);
+    PRINT '  + AW2: GST Report ka menu bana';
+END
+ELSE
+    PRINT '  = AW2: GST Report ka menu pehle se hai';
+GO
+
+PRINT '=== Section AW done ===';
+GO

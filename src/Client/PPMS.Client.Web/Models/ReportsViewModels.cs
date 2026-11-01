@@ -12,6 +12,8 @@ public sealed class ReportsHomeViewModel
     public bool ShowProfitLoss { get; set; }
     /// <summary>Financials ka card - "/financials" menu wale ko (Section AP).</summary>
     public bool ShowFinancials { get; set; }
+    /// <summary>GST report ka card - "/gst-report" menu wale ko (Section AW).</summary>
+    public bool ShowGst { get; set; }
 }
 
 public sealed class OutstandingReportViewModel

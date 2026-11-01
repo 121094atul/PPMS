@@ -45,6 +45,26 @@ public sealed record ApiMenuItem(
 public sealed record MenuGroup(string GroupName, IReadOnlyList<ApiMenuItem> Items);
 
 /// <summary>Munafa report ki line (Section AO1): SALE / EXPENSE / SALARY. CostSource: PERIOD / LAST / NONE.</summary>
+/// <summary>GST report ki line (Section AW). Section: RATE / HSN / BILL / NONGST.</summary>
+public sealed record ApiGstLineDto(
+    string Section,
+    int SortOrder,
+    string? Code,
+    string Name,
+    string? Unit,
+    decimal? Rate,
+    decimal Qty,
+    decimal TaxableValue,
+    decimal Cgst,
+    decimal Sgst,
+    decimal Igst,
+    decimal Total,
+    DateTime? BillDate,
+    string? BillNo,
+    string? PartyGstin,
+    string? Mode,
+    int Lines);
+
 public sealed record ApiProfitLossLineDto(
     string Section,
     int SortOrder,

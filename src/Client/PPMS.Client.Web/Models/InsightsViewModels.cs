@@ -29,6 +29,42 @@ public sealed class ProfitLossViewModel
 }
 
 /// <summary>
+/// GST report - Section AW. Dar-wise jod, HSN summary (GSTR-1), har GST bill (GSTIN ho to B2B),
+/// aur GST ke bahar ki bikri (petrol / diesel / CNG - GSTR-3B 3.1(e)).
+/// </summary>
+public sealed class GstReportViewModel
+{
+    public IReadOnlyList<ApiPumpDto> Pumps { get; set; } = Array.Empty<ApiPumpDto>();
+    public long PumpId { get; set; }
+    public string? PumpGstin { get; set; }
+    public DateOnly DateFrom { get; set; }
+    public DateOnly DateTo { get; set; }
+
+    public IReadOnlyList<ApiGstLineDto> Rates { get; set; } = Array.Empty<ApiGstLineDto>();
+    public IReadOnlyList<ApiGstLineDto> Hsn { get; set; } = Array.Empty<ApiGstLineDto>();
+    public IReadOnlyList<ApiGstLineDto> Bills { get; set; } = Array.Empty<ApiGstLineDto>();
+    public IReadOnlyList<ApiGstLineDto> NonGst { get; set; } = Array.Empty<ApiGstLineDto>();
+
+    public decimal Taxable => Rates.Sum(x => x.TaxableValue);
+    public decimal Cgst => Rates.Sum(x => x.Cgst);
+    public decimal Sgst => Rates.Sum(x => x.Sgst);
+    public decimal Igst => Rates.Sum(x => x.Igst);
+    public decimal TotalTax => Cgst + Sgst + Igst;
+    /// <summary>Bill ki asli rakam ka jod - Taxable + TotalTax paise ke rounding se 1 paisa kam aa sakta hai.</summary>
+    public decimal GrandTotal => Rates.Sum(x => x.Total);
+    public decimal NonGstTotal => NonGst.Sum(x => x.Total);
+    public int B2bCount => Bills.Count(x => !string.IsNullOrWhiteSpace(x.PartyGstin));
+
+    /// <summary>GSTR-1 ka UQC: Litre -> LTR, Kg -> KGS, baaki NOS.</summary>
+    public static string Uqc(string? unit) => (unit ?? string.Empty).Trim().ToLowerInvariant() switch
+    {
+        "litre" or "liter" or "ltr" or "l" => "LTR",
+        "kg" or "kgs" => "KGS",
+        _ => "NOS"
+    };
+}
+
+/// <summary>
 /// Financials - Section AP. Aaj ki haalat (stock, udhaar, galla) aur chuni tareekh me paisa kahan gaya.
 /// SP code (STOCK_VALUE, TO_OWNER...) bhejta hai; yahan unhe naam se padhte hain.
 /// </summary>

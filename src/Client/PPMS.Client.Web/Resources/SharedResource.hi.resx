@@ -4237,4 +4237,73 @@
   <data name="Purchase updated successfully." xml:space="preserve">
     <value>ख़रीद अपडेट हो गई।</value>
   </data>
+  <data name="GST Report" xml:space="preserve">
+    <value>GST रिपोर्ट</value>
+  </data>
+  <data name="mixed" xml:space="preserve">
+    <value>मिली-जुली</value>
+  </data>
+  <data name="Excel (CSV)" xml:space="preserve">
+    <value>Excel (CSV)</value>
+  </data>
+  <data name="Pump GSTIN" xml:space="preserve">
+    <value>पंप का GSTIN</value>
+  </data>
+  <data name="Add the GSTIN in Masters → Pump." xml:space="preserve">
+    <value>मास्टर → पंप में GSTIN भरिए।</value>
+  </data>
+  <data name="Taxable value" xml:space="preserve">
+    <value>कर-योग्य रक़म</value>
+  </data>
+  <data name="Total GST" xml:space="preserve">
+    <value>कुल GST</value>
+  </data>
+  <data name="Non-GST sale (petrol / diesel / CNG)" xml:space="preserve">
+    <value>GST से बाहर की बिक्री (पेट्रोल / डीज़ल / CNG)</value>
+  </data>
+  <data name="No GST bill in this range" xml:space="preserve">
+    <value>इन तारीख़ों में कोई GST वाला बिल नहीं</value>
+  </data>
+  <data name="GST is worked out from bills in Sales for products that have CGST / SGST set (mobil, oil, etc.). Petrol, diesel and CNG are outside GST." xml:space="preserve">
+    <value>GST 'बिक्री' के उन बिलों से निकलता है जिनके प्रोडक्ट पर CGST / SGST भरा है (मोबिल, ऑयल वग़ैरह)। पेट्रोल, डीज़ल और CNG GST से बाहर हैं।</value>
+  </data>
+  <data name="Rate-wise summary" xml:space="preserve">
+    <value>दर के हिसाब से जोड़</value>
+  </data>
+  <data name="HSN summary (for GSTR-1)" xml:space="preserve">
+    <value>HSN के हिसाब से (GSTR-1 के लिए)</value>
+  </data>
+  <data name="Some products have no HSN code - add it in Masters → Product." xml:space="preserve">
+    <value>कुछ प्रोडक्ट पर HSN कोड नहीं है — मास्टर → प्रोडक्ट में भरिए।</value>
+  </data>
+  <data name="Tax" xml:space="preserve">
+    <value>कर</value>
+  </data>
+  <data name="Bill-wise" xml:space="preserve">
+    <value>बिल के हिसाब से</value>
+  </data>
+  <data name="B2B = the party has a GSTIN (set it in Masters → Party). The rest are B2C." xml:space="preserve">
+    <value>B2B = जिस पार्टी का GSTIN भरा है (मास्टर → पार्टी में)। बाक़ी B2C हैं।</value>
+  </data>
+  <data name="Customer / Party" xml:space="preserve">
+    <value>ग्राहक / पार्टी</value>
+  </data>
+  <data name="Non-GST supply (for GSTR-3B 3.1(e))" xml:space="preserve">
+    <value>GST से बाहर की बिक्री (GSTR-3B 3.1(e) के लिए)</value>
+  </data>
+  <data name="Petrol, diesel and CNG are outside GST - state VAT applies. Meter sale is from closed shifts, without testing." xml:space="preserve">
+    <value>पेट्रोल, डीज़ल और CNG GST से बाहर हैं — इन पर राज्य का VAT लगता है। मीटर बिक्री बंद शिफ़्टों से है, टेस्टिंग के बिना।</value>
+  </data>
+  <data name="This report is a working sheet for filing. Check the figures with your CA before filing GSTR-1 / GSTR-3B." xml:space="preserve">
+    <value>यह रिपोर्ट रिटर्न भरने में मदद के लिए है। GSTR-1 / GSTR-3B भरने से पहले अपने CA से आँकड़े मिला लीजिए।</value>
+  </data>
+  <data name="CGST / SGST on mobil, oil and other products - rate-wise, HSN-wise and bill-wise, plus the non-GST fuel sale. Download for your CA." xml:space="preserve">
+    <value>मोबिल, ऑयल और बाक़ी प्रोडक्ट का CGST / SGST — दर, HSN और बिल के हिसाब से, साथ में GST से बाहर की तेल की बिक्री। CA के लिए डाउनलोड कीजिए।</value>
+  </data>
+  <data name="Open GST Report" xml:space="preserve">
+    <value>GST रिपोर्ट खोलिए</value>
+  </data>
+  <data name="No. of bills" xml:space="preserve">
+    <value>बिल</value>
+  </data>
 </root>

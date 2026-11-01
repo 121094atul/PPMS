@@ -121,8 +121,36 @@ public sealed record FinancialLineDto(
     string? Note
 );
 
+/// <summary>
+/// GST report ki ek line (Section AW). Section: RATE (dar-wise), HSN (HSN + product), BILL (har GST
+/// bill; PartyGstin ho to B2B), NONGST (Code METER = petrol/diesel/CNG ki meter bikri, BILL = bina kar
+/// wala bill).
+///
+/// NOTE (CLAUDE.md niyam 5): param theek `sp_Report_Gst` ke column ke kram, naam aur type se.
+/// </summary>
+public sealed record GstLineDto(
+    string Section,
+    int SortOrder,
+    string? Code,
+    string Name,
+    string? Unit,
+    decimal? Rate,
+    decimal Qty,
+    decimal TaxableValue,
+    decimal Cgst,
+    decimal Sgst,
+    decimal Igst,
+    decimal Total,
+    DateTime? BillDate,
+    string? BillNo,
+    string? PartyGstin,
+    string? Mode,
+    int Lines
+);
+
 public interface IReportInsightsRepository
 {
+    Task<IReadOnlyList<GstLineDto>> GetGstAsync(long ownerId, long pumpId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<OutstandingPartyDto>> GetOutstandingAsync(long ownerId, long pumpId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PumpComparisonDto>> GetPumpComparisonAsync(long ownerId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<DailyStockRegisterDto>> GetDailyStockRegisterAsync(long pumpId, long productId, int month, int year, CancellationToken cancellationToken = default);
@@ -134,6 +162,7 @@ public interface IReportInsightsRepository
 
 public interface IReportInsightsService
 {
+    Task<IReadOnlyList<GstLineDto>> GetGstAsync(long ownerId, long pumpId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<OutstandingPartyDto>> GetOutstandingAsync(long ownerId, long pumpId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PumpComparisonDto>> GetPumpComparisonAsync(long ownerId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<DailyStockRegisterDto>> GetDailyStockRegisterAsync(long pumpId, long productId, int month, int year, CancellationToken cancellationToken = default);
@@ -145,6 +174,9 @@ public interface IReportInsightsService
 
 public sealed class ReportInsightsService(IReportInsightsRepository repository) : IReportInsightsService
 {
+    public Task<IReadOnlyList<GstLineDto>> GetGstAsync(long ownerId, long pumpId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default)
+        => repository.GetGstAsync(ownerId, pumpId, dateFrom, dateTo, cancellationToken);
+
     public Task<IReadOnlyList<OutstandingPartyDto>> GetOutstandingAsync(long ownerId, long pumpId, CancellationToken cancellationToken = default)
         => repository.GetOutstandingAsync(ownerId, pumpId, cancellationToken);
 

@@ -3411,7 +3411,8 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
             Pumps = pumps,
             PumpId = pumps.FirstOrDefault()?.Id ?? 0,
             ShowProfitLoss = HasMenu("/profit-loss"),
-            ShowFinancials = HasMenu("/financials")
+            ShowFinancials = HasMenu("/financials"),
+            ShowGst = HasMenu("/gst-report")
         };
     }
 

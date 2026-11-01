@@ -88,6 +88,23 @@ public sealed class ReportInsightsRepository(IOptions<DatabaseOptions> options) 
         return rows.AsList();
     }
 
+    public async Task<IReadOnlyList<GstLineDto>> GetGstAsync(long ownerId, long pumpId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        var rows = await connection.QueryAsync<GstLineDto>(
+            sql: "PUMP.sp_Report_Gst",
+            param: new
+            {
+                OwnerId = ownerId,
+                PumpId = pumpId,
+                DateFrom = dateFrom.ToDateTime(TimeOnly.MinValue),
+                DateTo = dateTo.ToDateTime(TimeOnly.MinValue)
+            },
+            commandType: System.Data.CommandType.StoredProcedure);
+
+        return rows.AsList();
+    }
+
     public async Task<IReadOnlyList<FinancialLineDto>> GetFinancialsAsync(long ownerId, long pumpId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqlConnection(_options.ConnectionString);

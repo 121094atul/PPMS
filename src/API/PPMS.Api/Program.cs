@@ -1169,6 +1169,19 @@ app.MapGet("/api/reports/financials", async (long pumpId, DateOnly dateFrom, Dat
     return Results.Ok(items);
 }).RequireAuthorization();
 
+// GST report - Section AW. Dar-wise, HSN-wise, bill-wise aur GST ke bahar ki bikri.
+app.MapGet("/api/reports/gst", async (long pumpId, DateOnly dateFrom, DateOnly dateTo, ClaimsPrincipal user, ITenantGuard guard, IReportInsightsService service, CancellationToken cancellationToken) =>
+{
+    var ownerId = ResolveOwnerId(user, null);
+    if (!await guard.OwnsAsync(ownerId, TenantEntities.Pump, pumpId, cancellationToken))
+    {
+        return Results.NotFound();
+    }
+
+    var items = await service.GetGstAsync(ownerId, pumpId, dateFrom, dateTo, cancellationToken);
+    return Results.Ok(items);
+}).RequireAuthorization();
+
 // Activity Log - Section AO2. Sirf apne owner ka AuditLog.
 app.MapGet("/api/activity-log", async (DateOnly dateFrom, DateOnly dateTo, string? area, int? pageNumber, int? pageSize, ClaimsPrincipal user, IReportInsightsService service, CancellationToken cancellationToken) =>
 {

@@ -1,0 +1,207 @@
+@model PPMS.Client.Web.Models.GstReportViewModel
+@{
+    ViewData["Title"] = "GST Report";
+    string Rs(decimal v) => (v < 0 ? "−₹" : "₹") + Math.Abs(v).ToString("N2");
+    string Pct(decimal? v) => v is decimal d ? d.ToString("0.##") + "%" : L["mixed"].Value;
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var thisMonth = new DateOnly(today.Year, today.Month, 1);
+    var lastMonth = thisMonth.AddMonths(-1);
+}
+
+<style>
+    .gst-kpi { border-radius: .5rem; padding: .75rem 1rem; background: var(--bs-light, #f8f9fa); height: 100%; }
+    .gst-kpi .lbl { font-size: .8rem; color: #6c757d; }
+    .gst-kpi .val { font-size: 1.2rem; font-weight: 700; }
+    @@media print {
+        .no-print, .side-accordion, nav, header, footer { display: none !important; }
+        .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+    }
+</style>
+
+<div class="card border-0 shadow-sm mb-3 no-print">
+    <div class="card-body">
+        <form method="get" asp-action="GstReport" asp-controller="Operations" class="row g-2 align-items-end">
+            @if (Model.Pumps.Count > 1)
+            {
+                <div class="col-12 col-md-3">
+                    <label class="form-label">@L["Pump"]</label>
+                    <select class="form-select" name="pumpId" data-no-search>
+                        @foreach (var p in Model.Pumps)
+                        {
+                            <option value="@p.Id" selected="@(p.Id == Model.PumpId)">@p.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="col-6 col-md-3">
+                <label class="form-label">@L["From"]</label>
+                <input class="form-control" type="date" name="dateFrom" value="@Model.DateFrom.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label">@L["To"]</label>
+                <input class="form-control" type="date" name="dateTo" value="@Model.DateTo.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-12 col-md-3 d-flex gap-2 flex-wrap">
+                <button class="btn btn-primary flex-grow-1" type="submit">@L["Load Report"]</button>
+                <a class="btn btn-outline-success" asp-action="ExportGstReportCsv" asp-route-pumpId="@Model.PumpId"
+                   asp-route-dateFrom="@Model.DateFrom.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo.ToString("yyyy-MM-dd")">⬇ @L["Excel (CSV)"]</a>
+                <button class="btn btn-outline-secondary" type="button" onclick="window.print()">🖨 @L["Print / PDF"]</button>
+            </div>
+        </form>
+        <div class="small mt-2">
+            <a asp-action="GstReport" asp-route-pumpId="@Model.PumpId" asp-route-dateFrom="@thisMonth.ToString("yyyy-MM-dd")" asp-route-dateTo="@today.ToString("yyyy-MM-dd")">@L["This month"]</a>
+            ·
+            <a asp-action="GstReport" asp-route-pumpId="@Model.PumpId" asp-route-dateFrom="@lastMonth.ToString("yyyy-MM-dd")" asp-route-dateTo="@thisMonth.AddDays(-1).ToString("yyyy-MM-dd")">@L["Last month"]</a>
+        </div>
+    </div>
+</div>
+
+<h5 class="mb-1">@L["GST Report"] — @Model.DateFrom.ToString("dd MMM yyyy") – @Model.DateTo.ToString("dd MMM yyyy")</h5>
+<div class="small text-muted mb-3">
+    @L["Pump GSTIN"]: <strong>@(string.IsNullOrWhiteSpace(Model.PumpGstin) ? "—" : Model.PumpGstin)</strong>
+    @if (string.IsNullOrWhiteSpace(Model.PumpGstin))
+    {
+        <span class="text-danger">· @L["Add the GSTIN in Masters → Pump."]</span>
+    }
+</div>
+
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md"><div class="gst-kpi"><div class="lbl">@L["Taxable value"]</div><div class="val">@Rs(Model.Taxable)</div></div></div>
+    <div class="col-6 col-md"><div class="gst-kpi"><div class="lbl">CGST</div><div class="val">@Rs(Model.Cgst)</div></div></div>
+    <div class="col-6 col-md"><div class="gst-kpi"><div class="lbl">SGST</div><div class="val">@Rs(Model.Sgst)</div></div></div>
+    @if (Model.Igst != 0)
+    {
+        <div class="col-6 col-md"><div class="gst-kpi"><div class="lbl">IGST</div><div class="val">@Rs(Model.Igst)</div></div></div>
+    }
+    <div class="col-6 col-md"><div class="gst-kpi"><div class="lbl">@L["Total GST"]</div><div class="val text-primary">@Rs(Model.TotalTax)</div></div></div>
+    <div class="col-12 col-md"><div class="gst-kpi"><div class="lbl">@L["Non-GST sale (petrol / diesel / CNG)"]</div><div class="val">@Rs(Model.NonGstTotal)</div></div></div>
+</div>
+
+@if (Model.Rates.Count == 0)
+{
+    <div class="card border-0 shadow-sm mb-3"><div class="card-body">
+        <div class="empty-state"><div class="empty-state-icon">🧾</div><div class="empty-state-title">@L["No GST bill in this range"]</div>
+            <div class="empty-state-hint">@L["GST is worked out from bills in Sales for products that have CGST / SGST set (mobil, oil, etc.). Petrol, diesel and CNG are outside GST."]</div></div>
+    </div></div>
+}
+else
+{
+    @* 1. Dar-wise *@
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <h6 class="mb-2">1. @L["Rate-wise summary"]</h6>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0 table-kv">
+                    <thead><tr><th>@L["Rate"]</th><th class="text-end">@L["No. of bills"]</th><th class="text-end">@L["Taxable value"]</th><th class="text-end">CGST</th><th class="text-end">SGST</th>@if (Model.Igst != 0){<th class="text-end">IGST</th>}<th class="text-end">@L["Total"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var r in Model.Rates)
+                        {
+                            <tr>
+                                <td data-label="@L["Rate"]">@Pct(r.Rate)</td>
+                                <td class="text-end" data-label="@L["No. of bills"]">@r.Lines</td>
+                                <td class="text-end" data-label="@L["Taxable value"]">@Rs(r.TaxableValue)</td>
+                                <td class="text-end" data-label="CGST">@Rs(r.Cgst)</td>
+                                <td class="text-end" data-label="SGST">@Rs(r.Sgst)</td>
+                                @if (Model.Igst != 0){<td class="text-end" data-label="IGST">@Rs(r.Igst)</td>}
+                                <td class="text-end fw-semibold" data-label="@L["Total"]">@Rs(r.Total)</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="fw-bold">
+                        <tr><td>@L["Total"]</td><td></td><td class="text-end">@Rs(Model.Taxable)</td><td class="text-end">@Rs(Model.Cgst)</td><td class="text-end">@Rs(Model.Sgst)</td>@if (Model.Igst != 0){<td class="text-end">@Rs(Model.Igst)</td>}<td class="text-end">@Rs(Model.GrandTotal)</td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @* 2. HSN *@
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <h6 class="mb-1">2. @L["HSN summary (for GSTR-1)"]</h6>
+            @if (Model.Hsn.Any(h => string.IsNullOrWhiteSpace(h.Code)))
+            {
+                <div class="small text-danger mb-2">⚠ @L["Some products have no HSN code - add it in Masters → Product."]</div>
+            }
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0 table-kv">
+                    <thead><tr><th>HSN</th><th>@L["Product"]</th><th>UQC</th><th class="text-end">@L["Quantity"]</th><th class="text-end">@L["Rate"]</th><th class="text-end">@L["Taxable value"]</th><th class="text-end">@L["Tax"]</th><th class="text-end">@L["Total"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var h in Model.Hsn)
+                        {
+                            <tr>
+                                <td data-label="HSN">@(string.IsNullOrWhiteSpace(h.Code) ? "—" : h.Code)</td>
+                                <td data-label="@L["Product"]">@h.Name</td>
+                                <td data-label="UQC">@PPMS.Client.Web.Models.GstReportViewModel.Uqc(h.Unit)</td>
+                                <td class="text-end" data-label="@L["Quantity"]">@h.Qty.ToString("0.###")</td>
+                                <td class="text-end" data-label="@L["Rate"]">@Pct(h.Rate)</td>
+                                <td class="text-end" data-label="@L["Taxable value"]">@Rs(h.TaxableValue)</td>
+                                <td class="text-end" data-label="@L["Tax"]">@Rs(h.Cgst + h.Sgst + h.Igst)</td>
+                                <td class="text-end fw-semibold" data-label="@L["Total"]">@Rs(h.Total)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @* 3. Bill-wise *@
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <h6 class="mb-1">3. @L["Bill-wise"] <span class="text-muted fw-normal small">(@Model.Bills.Count @L["bills"] · B2B: @Model.B2bCount)</span></h6>
+            <div class="small text-muted mb-2">@L["B2B = the party has a GSTIN (set it in Masters → Party). The rest are B2C."]</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0" data-pager="25">
+                    <thead><tr><th>@L["Date"]</th><th>@L["Bill No"]</th><th>@L["Customer / Party"]</th><th>GSTIN</th><th class="text-end">@L["Taxable value"]</th><th class="text-end">@L["Tax"]</th><th class="text-end">@L["Total"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var x in Model.Bills)
+                        {
+                            <tr>
+                                <td class="text-nowrap" data-label="@L["Date"]">@(x.BillDate?.ToString("dd MMM yyyy") ?? "")</td>
+                                <td data-label="@L["Bill No"]">@x.BillNo</td>
+                                <td data-label="@L["Customer / Party"]">@x.Name</td>
+                                <td data-label="GSTIN">@if (string.IsNullOrWhiteSpace(x.PartyGstin)) { <span class="badge text-bg-light border">B2C</span> } else { <span class="badge text-bg-primary">B2B</span> @x.PartyGstin }</td>
+                                <td class="text-end" data-label="@L["Taxable value"]">@Rs(x.TaxableValue)</td>
+                                <td class="text-end" data-label="@L["Tax"]">@Rs(x.Cgst + x.Sgst + x.Igst) <span class="text-muted small">(@Pct(x.Rate))</span></td>
+                                <td class="text-end fw-semibold" data-label="@L["Total"]">@Rs(x.Total)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@* 4. GST ke bahar *@
+@if (Model.NonGst.Count > 0)
+{
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <h6 class="mb-1">4. @L["Non-GST supply (for GSTR-3B 3.1(e))"]</h6>
+            <div class="small text-muted mb-2">@L["Petrol, diesel and CNG are outside GST - state VAT applies. Meter sale is from closed shifts, without testing."]</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0 table-kv">
+                    <thead><tr><th>@L["Type"]</th><th>@L["Product"]</th><th class="text-end">@L["Quantity"]</th><th class="text-end">@L["Value"]</th></tr></thead>
+                    <tbody>
+                        @foreach (var x in Model.NonGst)
+                        {
+                            <tr>
+                                <td data-label="@L["Type"]">@(x.Code == "METER" ? L["Meter Sale"] : L["Bill"])</td>
+                                <td data-label="@L["Product"]">@x.Name</td>
+                                <td class="text-end" data-label="@L["Quantity"]">@x.Qty.ToString("N2") @PPMS.Client.Web.Services.ProductUnit.Abbr(x.Unit)</td>
+                                <td class="text-end fw-semibold" data-label="@L["Value"]">@Rs(x.Total)</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="fw-bold"><tr><td colspan="3">@L["Total"]</td><td class="text-end">@Rs(Model.NonGstTotal)</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="small text-muted mb-4">
+    @L["This report is a working sheet for filing. Check the figures with your CA before filing GSTR-1 / GSTR-3B."]
+</div>

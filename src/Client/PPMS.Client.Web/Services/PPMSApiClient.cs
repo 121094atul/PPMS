@@ -1486,6 +1486,21 @@ public sealed class PPMSApiClient(HttpClient httpClient)
         return items ?? new List<ApiMonthlySaleRegisterRow>();
     }
 
+    /// <summary>GST report (Section AW). Fail ho to khaali - page "koi GST bill nahi" dikhata hai.</summary>
+    public async Task<IReadOnlyList<ApiGstLineDto>> GetGstReportAsync(string token, long pumpId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/reports/gst?pumpId={pumpId}&dateFrom={dateFrom:yyyy-MM-dd}&dateTo={dateTo:yyyy-MM-dd}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return Array.Empty<ApiGstLineDto>();
+        }
+
+        var items = await response.Content.ReadFromJsonAsync<List<ApiGstLineDto>>(cancellationToken: cancellationToken);
+        return items is null ? Array.Empty<ApiGstLineDto>() : items;
+    }
+
     public async Task<IReadOnlyList<ApiProfitLossLineDto>> GetProfitLossAsync(string token, long pumpId, DateOnly dateFrom, DateOnly dateTo, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/reports/profit-loss?pumpId={pumpId}&dateFrom={dateFrom:yyyy-MM-dd}&dateTo={dateTo:yyyy-MM-dd}");
