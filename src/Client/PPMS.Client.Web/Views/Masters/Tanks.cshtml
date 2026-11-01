@@ -101,6 +101,8 @@
     <script>
         let currentModal = null;
         let currentPage = 1;
+        // Edit button JSON ko onclick me nahi likhta (naam me &quot; se script chal sakti thi) - list ka number.
+        let lastTanks = [];
         const pageSize = 10;
         let hasNext = false;
         
@@ -165,7 +167,9 @@
                 return;
             }
 
-            items.forEach(t => {
+            const esc = window.ppmsEsc;
+            lastTanks = items;
+            items.forEach((t, i) => {
                 const statusBadge = t.isActive 
                     ? '<span class="badge bg-success">@L["Active"]</span>' 
                     : '<span class="badge bg-secondary">@L["Inactive"]</span>';
@@ -173,14 +177,14 @@
                 const tr = `
                     <tr>
                         <td data-label="ID">${t.id}</td>
-                        <td class="fw-bold" data-label="Tank Name">${t.name}</td>
-                        <td data-label="Product">${t.productName}</td>
+                        <td class="fw-bold" data-label="Tank Name">${esc(t.name)}</td>
+                        <td data-label="Product">${esc(t.productName)}</td>
                         <td data-label="Capacity">${t.capacity.toFixed(2)}</td>
                         <td data-label="@L["Alert below"]">${t.safeFillLevel.toFixed(2)}</td>
                         <td data-label="Current Stock">${t.currentStock.toFixed(2)}</td>
                         <td data-label="Status">${statusBadge}</td>
                         <td class="text-center" data-label="Actions">
-                            <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick='editTank(${JSON.stringify(t).replace(/'/g, "&#39;")})'><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="editTank(lastTanks[${i}])"><i class="fas fa-edit"></i> Edit</button>
                         </td>
                     </tr>
                 `;

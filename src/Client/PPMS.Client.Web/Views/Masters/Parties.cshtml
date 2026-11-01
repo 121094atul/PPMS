@@ -128,6 +128,8 @@
     <script>
         let currentModal = null;
         let currentPage = 1;
+        // Edit button JSON ko onclick me nahi likhta (naam me &quot; se script chal sakti thi) - list ka number.
+        let lastParties = [];
         const pageSize = 10;
         let hasNext = false;
         let currentSearch = '';
@@ -180,7 +182,9 @@
                 return;
             }
 
-            items.forEach(p => {
+            const esc = window.ppmsEsc;
+            lastParties = items;
+            items.forEach((p, i) => {
                 const statusBadge = p.isActive 
                     ? '<span class="badge bg-success">@L["Active"]</span>' 
                     : '<span class="badge bg-secondary">@L["Inactive"]</span>';
@@ -188,15 +192,15 @@
                 const tr = `
                     <tr>
                         <td data-label="ID">${p.id}</td>
-                        <td class="fw-bold" data-label="Party Name">${p.partyName}</td>
-                        <td data-label="Type"><span class="badge bg-info text-dark">${p.partyType}</span></td>
-                        <td data-label="Contact">${p.email || '-'}</td>
-                        <td data-label="Mobile">${p.mobile || '-'}</td>
+                        <td class="fw-bold" data-label="Party Name">${esc(p.partyName)}</td>
+                        <td data-label="Type"><span class="badge bg-info text-dark">${esc(p.partyType)}</span></td>
+                        <td data-label="Contact">${esc(p.email || '-')}</td>
+                        <td data-label="Mobile">${esc(p.mobile || '-')}</td>
                         <td class="text-end" data-label="Credit Limit">₹${p.creditLimit.toFixed(2)}</td>
                         <td class="text-end fw-bold ${p.currentBalance < 0 ? 'text-danger' : 'text-success'}" data-label="Balance">₹${p.currentBalance.toFixed(2)}</td>
                         <td data-label="Status">${statusBadge}</td>
                         <td class="text-center" data-label="Actions">
-                            <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick='editParty(${JSON.stringify(p).replace(/'/g, "&#39;")})'><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="editParty(lastParties[${i}])"><i class="fas fa-edit"></i> Edit</button>
                         </td>
                     </tr>
                 `;

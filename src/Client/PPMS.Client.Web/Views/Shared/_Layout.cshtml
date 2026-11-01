@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - PPMS</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/PPMS.Client.Web.styles.css" asp-append-version="true" />
 
@@ -34,6 +34,7 @@
       data-msg-fill="@L["Please fill in:"]"
       data-msg-one-field="@L["Please fill in this field before saving."]"
       data-msg-saving="@L["Saving..."]"
+      data-msg-loading="@L["Loading..."]"
       data-ss-search="@L["Type to search..."]"
       data-ss-empty="@L["No match found"]"
       data-pg-prev="@L["Previous"]"
@@ -149,8 +150,8 @@
        ppmsFetch() yahi value uthakar RequestVerificationToken header me bhejta hai. *@
     @Html.AntiForgeryToken()
 
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery/dist/jquery.min.js" asp-append-version="true"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @* Khojne wala dropdown + lambi list me page — har page par. Page ki apni
        script (neeche) isse pehle nahi, BAAD me chalti hai; ye file sirf event

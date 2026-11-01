@@ -1,0 +1,78 @@
+@model PPMS.Client.Web.Services.ApiNotifySettings
+@{
+    ViewData["Title"] = "Message Settings";
+    string Sel(string current, string value) => string.Equals(current, value, StringComparison.OrdinalIgnoreCase) ? "selected" : "";
+}
+
+@if (TempData["SuperAdminOk"] is string okMsg)
+{
+    <div class="alert alert-success py-2 small">@L.GetString(okMsg).Value</div>
+}
+@if (TempData["SuperAdminMessage"] is string errMsg && !string.IsNullOrWhiteSpace(errMsg))
+{
+    <div class="alert alert-danger py-2 small">@L.GetString(errMsg).Value</div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">✉️ @L["Message Settings"]</h5>
+                <p class="text-muted small mb-3">
+                    @L["Choose how the password OTP and the owner alerts are sent. The change works right away - no deploy needed."]
+                </p>
+
+                <form method="post" asp-action="MessageSettings">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="otpChannel">@L["Password reset OTP"]</label>
+                        <select class="form-select" id="otpChannel" name="otpChannel">
+                            <option value="EMAIL" selected="@(Sel(Model.OtpChannel, "EMAIL") != "")">@L["Email (free)"]</option>
+                            <option value="PROVIDER" selected="@(Sel(Model.OtpChannel, "PROVIDER") != "")">@L["SMS / WhatsApp (server setting)"]</option>
+                            <option value="OFF" selected="@(Sel(Model.OtpChannel, "OFF") != "")">@L["Off - user calls support"]</option>
+                        </select>
+                        <div class="form-text">@L["By email the OTP goes to the owner's email (saved in Settings > Alerts or at sign-up). Staff logins have no email - they call support."]</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="ownerAlertChannel">@L["Owner alerts (shift closed, purchase, stock loss, bank deposit, large expense, party entry)"]</label>
+                        <select class="form-select" id="ownerAlertChannel" name="ownerAlertChannel">
+                            <option value="EMAIL" selected="@(Sel(Model.OwnerAlertChannel, "EMAIL") != "")">@L["Email (free, no credit used)"]</option>
+                            <option value="PROVIDER" selected="@(Sel(Model.OwnerAlertChannel, "PROVIDER") != "")">@L["SMS / WhatsApp (server setting, uses credit)"]</option>
+                        </select>
+                        <div class="form-text">@L["The message to the credit party and the sign-up welcome always go by SMS / WhatsApp."]</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">@L["Save"]</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">@L["Email on the server"]</h6>
+                @if (Model.EmailConfigured)
+                {
+                    <div class="text-success fw-semibold mb-1">✔ @L["Set up"]</div>
+                    <div class="small text-muted mb-3">@L["Sent from"]: <strong>@Model.EmailFrom</strong></div>
+                }
+                else
+                {
+                    <div class="text-danger fw-semibold mb-1">✖ @L["Not set up"]</div>
+                    <div class="small text-muted mb-3">
+                        @L["Until then nothing goes by email. On the server set:"]
+                        <code class="d-block mt-1">Email__Host, Email__Port, Email__Username, Email__Password, Email__From</code>
+                    </div>
+                }
+
+                <form method="post" asp-action="TestEmail" class="d-flex gap-2">
+                    @Html.AntiForgeryToken()
+                    <input type="email" name="to" class="form-control" required maxlength="100" placeholder="@L["Your email"]" />
+                    <button type="submit" class="btn btn-outline-primary text-nowrap">@L["Send test"]</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

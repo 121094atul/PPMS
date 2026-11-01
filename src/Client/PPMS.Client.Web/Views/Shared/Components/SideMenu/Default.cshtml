@@ -168,6 +168,10 @@
                     var isHelpNumbersActive = currentPath.StartsWith("/SuperAdmin/HelpNumbers", StringComparison.OrdinalIgnoreCase);
                 }
                 <a class="menu-link @(isHelpNumbersActive ? "active fw-bold text-primary" : "")" href="/SuperAdmin/HelpNumbers">@L["Support Numbers"]</a>
+                @{
+                    var isMessageSettingsActive = currentPath.StartsWith("/SuperAdmin/MessageSettings", StringComparison.OrdinalIgnoreCase);
+                }
+                <a class="menu-link @(isMessageSettingsActive ? "active fw-bold text-primary" : "")" href="/SuperAdmin/MessageSettings">@L["Message Settings"]</a>
             </div>
         </div>
     </div>

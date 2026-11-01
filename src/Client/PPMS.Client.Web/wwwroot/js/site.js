@@ -1,5 +1,14 @@
 ﻿// PPMS Client Global Scripts
 
+// HTML me jaane se pehle har naam / text saaf karo (party, product, tank, nozzle ka naam user likhta
+// hai). Iske bina naam me <img onerror=...> likh ke doosre user ke browser me script chalayi ja
+// sakti thi. innerHTML / jQuery .html() / `${...}` me user ka text HAMESHA ppmsEsc() se.
+window.ppmsEsc = function (v) {
+    return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+};
+
 (function () {
     'use strict';
 
@@ -70,11 +79,13 @@
                 var originalHtml = submitBtn.innerHTML;
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> ' + MSG_SAVING;
-                // Net ki dikkat me atak na jaaye, isliye 10 second baad wapas.
+                // Net ki dikkat me atak na jaaye, isliye kuch der baad wapas. Pehle 10 second tha -
+                // kamzor net par save 10 second se zyada le to user dobara daba deta aur entry do baar
+                // ban jaati. Ab 45 second (tab tak upar wala loader bhi dikhta hai).
                 setTimeout(function () {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalHtml;
-                }, 10000);
+                }, 45000);
             }
         });
     });
@@ -124,7 +135,9 @@
             // handler chalne se rokte hain, warna modal loop me phans jaata.
             p.el.dataset.confirmed = 'yes';
             if (p.el.tagName === 'FORM') {
-                p.el.submit();
+                // requestSubmit: submit event chalta hai - "Saving..." ka do-baar-click bachav aur page
+                // loader dono lagte hain. submit() ye event bhejta hi nahi tha.
+                if (p.el.requestSubmit) { p.el.requestSubmit(); } else { p.el.submit(); }
             } else {
                 p.el.click();
             }
@@ -500,6 +513,85 @@
                     });
                 }
             });
+        }
+    });
+
+    // ═══════════════════════════════════════════
+    // Page loader — kamzor net par "kuch ho raha hai" dikhe (2026-11-01)
+    // Pehle sirf Save button par spinner tha; menu / link / filter dabane par screen waisi hi
+    // rehti aur log baar-baar dabate. Ab har page badalne par upar patli line + beech me chhota
+    // "Loading...". 0.2 second baad hi - tez net par jhilmil nahi.
+    // Nahi lagta: naya tab, download / Export, #, javascript:, Ctrl/Shift-click, data-no-loader.
+    // ═══════════════════════════════════════════
+    var loaderTimer = null;
+    var loaderFailsafe = null;
+    var MSG_LOADING = document.body.getAttribute('data-msg-loading') || 'Loading...';
+
+    function loaderEl() {
+        var el = document.getElementById('ppmsPageLoader');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'ppmsPageLoader';
+            el.setAttribute('role', 'status');
+            el.setAttribute('aria-live', 'polite');
+            el.innerHTML = '<div class="ppl-bar"></div><div class="ppl-chip"><span class="spinner-border spinner-border-sm"></span><span class="ppl-text"></span></div>';
+            el.querySelector('.ppl-text').textContent = MSG_LOADING;
+            document.body.appendChild(el);
+        }
+        return el;
+    }
+
+    window.ppmsShowLoader = function () {
+        clearTimeout(loaderTimer);
+        loaderTimer = setTimeout(function () { loaderEl().classList.add('show'); }, 200);
+        // Kabhi page na badle (download, server ne kuch nahi bheja) to atka na rahe.
+        clearTimeout(loaderFailsafe);
+        loaderFailsafe = setTimeout(window.ppmsHideLoader, 30000);
+    };
+
+    window.ppmsHideLoader = function () {
+        clearTimeout(loaderTimer);
+        clearTimeout(loaderFailsafe);
+        var el = document.getElementById('ppmsPageLoader');
+        if (el) { el.classList.remove('show'); }
+    };
+
+    function isDownloadLike(url, a) {
+        if (a && (a.hasAttribute('download') || (a.target && a.target !== '_self'))) { return true; }
+        return /export|download|\.csv|\.xlsx?|\.pdf|PrintReceipt/i.test(url.pathname + url.search);
+    }
+
+    document.addEventListener('click', function (e) {
+        if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) { return; }
+        var a = e.target.closest ? e.target.closest('a[href]') : null;
+        if (!a || a.closest('[data-no-loader]')) { return; }
+        var href = a.getAttribute('href') || '';
+        if (!href || href.charAt(0) === '#' || /^(javascript|mailto|tel|whatsapp):/i.test(href) || a.hasAttribute('data-bs-toggle')) { return; }
+        var url;
+        try { url = new URL(a.href, location.href); } catch (err) { return; }
+        if (url.origin !== location.origin || isDownloadLike(url, a)) { return; }
+        // Sirf # badla (wahi page) - koi load nahi.
+        if (url.pathname === location.pathname && url.search === location.search && url.hash) { return; }
+        window.ppmsShowLoader();
+    });
+
+    // Form (Save, filter, search) - koi aur script rok de (galat khaana, confirm "nahi") to loader
+    // nahi; document par sunte hain, yaani form ki apni jaanch ke BAAD.
+    document.addEventListener('submit', function (e) {
+        var f = e.target;
+        if (e.defaultPrevented || !f || f.closest('[data-no-loader]') || (f.target && f.target !== '_self')) { return; }
+        var action;
+        try { action = new URL(f.getAttribute('action') || location.href, location.href); } catch (err) { return; }
+        if (isDownloadLike(action, null)) { return; }
+        window.ppmsShowLoader();
+    });
+
+    // Back / forward se purana page wapas aaye (bfcache) to loader band; "Saving..." me atka
+    // button ho to page taaza kar do.
+    window.addEventListener('pageshow', function (e) {
+        window.ppmsHideLoader();
+        if (e.persisted && document.querySelector('button[type="submit"][disabled] .spinner-border')) {
+            location.reload();
         }
     });
 

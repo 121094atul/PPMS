@@ -15,432 +15,12 @@
     <title>Login — Petrol Pump Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <style>
-        *, *::before, *::after { box-sizing: border-box; }
-
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            font-family: 'Inter', sans-serif;
-        }
-
-        /* Mobile par page screen se 100px chaudi ho rahi thi.
-
-           Wajah: neeche `body.login-page::before` ek 600px ka gola hai jiska
-           `right: -100px` hai — wo daayen se 100px bahar nikalta hai. body par
-           `overflow: hidden` laga tha, par CSS ka niyam ye hai ki agar `html`
-           ka overflow `visible` ho to viewport apna overflow BODY se utha leta
-           hai — aur tab body khud `visible` maani jaati hai. Yaani wo hidden
-           gole ko kaat hi nahi rahi thi.
-
-           Nateeja: document 475px chaudi (viewport 375px), phone use zoom out
-           karke dikhata tha, text daayen se kat jaata tha, aur zoom karne par
-           layout aur bigad jaati thi.
-
-           `html` par overflow-x: hidden lagate hi document wapas 375px par aa
-           gaya (chala kar jaancha). */
-        html {
-            overflow-x: hidden;
-        }
-
-        body.login-page {
-            overflow-x: hidden;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #0f172a 0%, #0c2340 40%, #0f3460 70%, #1a1a2e 100%);
-            position: relative;
-            overflow: hidden;
-        }
-
-        body.login-page::before {
-            content: '';
-            position: absolute;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%);
-            top: -150px;
-            right: -100px;
-            border-radius: 50%;
-            pointer-events: none;
-        }
-        body.login-page::after {
-            content: '';
-            position: absolute;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
-            bottom: -100px;
-            left: -100px;
-            border-radius: 50%;
-            pointer-events: none;
-        }
-
-        .login-card {
-            position: relative;
-            z-index: 10;
-            width: 100%;
-            max-width: 420px;
-            background: rgba(15, 23, 42, 0.92);
-            border: 1px solid rgba(255, 255, 255, 0.10);
-            border-radius: 20px;
-            padding: 2.5rem 2.25rem 2rem;
-            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(249,115,22,0.08);
-            margin: 1rem;
-            animation: slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
-        }
-
-        @@keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px) scale(0.98); }
-            to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        /* Bhasha - login se PEHLE bhi (pehle sirf andar header me thi). */
-        .lang-switch {
-            position: absolute;
-            top: 14px;
-            right: 14px;
-            display: inline-flex;
-            border: 1px solid rgba(255,255,255,0.18);
-            border-radius: 999px;
-            overflow: hidden;
-            z-index: 20;
-        }
-        .lang-switch a {
-            padding: 4px 11px;
-            font-size: 12px;
-            font-weight: 700;
-            color: rgba(255,255,255,0.65);
-            text-decoration: none;
-            line-height: 1.4;
-        }
-        .lang-switch a.on {
-            background: #f97316;
-            color: #fff;
-        }
-        .lang-switch a:not(.on):hover { color: #fff; background: rgba(255,255,255,0.08); }
-
-        .login-logo {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, #f97316, #dc2626);
-            border-radius: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            margin: 0 auto 1.1rem;
-            box-shadow: 0 8px 24px rgba(249,115,22,0.50), 0 0 0 4px rgba(249,115,22,0.12);
-        }
-
-        .login-title {
-            color: #ffffff;
-            font-size: 1.5rem;
-            font-weight: 800;
-            text-align: center;
-            margin-bottom: 2px;
-            letter-spacing: -0.3px;
-        }
-
-        .login-subtitle {
-            color: rgba(255,255,255,0.50);
-            font-size: 0.82rem;
-            text-align: center;
-            margin-bottom: 1.25rem;
-            font-weight: 500;
-        }
-
-        .trial-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: linear-gradient(135deg, rgba(16,185,129,0.20), rgba(5,150,105,0.15));
-            border: 1px solid rgba(16,185,129,0.45);
-            color: #34d399;
-            font-size: 0.78rem;
-            font-weight: 700;
-            padding: 0.45rem 1.1rem;
-            border-radius: 50px;
-            letter-spacing: 0.2px;
-            box-shadow: 0 0 16px rgba(16,185,129,0.15);
-            cursor: pointer;
-            font-family: 'Inter', sans-serif;
-            transition: all 0.2s ease;
-        }
-        .trial-badge:hover {
-            background: linear-gradient(135deg, rgba(16,185,129,0.35), rgba(5,150,105,0.28));
-            border-color: rgba(16,185,129,0.75);
-            box-shadow: 0 0 22px rgba(16,185,129,0.30);
-            transform: translateY(-1px);
-        }
-        .trial-badge .dot {
-            width: 7px;
-            height: 7px;
-            background: #10b981;
-            border-radius: 50%;
-            animation: pulse-dot 1.8s ease infinite;
-            flex-shrink: 0;
-        }
-        @@keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50%       { opacity: 0.5; transform: scale(0.7); }
-        }
-
-        .form-label-custom {
-            color: rgba(255,255,255,0.60);
-            font-size: 11.5px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.7px;
-            margin-bottom: 6px;
-            display: block;
-        }
-
-        .input-wrapper {
-            position: relative;
-        }
-        .input-icon {
-            position: absolute;
-            left: 13px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: rgba(255,255,255,0.35);
-            font-size: 15px;
-            pointer-events: none;
-            z-index: 2;
-        }
-
-        .login-input {
-            width: 100%;
-            background: rgba(255,255,255,0.06) !important;
-            border: 1.5px solid rgba(255,255,255,0.12) !important;
-            border-radius: 10px !important;
-            color: #ffffff !important;
-            font-size: 14.5px !important;
-            font-family: 'Inter', sans-serif !important;
-            font-weight: 500;
-            padding: 0.7rem 0.9rem 0.7rem 2.6rem !important;
-            height: auto !important;
-            outline: none !important;
-            box-shadow: none !important;
-            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-            -webkit-appearance: none;
-            appearance: none;
-            caret-color: #f97316;
-        }
-        .login-input::placeholder {
-            color: rgba(255,255,255,0.28) !important;
-            font-weight: 400;
-        }
-        .login-input:focus {
-            background: rgba(249,115,22,0.08) !important;
-            border-color: #f97316 !important;
-            box-shadow: 0 0 0 3px rgba(249,115,22,0.18) !important;
-            color: #ffffff !important;
-        }
-        .login-input:-webkit-autofill,
-        .login-input:-webkit-autofill:hover,
-        .login-input:-webkit-autofill:focus {
-            -webkit-box-shadow: 0 0 0 1000px rgba(15,23,42,0.98) inset !important;
-            -webkit-text-fill-color: #ffffff !important;
-            border-color: rgba(255,255,255,0.18) !important;
-            transition: background-color 5000s ease-in-out 0s;
-        }
-
-        .btn-login {
-            width: 100%;
-            background: linear-gradient(135deg, #f97316 0%, #dc2626 100%);
-            border: none;
-            border-radius: 10px;
-            color: #fff;
-            font-size: 15px;
-            font-weight: 700;
-            font-family: 'Inter', sans-serif;
-            padding: 0.78rem 1rem;
-            cursor: pointer;
-            letter-spacing: 0.3px;
-            margin-top: 0.5rem;
-            box-shadow: 0 4px 20px rgba(249,115,22,0.40);
-            transition: all 0.25s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 28px rgba(249,115,22,0.55);
-            background: linear-gradient(135deg, #fb923c 0%, #ef4444 100%);
-        }
-        .btn-login:active {
-            transform: translateY(0);
-        }
-
-        .login-error {
-            background: rgba(239,68,68,0.12);
-            border: 1px solid rgba(239,68,68,0.35);
-            color: #fca5a5;
-            border-radius: 10px;
-            font-size: 13px;
-            padding: 0.6rem 0.85rem;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 7px;
-        }
-
-        .login-footer {
-            text-align: center;
-            color: rgba(255,255,255,0.25);
-            font-size: 11px;
-            margin-top: 1.5rem;
-            font-weight: 500;
-        }
-
-        /* Install wala button - kaam ka hai, isliye bhara hua aur poori chaudai ka. */
-        .btn-install-app {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            width: 100%;
-            padding: 9px 14px;
-            border-radius: 10px;
-            border: 1px solid rgba(249, 115, 22, 0.45);
-            background: rgba(249, 115, 22, 0.12);
-            color: #fdba74;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.15s ease, border-color 0.15s ease;
-        }
-        .btn-install-app:hover {
-            background: rgba(249, 115, 22, 0.2);
-            border-color: rgba(249, 115, 22, 0.7);
-        }
-
-        /* ══════════════════════════════════════════════════════════════
-           MODAL (Trial + Forgot) — mobile par screen se bahar nikal
-           rahe the. Wajah: card ek flex item hai aur flex item ka
-           default `min-width:auto` hota hai, yaani wo apne content ke
-           min-content se chhota ho hi nahi sakta. 3 plan cards aur
-           phone+WhatsApp wali line 375px me nahi samati thi, isliye
-           card 440px par ada rehta tha aur daayen se text kat jaata
-           tha — band karne ka (X) button bhi pahunch se bahar.
-           ══════════════════════════════════════════════════════════════ */
-        .ppms-modal-card {
-            /* Ye do line asli fix hai: ab card sach me sikud sakta hai. */
-            min-width: 0;
-            max-width: min(540px, 100%);
-        }
-
-        #trialModal .ppms-modal-card { max-width: min(440px, 100%); }
-
-        /* Lambe modal ko upar se shuru karo, warna chhoti screen par
-           header hi upar kat jaata hai aur scroll karke wapas nahi
-           aa sakte. */
-        .ppms-modal {
-            /* !important isliye: har modal ke apne tag par INLINE
-               `align-items:center` likha hai, aur inline style stylesheet ko
-               hamesha dabaa deta hai. Isi wajah se pehle ki koshishein bekaar
-               gayi thin — modal ab bhi center hi ho raha tha aur uska upar ka
-               hissa screen ke bahar reh jaata tha (naap kar dekha: top -1042px). */
-            align-items: flex-start !important;
-
-            /* Pehle yahan overflow-x: hidden tha. Wo us waqt laga tha jab card
-               screen se bahar nikal jaata tha — ab wo dikkat nahi hai (card
-               min-width:0 + max-width:100% se sikud jaata hai; 320px par bhi
-               poora samata hai, naap kar dekha).
-
-               Par zoom karne par wahi 'hidden' ulta pad raha tha: modal
-               position:fixed hai, to pinch-zoom me uska daayan hissa screen se
-               bahar chala jaata tha AUR hidden ki wajah se use kheench kar
-               dekha bhi nahi ja sakta tha — bas kata hua dikhta tha.
-               'auto' se ab zoom karke bhi poora padha ja sakta hai. */
-            overflow-x: auto;
-        }
-
-        /* Yahan pehle `align-items: center` tha (720px se lambi screen par).
-           Wahi asli dikkat thi:
-
-           Flex container me item ko center karo aur item container se LAMBA ho
-           jaye, to wo dono taraf barabar bahar nikalta hai — upar wala hissa
-           screen ke UPAR chala jaata hai, aur browser wahan scroll karne hi
-           nahi deta (scroll sirf neeche ki taraf chalta hai). Nateeja: features
-           modal ka header aur X button dikhte hi nahi the, aur upar khinchne
-           par bhi kuch nahi aata tha.
-
-           Mobile par `.ppms-modal-scroll` ka max-height hata diya jaata hai
-           (taaki andar do scrollbar na banein), isliye modal aur lamba ho jaata
-           hai — aur ye bug wahin sabse zyada dikhta tha.
-
-           Ab centering `align-items` se nahi, card ke `margin: auto` se hoti
-           hai. Jagah ho to card beech me aa jaata hai; na ho to upar se shuru
-           hota hai aur poora scroll ho jaata hai. Kuch kabhi kata nahi rehta. */
-        .ppms-modal-card {
-            /* `margin: auto` bhi kaam nahi aaya — jab item container se lamba ho
-               to auto margin RINAATMAK ho jaata hai aur upar ka hissa phir bahar
-               chala jaata hai (naap kar dekha: card ka top -1042px par tha).
-
-               Isliye centering poori tarah hata di. Modal hamesha upar se shuru
-               hota hai. Chhota modal thoda upar dikhega — par kuch bhi kabhi
-               kata nahi rahega, aur X button hamesha haath me rahega. */
-            margin-top: 0 !important;
-            margin-bottom: 1rem !important;
-        }
-
-        /* Andar ka scrollbar dark theme me safed patti jaisa chubhta
-           tha — ab background ke saath ghul jaata hai. */
-        .ppms-modal-scroll::-webkit-scrollbar { width: 8px; }
-        .ppms-modal-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .ppms-modal-scroll::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.18);
-            border-radius: 8px;
-        }
-        .ppms-modal-scroll::-webkit-scrollbar-thumb:hover {
-            background: rgba(255,255,255,0.30);
-        }
-        .ppms-modal-scroll {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,0.18) transparent;
-        }
-
-        @@media screen and (max-width: 575.98px) {
-            .ppms-modal { padding: 0.5rem; }
-
-            .ppms-modal-card {
-                border-radius: 16px;
-                margin: 0.5rem auto !important;
-            }
-
-            /* Header ka bada text chhoti screen par do line le leta tha
-               aur X button ke neeche chala jaata tha. */
-            .ppms-modal-card h1,
-            .ppms-modal-card .modal-head-title { font-size: 1.05rem !important; }
-
-            /* Teen plan side-by-side me "1 Year" kat jaata tha. */
-            .ppms-plan-grid { grid-template-columns: 1fr 1fr !important; }
-            .ppms-plan-grid > :last-child { grid-column: 1 / -1; }
-
-            /* Phone number aur WhatsApp button ek line me nahi samate. */
-            .ppms-contact-row { flex-direction: column; align-items: stretch !important; }
-            .ppms-contact-row > a { justify-content: center; }
-
-            .ppms-modal-scroll {
-                padding: 1rem 1rem 1.2rem !important;
-                max-height: none !important;
-            }
-        }
-
-        @@media screen and (max-width: 359.98px) {
-            .ppms-plan-grid { grid-template-columns: 1fr !important; }
-            .ppms-plan-grid > :last-child { grid-column: auto; }
-        }
-    </style>
+    @* Google Font page ko rokta tha (alag server, kamzor net par 2-3 second safed screen). Ab peeche se
+       aata hai - tab tak phone ka apna font; aaye to badal jaata hai. *@
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" /></noscript>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
     @* ---- PWA ----
        Ye page Layout = null par chalta hai, isliye _Layout waale PWA tags yahan
        apne aap nahi aate. Aur yahi PEHLA page hai jahan user aata hai — agar
@@ -593,15 +173,15 @@
             <div style="background:linear-gradient(135deg,#6366f1,#4338ca); padding:1.3rem 1.5rem 1rem;">
                 <button onclick="closeForgotModal()" style="position:absolute; top:12px; right:14px; background:rgba(255,255,255,0.2); border:none; color:#fff; width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; line-height:1;">&times;</button>
                 <div style="color:#fff; font-weight:800; font-size:1.1rem;">@L["Reset your password"]</div>
-                <div style="color:rgba(255,255,255,0.75); font-size:0.8rem;">@L["We will send an OTP to your registered mobile"]</div>
+                <div style="color:rgba(255,255,255,0.75); font-size:0.8rem;">@L["Enter your registered mobile number or email - we will send an OTP for your account"]</div>
             </div>
 
             <div style="padding:1.3rem 1.5rem 1.5rem;">
 
                 <!-- Step 1: number maango -->
                 <div id="forgotStep1">
-                    <label style="color:rgba(255,255,255,0.55); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:0.4rem;">@L["Mobile number"]</label>
-                    <input id="forgotMobile" type="tel" maxlength="15" inputmode="numeric" placeholder="@L["The mobile number registered with us"]"
+                    <label style="color:rgba(255,255,255,0.55); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:0.4rem;">@L["Mobile number or email"]</label>
+                    <input id="forgotMobile" type="text" maxlength="100" autocomplete="off" placeholder="@L["Registered mobile number or email"]"
                            style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:#fff; padding:0.65rem 0.8rem; font-size:14px; margin-bottom:1rem;" />
 
                     <div id="forgotMsg1" style="display:none; font-size:12px; margin-bottom:0.8rem;"></div>
@@ -616,7 +196,7 @@
                 <div id="forgotStep2" style="display:none;">
                     <div style="background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:0.6rem 0.8rem; margin-bottom:1rem;">
                         <div style="color:#c7d2fe; font-size:12px;">
-                            @L["If this number is registered, an OTP has been sent."]
+                            <span id="forgotSentText">@L["If this number is registered, an OTP has been sent."]</span>
                             <span style="color:rgba(255,255,255,0.5);">@L["It expires in 10 minutes."]</span>
                         </div>
                         <!-- SMS kabhi-kabhi fail hoti hai (provider down, balance khatam,
@@ -865,10 +445,17 @@
             document.getElementById(id).style.display = 'none';
         }
 
+        // Mobile ya email (Section AZ) - email jaisa ho to waisa hi, warna sirf ank.
+        function forgotId() {
+            var v = document.getElementById('forgotMobile').value.trim();
+            return v.indexOf('@@') >= 0 ? v : v.replace(/\D/g, '');
+        }
+
         function sendOtp() {
-            var mobile = document.getElementById('forgotMobile').value.replace(/\D/g, '');
-            if (mobile.length < 10) {
-                showMsg('forgotMsg1', 'Enter the complete mobile number.', true);
+            var mobile = forgotId();
+            var ok = mobile.indexOf('@@') >= 0 ? /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(mobile) : mobile.length >= 10;
+            if (!ok) {
+                showMsg('forgotMsg1', @Json.Serialize(L["Enter the complete mobile number or a valid email."].Value), true);
                 return;
             }
 
@@ -902,6 +489,8 @@
                     return;
                 }
 
+                // Server batata hai OTP kahan gaya (email ya mobile) - Section AZ.
+                if (data.message) { document.getElementById('forgotSentText').textContent = data.message; }
                 document.getElementById('forgotStep1').style.display = 'none';
                 document.getElementById('forgotStep2').style.display = 'block';
                 document.getElementById('forgotOtp').focus();
@@ -916,7 +505,7 @@
         }
 
         function submitReset() {
-            var mobile = document.getElementById('forgotMobile').value.replace(/\D/g, '');
+            var mobile = forgotId();
             var otp = document.getElementById('forgotOtp').value.trim();
             var pass = document.getElementById('forgotPass').value;
             var pass2 = document.getElementById('forgotPass2').value;
@@ -1159,8 +748,20 @@
             const spinner = document.getElementById('btnSpinner');
             btn.style.pointerEvents = 'none';
             btn.style.opacity = '0.8';
+            text.dataset.orig = text.innerHTML;
             text.textContent = '@L["Signing In..."]';
             spinner.classList.remove('d-none');
+        });
+
+        // Login ke baad "back" se ye page wapas aaye to button "Signing In..." me atka na rahe.
+        window.addEventListener('pageshow', function (e) {
+            if (!e.persisted) { return; }
+            const btn = document.getElementById('loginBtn');
+            btn.style.pointerEvents = '';
+            btn.style.opacity = '';
+            const text = document.getElementById('btnText');
+            if (text.dataset.orig) { text.innerHTML = text.dataset.orig; }
+            document.getElementById('btnSpinner').classList.add('d-none');
         });
 
         function togglePasswordVisibility() {

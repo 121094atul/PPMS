@@ -13,6 +13,11 @@ $keyFile = Join-Path $PSScriptRoot "f2s-key.txt"
 $env:Notification__Otp_Provider = "Fast2SMSOtp"
 $env:Notification__Fast2SMS_ApiKey = $(if (Test-Path $keyFile) { (Get-Content $keyFile -Raw).Trim() } else { "test-key" })
 $env:Notification__Fast2SMS_BaseUrl = "http://127.0.0.1:5299"
+# Section AZ test: email nakli SMTP (fake_smtp.py, port 2525) par - asli mail kabhi nahi.
+$env:Email__Host = "127.0.0.1"
+$env:Email__Port = "2525"
+$env:Email__EnableSsl = "false"
+$env:Email__From = "ppms@test.local"
 $env:TenantBackup__Path = (Join-Path $PSScriptRoot "..\backups\test-seeds\tenant-deletes")
 $bin = Join-Path $PSScriptRoot "..\..\src\API\PPMS.Api\bin\Debug\net8.0"
 Set-Location $bin

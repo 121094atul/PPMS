@@ -111,7 +111,9 @@ public class AccountController(PPMSApiClient apiClient) : Controller
 
     [HttpPost]
     [IgnoreAntiforgeryToken]
-    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordInput model, CancellationToken cancellationToken)
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordInput model,
+        [FromServices] Microsoft.Extensions.Localization.IStringLocalizer<SharedResource> localizer,
+        CancellationToken cancellationToken)
     {
         if (model is null || string.IsNullOrWhiteSpace(model.Mobile))
         {
@@ -123,7 +125,8 @@ public class AccountController(PPMSApiClient apiClient) : Controller
         // Number registered hai ya nahi - iska farak kabhi bahar nahi jaata.
         // Lekin "SMS ka intezaam hi nahi hai" poore system ki baat hai, isliye wo
         // batana zaroori bhi hai aur surakshit bhi.
-        return Ok(new { smsAvailable, message });
+        // Section AZ: sandesh batata hai OTP kahan gaya (email / mobile) - Hindi me bhi.
+        return Ok(new { smsAvailable, message = string.IsNullOrWhiteSpace(message) ? message : localizer[message].Value });
     }
 
     [HttpPost]

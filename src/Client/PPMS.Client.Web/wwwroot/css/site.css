@@ -1319,3 +1319,10 @@ table[data-pager] tbody tr.pager-hidden { display: none !important; }
     display: none !important;
   }
 }
+/* ── Page loader (site.js: ppmsShowLoader) — kamzor net par page badalte waqt dikhta hai ── */
+#ppmsPageLoader { position: fixed; inset: 0 0 auto 0; z-index: 2000; pointer-events: none; opacity: 0; transition: opacity .15s; }
+#ppmsPageLoader.show { opacity: 1; }
+#ppmsPageLoader .ppl-bar { height: 3px; background: linear-gradient(90deg, #4f46e5, #22c55e); transform-origin: left; animation: ppl-grow 8s cubic-bezier(.1,.6,.2,1) forwards; }
+#ppmsPageLoader .ppl-chip { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .45rem; background: rgba(17,24,39,.88); color: #fff; font-size: .82rem; padding: .35rem .8rem; border-radius: 999px; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+@keyframes ppl-grow { from { transform: scaleX(.05); } to { transform: scaleX(.92); } }
+@media (prefers-reduced-motion: reduce) { #ppmsPageLoader .ppl-bar { animation: none; transform: scaleX(.6); } }

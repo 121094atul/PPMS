@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.ResponseCompression;
 using PPMS.Client.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -113,7 +114,28 @@ builder.Services.AddHttpClient<PPMSApiClient>((sp, client) =>
 })
 .AddHttpMessageHandler<PPMS.Client.Web.Services.ForwardUserIpHandler>();
 
+// ── Kam net par tez (2026-11-01) ──────────────────────────────────────────────
+// Pehle har page aur CSS/JS bina zip ke jaata tha (bootstrap.min.css akela 233 KB). Brotli / Gzip
+// se HTML aur CSS/JS 70-85% chhote. HTTPS par bhi - antiforgery token har baar alag (data
+// protection ka random IV), isliye BREACH jaisa hamla kaam ka nahi.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+    {
+        "image/svg+xml", "application/manifest+json", "image/x-icon"
+    });
+});
+// Fastest: phone tak bytes kam, server par CPU bhi kam (har page par chalta hai).
+builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = System.IO.Compression.CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = System.IO.Compression.CompressionLevel.Fastest);
+
 var app = builder.Build();
+
+// Sabse pehle - taaki static file aur page dono zip hokar jaayein.
+app.UseResponseCompression();
 
 // IIS/reverse-proxy TLS termination karta hai aur Kestrel ko plain HTTP forward
 // karta hai — X-Forwarded-* headers ke bina UseHttpsRedirection() galat scheme
@@ -147,7 +169,30 @@ app.Use(async (ctx, next) =>
 });
 
 app.UseRouting();
-app.UseStaticFiles();
+// Static file browser me yaad rahe - har page par "file badli kya?" poochhne ka chakkar (kamzor net
+// par har baar ek-do second) khatam. ?v= wali (asp-append-version) file badalte hi naya naam
+// paati hai, isliye 1 saal; bina ?v= wali (icon, lib) 7 din. service-worker.js hamesha taaza.
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        var path = ctx.Context.Request.Path.Value ?? string.Empty;
+        var headers = ctx.Context.Response.Headers;
+        if (path.EndsWith("service-worker.js", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".webmanifest", StringComparison.OrdinalIgnoreCase))
+        {
+            headers.CacheControl = "no-cache";
+        }
+        else if (ctx.Context.Request.Query.ContainsKey("v"))
+        {
+            headers.CacheControl = "public, max-age=31536000, immutable";
+        }
+        else
+        {
+            headers.CacheControl = "public, max-age=604800";
+        }
+    }
+});
 app.UseSession();
 app.Use(async (context, next) =>
 {

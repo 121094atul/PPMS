@@ -1286,7 +1286,10 @@ public sealed record ApiSaveStaffResult(long EmployeeId, long? UserId);
 public sealed record ApiOwnerAlertDto(string AlertKey, string Title, string Description, bool IsEnabled);
 
 /// <summary>/api/owner-alerts ka poora jawab — number aur list ek saath.</summary>
-public sealed record ApiOwnerAlertsResponse(string? Mobile, IReadOnlyList<ApiOwnerAlertDto> Alerts);
+public sealed record ApiOwnerAlertsResponse(string? Mobile, IReadOnlyList<ApiOwnerAlertDto> Alerts, string? Email = null, string? Channel = null);
+
+/// <summary>Super Admin > Message settings (Section AZ). Channel: EMAIL / PROVIDER / OFF.</summary>
+public sealed record ApiNotifySettings(string OtpChannel, string OwnerAlertChannel, bool EmailConfigured = false, string? EmailFrom = null);
 
 public sealed record ApiSaveOwnerAlertRequest(string AlertKey, bool IsEnabled);
 

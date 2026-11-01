@@ -45,4 +45,22 @@ public sealed class OwnerAlertRepository(IOptions<DatabaseOptions> options) : IO
             param: new { OwnerId = ownerId, Mobile = mobile },
             commandType: System.Data.CommandType.StoredProcedure);
     }
+
+    public async Task<string?> GetEmailAsync(long ownerId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        return await connection.QueryFirstOrDefaultAsync<string?>(
+            sql: "PUMP.sp_Notification_GetOwnerEmail",
+            param: new { OwnerId = ownerId },
+            commandType: System.Data.CommandType.StoredProcedure);
+    }
+
+    public async Task SaveEmailAsync(long ownerId, string? email, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        await connection.ExecuteAsync(
+            sql: "PUMP.sp_OwnerAlert_SaveEmail",
+            param: new { OwnerId = ownerId, Email = email },
+            commandType: System.Data.CommandType.StoredProcedure);
+    }
 }

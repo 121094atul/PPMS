@@ -14,19 +14,25 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
     private readonly HttpClient _httpClient;
     private readonly IOwnerAlertRepository _ownerAlerts;
     private readonly ICreditRepository _credits;
+    private readonly IEmailSender _email;
+    private readonly INotifySettingsRepository _notifySettings;
 
     public WhatsAppNotificationService(
         IConfiguration configuration,
         ILogger<WhatsAppNotificationService> logger,
         HttpClient httpClient,
         IOwnerAlertRepository ownerAlerts,
-        ICreditRepository credits)
+        ICreditRepository credits,
+        IEmailSender email,
+        INotifySettingsRepository notifySettings)
     {
         _configuration = configuration;
         _logger = logger;
         _httpClient = httpClient;
         _ownerAlerts = ownerAlerts;
         _credits = credits;
+        _email = email;
+        _notifySettings = notifySettings;
     }
 
     public bool IsConfigured
@@ -152,6 +158,24 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
             ? Task.FromResult(false)
             : SendWithCreditAsync(ownerId, "PARTY_MESSAGE", partyMobile, message, cancellationToken);
 
+    private async Task<bool> SendOwnerAlertEmailAsync(long ownerId, string alertKey, string ownerName, string message, CancellationToken cancellationToken)
+    {
+        var email = await _ownerAlerts.GetEmailAsync(ownerId, cancellationToken);
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            _logger.LogWarning(
+                "Alert {AlertKey} skipped: no email set for owner {OwnerId} ({OwnerName}). Set it under Settings > Alerts.",
+                alertKey, ownerId, ownerName);
+            return false;
+        }
+
+        // WhatsApp wala *mota* likhna email me sirf taare dikhata - hata do. Pehli line = subject.
+        var body = message.Replace("*", string.Empty).Trim();
+        var firstLine = body.Split('\n', 2)[0].Trim();
+        var subject = $"PPMS - {ownerName}: {firstLine}";
+        return await _email.SendAsync(email, subject, body + "\n\n- PPMS (Settings > Alerts se band kar sakte hain)", cancellationToken);
+    }
+
     /// <summary>Switch dekho -> credit kaato -> bhejo -> fail par credit wapas. toMobile null = owner ka number.</summary>
     private async Task<bool> SendWithCreditAsync(long ownerId, string alertKey, string? toMobile, string message, CancellationToken cancellationToken)
     {
@@ -169,6 +193,13 @@ public class WhatsAppNotificationService : IWhatsAppNotificationService
             if (!target.IsEnabled)
             {
                 return false;
+            }
+
+            // Section AZ: malik ke alert (party ko sandesh nahi) Super Admin ki setting par email se -
+            // muft, isliye credit nahi katta. Badalna ho to Super Admin > Message settings, deploy nahi.
+            if (toMobile is null && (await _notifySettings.GetAsync(cancellationToken)).OwnerAlertsByEmail)
+            {
+                return await SendOwnerAlertEmailAsync(ownerId, alertKey, target.OwnerName, message, cancellationToken);
             }
 
             var mobile = toMobile ?? target.Mobile;

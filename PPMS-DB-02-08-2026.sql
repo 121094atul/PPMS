@@ -24218,3 +24218,186 @@ GO
 
 PRINT '=== Section AY done ===';
 GO
+
+
+/* ==========================================================================================
+   SECTION AZ — Password OTP aur malik ke alert EMAIL par; raasta Super Admin ki setting me (2026-11-01)
+   ------------------------------------------------------------------------------------------
+   Owner: "OTP wala mail se kar do ... baad me mobile pe kar lunga, ye change setting me rakhna
+   taki code deploy na karna pade". Malik ke 6 alert bhi malik ke email par; party ko sandesh
+   aur naye grahak ka welcome jaise the (SMS / WhatsApp provider se).
+
+   AZ1 AppSettings (OwnerId = 0): Notify.OtpChannel      EMAIL | PROVIDER | OFF   (default EMAIL)
+                                  Notify.OwnerAlertChannel EMAIL | PROVIDER       (default EMAIL)
+       PROVIDER = server ki Notification:Provider wali SMS / WhatsApp. OFF = "support ko call karein".
+   AZ2 sp_NotifySettings_Get / _Save (Super Admin > Message settings) - badalne par deploy nahi.
+   AZ3 sp_Notification_GetOwnerEmail - alert kis email par (Owners.Email).
+   AZ4 sp_OwnerAlert_SaveEmail       - Alerts page se malik apna email rakhe.
+   AZ5 sp_PasswordReset_GetEmail     - OTP kis email par: owner-user (IsOwner) ke tenant ka email;
+                                       staff ka email nahi hota -> NULL (wo support ko call kare).
+   Email par credit nahi katta (muft). Purane SP / column nahi badle.
+   ========================================================================================== */
+PRINT '=== Section AZ: OTP + malik ke alert email par ===';
+GO
+
+/* ---- AZ1 ---- */
+IF NOT EXISTS (SELECT 1 FROM PUMP.AppSettings WHERE SettingKey = 'Notify.OtpChannel' AND OwnerId = 0)
+    INSERT INTO PUMP.AppSettings (SettingKey, SettingValue, OwnerId, Description)
+    VALUES ('Notify.OtpChannel', 'EMAIL', 0, N'Password reset OTP: EMAIL / PROVIDER (SMS-WhatsApp) / OFF (Super Admin > Message settings)');
+IF NOT EXISTS (SELECT 1 FROM PUMP.AppSettings WHERE SettingKey = 'Notify.OwnerAlertChannel' AND OwnerId = 0)
+    INSERT INTO PUMP.AppSettings (SettingKey, SettingValue, OwnerId, Description)
+    VALUES ('Notify.OwnerAlertChannel', 'EMAIL', 0, N'Owner alerts: EMAIL / PROVIDER (SMS-WhatsApp) (Super Admin > Message settings)');
+PRINT '  + AZ1: Notify.OtpChannel / Notify.OwnerAlertChannel';
+GO
+
+/* ---- AZ2 ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_NotifySettings_Get
+AS
+BEGIN
+    SET NOCOUNT ON;
+    /* NOTE (CLAUDE.md niyam 5): NotifySettings record ke param theek isi kram me. */
+    SELECT
+        OtpChannel        = CAST(ISNULL(NULLIF(LTRIM(RTRIM((SELECT SettingValue FROM PUMP.AppSettings
+                                     WHERE SettingKey = 'Notify.OtpChannel' AND OwnerId = 0))), ''), 'EMAIL') AS NVARCHAR(20)),
+        OwnerAlertChannel = CAST(ISNULL(NULLIF(LTRIM(RTRIM((SELECT SettingValue FROM PUMP.AppSettings
+                                     WHERE SettingKey = 'Notify.OwnerAlertChannel' AND OwnerId = 0))), ''), 'EMAIL') AS NVARCHAR(20));
+END
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_NotifySettings_Save
+(
+    @OtpChannel        NVARCHAR(20),
+    @OwnerAlertChannel NVARCHAR(20),
+    @UserId            BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    SET @OtpChannel = UPPER(LTRIM(RTRIM(ISNULL(@OtpChannel, N''))));
+    SET @OwnerAlertChannel = UPPER(LTRIM(RTRIM(ISNULL(@OwnerAlertChannel, N''))));
+
+    IF @OtpChannel NOT IN (N'EMAIL', N'PROVIDER', N'OFF')
+        THROW 50310, 'Choose how the password OTP is sent.', 1;
+    IF @OwnerAlertChannel NOT IN (N'EMAIL', N'PROVIDER')
+        THROW 50311, 'Choose how owner alerts are sent.', 1;
+
+    DECLARE @Old NVARCHAR(200) = CONCAT(
+        (SELECT SettingValue FROM PUMP.AppSettings WHERE SettingKey = 'Notify.OtpChannel' AND OwnerId = 0), ' / ',
+        (SELECT SettingValue FROM PUMP.AppSettings WHERE SettingKey = 'Notify.OwnerAlertChannel' AND OwnerId = 0));
+
+    BEGIN TRANSACTION;
+        MERGE PUMP.AppSettings AS t
+        USING (VALUES ('Notify.OtpChannel', @OtpChannel), ('Notify.OwnerAlertChannel', @OwnerAlertChannel)) AS s (SettingKey, SettingValue)
+           ON t.SettingKey = s.SettingKey AND t.OwnerId = 0
+        WHEN MATCHED THEN
+            UPDATE SET SettingValue = s.SettingValue, ModifiedOn = SYSDATETIME()
+        WHEN NOT MATCHED THEN
+            INSERT (SettingKey, SettingValue, OwnerId, Description)
+            VALUES (s.SettingKey, s.SettingValue, 0, N'Super Admin > Message settings');
+    COMMIT TRANSACTION;
+
+    DECLARE @New NVARCHAR(200) = CONCAT(@OtpChannel, ' / ', @OwnerAlertChannel);
+    EXEC PUMP.sp_Audit_Log @UserId = @UserId, @EntityName = 'AppSettings', @Action = 'UPDATE',
+         @OldValues = @Old, @NewValues = @New, @Reason = N'Message settings (OTP / owner alerts)';
+
+    EXEC PUMP.sp_NotifySettings_Get;
+END
+GO
+PRINT '  + AZ2: sp_NotifySettings_Get / _Save';
+GO
+
+/* ---- AZ3 ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_Notification_GetOwnerEmail
+(
+    @OwnerId BIGINT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT Email = CAST(NULLIF(LTRIM(RTRIM(o.Email)), N'') AS NVARCHAR(100))
+    FROM PUMP.Owners o
+    WHERE o.Id = @OwnerId AND o.IsActive = 1 AND ISNULL(o.IsDeleted, 0) = 0;
+END
+GO
+PRINT '  + AZ3: sp_Notification_GetOwnerEmail';
+GO
+
+/* ---- AZ4 ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_OwnerAlert_SaveEmail
+(
+    @OwnerId BIGINT,
+    @Email   NVARCHAR(100)
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SET @Email = NULLIF(LTRIM(RTRIM(@Email)), N'');
+
+    /* Seedhi jaanch: ek @, uske baad ek '.', beech me khaali jagah nahi. */
+    IF @Email IS NOT NULL
+       AND (@Email NOT LIKE N'_%@_%._%' OR @Email LIKE N'% %' OR LEN(@Email) - LEN(REPLACE(@Email, N'@', N'')) <> 1)
+        THROW 50312, 'Please enter a valid email address.', 1;
+
+    IF NOT EXISTS (SELECT 1 FROM PUMP.Owners WHERE Id = @OwnerId AND ISNULL(IsDeleted, 0) = 0)
+        THROW 50190, 'Account not found.', 1;
+
+    UPDATE PUMP.Owners SET Email = @Email WHERE Id = @OwnerId;
+
+    SELECT Result = 'OK';
+END
+GO
+PRINT '  + AZ4: sp_OwnerAlert_SaveEmail';
+GO
+
+/* ---- AZ5 ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_PasswordReset_GetEmail
+(
+    @UserId BIGINT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    /* Users me email ka khaana nahi - malik (IsOwner) ka OTP uske tenant ke email par. Staff
+       ka OTP malik ke email par bhejna galat hota (malik uska password bana leta) - NULL. */
+    SELECT Email = CAST(NULLIF(LTRIM(RTRIM(o.Email)), N'') AS NVARCHAR(100))
+    FROM PUMP.Users u
+    JOIN PUMP.Owners o ON o.Id = u.OwnerId
+    WHERE u.Id = @UserId AND (u.IsOwner = 1 OR u.IsSuperAdmin = 1);
+END
+GO
+PRINT '  + AZ5: sp_PasswordReset_GetEmail';
+GO
+
+/* ---- AZ6: forgot-password me mobile ki jagah email bhi ----
+   Email se us tenant ka malik-user milta hai, aur aage wahi mobile wala OTP raasta (rok / 10 min / galat
+   koshish sab wahi). Ek hi email do chalu tenant par ho to NULL - galat aadmi ka password na badle. */
+CREATE OR ALTER PROCEDURE PUMP.sp_PasswordReset_MobileForEmail
+(
+    @Email NVARCHAR(100)
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @Email = NULLIF(LTRIM(RTRIM(@Email)), N'');
+
+    DECLARE @m TABLE (Mobile NVARCHAR(20));
+    INSERT INTO @m (Mobile)
+    SELECT TOP 2 u.Mobile
+    FROM PUMP.Owners o
+    JOIN PUMP.Users u ON u.OwnerId = o.Id AND u.IsOwner = 1 AND u.IsActive = 1 AND ISNULL(u.IsDeleted, 0) = 0
+    WHERE @Email IS NOT NULL
+      AND UPPER(LTRIM(RTRIM(o.Email))) = UPPER(@Email)
+      AND o.IsActive = 1 AND ISNULL(o.IsDeleted, 0) = 0
+      AND NULLIF(LTRIM(RTRIM(u.Mobile)), N'') IS NOT NULL;
+
+    SELECT Mobile = CASE WHEN (SELECT COUNT(*) FROM @m) = 1 THEN (SELECT CAST(Mobile AS NVARCHAR(20)) FROM @m) END;
+END
+GO
+PRINT '  + AZ6: sp_PasswordReset_MobileForEmail';
+GO
+
+PRINT '=== Section AZ done ===';
+GO

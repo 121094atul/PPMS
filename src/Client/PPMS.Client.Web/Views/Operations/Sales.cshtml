@@ -396,13 +396,13 @@
         const estimatedTotal = document.getElementById("estimatedTotal");
 
         const buildProductOptions = () => products
-            .map(p => `<option value="${p.Id}">${p.Label}</option>`)
+            .map(p => `<option value="${p.Id}">${ppmsEsc(p.Label)}</option>`)
             .join("");
 
         const buildNozzleOptions = (productId) => {
             const list = ['<option value="">@L["Select nozzle"]</option>'];
             for (const n of nozzles.filter(x => !productId || x.ProductId === productId)) {
-                list.push(`<option value="${n.NozzleCode}">${n.Label}</option>`);
+                list.push(`<option value="${ppmsEsc(n.NozzleCode)}">${ppmsEsc(n.Label)}</option>`);
             }
             return list.join("");
         };

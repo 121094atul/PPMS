@@ -121,7 +121,7 @@
                                     <td class="small text-muted" data-label="@L["HSN / Tax"]">@p.HSNCode | C:@p.CGSTRate% S:@p.SGSTRate%</td>
                                     <td class="text-end" data-label="@L["Actions"]">
                                         <div class="d-flex justify-content-end gap-1">
-                                            <button type="button" class="btn btn-sm btn-outline-info" onclick="viewHistory(@p.Id, '@p.Name')">@L["History"]</button>
+                                            <button type="button" class="btn btn-sm btn-outline-info" data-name="@p.Name" onclick="viewHistory(@p.Id, this.dataset.name)">@L["History"]</button>
                                             <a class="btn btn-sm btn-outline-primary" href="/Operations/Products?pumpId=@Model.Form.PumpId&editId=@p.Id">@L["Edit"]</a>
                                             <form method="post" asp-action="DeleteProduct" asp-controller="Operations" class="d-inline">
                                                 <input type="hidden" name="id" value="@p.Id" />

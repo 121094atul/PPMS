@@ -2200,6 +2200,9 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
         {
             Mobile = data.Mobile,
             Alerts = data.Alerts,
+            Email = data.Email,
+            // Purani API Channel nahi bhejti - tab pehle jaisa (SMS / WhatsApp).
+            AlertsByEmail = string.Equals(data.Channel, "EMAIL", StringComparison.OrdinalIgnoreCase),
             Message = TempData["AlertMessage"] as string,
             IsError = TempData["AlertIsError"] is true
         });
@@ -2219,6 +2222,24 @@ public partial class OperationsController(PPMSApiClient apiClient) : Controller
         TempData["AlertMessage"] = result.Success
             ? "Mobile number saved. Alerts will now go to this number."
             : (result.ErrorMessage ?? "Could not save the mobile number.");
+        TempData["AlertIsError"] = !result.Success;
+        return RedirectToAction(nameof(Alerts));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveAlertEmail(string? email, CancellationToken cancellationToken)
+    {
+        var token = GetToken();
+        if (token is null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        var result = await apiClient.SaveOwnerAlertEmailAsync(token, email, cancellationToken);
+        TempData["AlertMessage"] = result.Success
+            ? "Email saved. Alerts and the password OTP will come to this email."
+            : (result.ErrorMessage ?? "Could not save the email.");
         TempData["AlertIsError"] = !result.Success;
         return RedirectToAction(nameof(Alerts));
     }

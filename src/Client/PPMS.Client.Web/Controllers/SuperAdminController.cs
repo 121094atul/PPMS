@@ -189,6 +189,65 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
         return BackToList(q, status, sort, page);
     }
 
+    // ---- Section AZ: OTP / malik ke alert kis raaste se - deploy ke bina badlo ----
+
+    [HttpGet]
+    public async Task<IActionResult> MessageSettings(CancellationToken cancellationToken)
+    {
+        if (!IsSuperAdmin())
+        {
+            return RedirectToAction("Index", "Home");
+        }
+
+        var settings = await apiClient.GetNotifySettingsAsync(GetAccessToken(), cancellationToken)
+                       ?? new ApiNotifySettings("EMAIL", "EMAIL");
+        return View(settings);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MessageSettings(string otpChannel, string ownerAlertChannel, CancellationToken cancellationToken)
+    {
+        if (!IsSuperAdmin())
+        {
+            return RedirectToAction("Index", "Home");
+        }
+
+        var (ok, error) = await apiClient.SaveNotifySettingsAsync(GetAccessToken(), otpChannel, ownerAlertChannel, cancellationToken);
+        if (ok)
+        {
+            TempData["SuperAdminOk"] = "Message settings saved. They apply right away.";
+        }
+        else
+        {
+            TempData["SuperAdminMessage"] = error;
+        }
+
+        return RedirectToAction(nameof(MessageSettings));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TestEmail(string? to, CancellationToken cancellationToken)
+    {
+        if (!IsSuperAdmin())
+        {
+            return RedirectToAction("Index", "Home");
+        }
+
+        var (ok, error) = await apiClient.SendTestEmailAsync(GetAccessToken(), to ?? string.Empty, cancellationToken);
+        if (ok)
+        {
+            TempData["SuperAdminOk"] = "Test email sent. Check the inbox (and the spam folder).";
+        }
+        else
+        {
+            TempData["SuperAdminMessage"] = error;
+        }
+
+        return RedirectToAction(nameof(MessageSettings));
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MarkSubscriptionDone(long id, CancellationToken cancellationToken)

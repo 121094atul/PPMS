@@ -402,9 +402,15 @@ app.MapPost("/api/account/forgot-password", async (
     HttpContext http,
     IPasswordResetService service,
     ISupportContactRepository supportContacts,
+    INotifySettingsRepository notifySettings,
     CancellationToken cancellationToken) =>
 {
     var outcome = await service.RequestOtpAsync(request.Mobile, http.Connection.RemoteIpAddress?.ToString(), cancellationToken);
+
+    // Section AZ: OTP email par jaaye to user ko batao kahan dekhe (number registered hai ya nahi, ye nahi).
+    var sentText = (await notifySettings.GetAsync(cancellationToken)).OtpByEmail
+        ? "If this number or email is registered to an owner account, an OTP has been sent to the email saved for that account."
+        : "If this number is registered, an OTP has been sent.";
 
     // Registered / not-registered me FARAK NAHI batana — warna koi bhi number
     // daal-daal kar pata kar lega ki kaun sa number system me hai. Dono par ek jaisa.
@@ -437,14 +443,14 @@ app.MapPost("/api/account/forgot-password", async (
         {
             Success = true,
             SmsAvailable = true,
-            Message = "If this number is registered, an OTP has been sent."
+            Message = sentText
         }),
 
         _ => Results.Ok(new
         {
             Success = true,
             SmsAvailable = true,
-            Message = "If this number is registered, an OTP has been sent."
+            Message = sentText
         })
     };
 }).RequireRateLimiting("public-form");
@@ -1563,7 +1569,7 @@ app.MapPost("/api/wallet/recharge", async (RequestRechargeInput request, ClaimsP
 // ---- Owner alerts: kaunse sandesh chahiye, aur kis number par ----------------
 // OwnerId hamesha JWT se — body ya query se kabhi nahi. Isliye ek owner doosre ki
 // settings na dekh sakta hai na badal sakta hai.
-app.MapGet("/api/owner-alerts", async (ClaimsPrincipal user, IOwnerAlertRepository repo, CancellationToken cancellationToken) =>
+app.MapGet("/api/owner-alerts", async (ClaimsPrincipal user, IOwnerAlertRepository repo, INotifySettingsRepository notifySettings, CancellationToken cancellationToken) =>
 {
     var ownerId = ResolveOwnerId(user, null);
     var items = await repo.ListAsync(ownerId, cancellationToken);
@@ -1574,7 +1580,11 @@ app.MapGet("/api/owner-alerts", async (ClaimsPrincipal user, IOwnerAlertReposito
     // le rahe hain, alag query se nahi.
     var target = await repo.GetTargetAsync(ownerId, "SHIFT_CLOSE", cancellationToken);
 
-    return Results.Ok(new { Mobile = target?.Mobile, Alerts = items });
+    // Section AZ: email aur abhi alert kis raaste se jaate hain (Super Admin ki setting).
+    var email = await repo.GetEmailAsync(ownerId, cancellationToken);
+    var channel = (await notifySettings.GetAsync(cancellationToken)).OwnerAlertChannel;
+
+    return Results.Ok(new { Mobile = target?.Mobile, Alerts = items, Email = email, Channel = channel });
 }).RequireAuthorization();
 
 app.MapPost("/api/owner-alerts", async (SaveOwnerAlertRequest request, ClaimsPrincipal user, IOwnerAlertRepository repo, CancellationToken cancellationToken) =>
@@ -1583,6 +1593,58 @@ app.MapPost("/api/owner-alerts", async (SaveOwnerAlertRequest request, ClaimsPri
     await repo.SaveAsync(ownerId, request.AlertKey, request.IsEnabled, cancellationToken);
     return Results.Ok(new { Success = true });
 }).RequireAuthorization();
+
+// Section AZ: alert email par bhi - malik apna email yahan rakhe.
+app.MapPost("/api/owner-alerts/email", async (SaveOwnerAlertEmailRequest request, ClaimsPrincipal user, IOwnerAlertRepository repo, CancellationToken cancellationToken) =>
+{
+    var ownerId = ResolveOwnerId(user, null);
+    try
+    {
+        await repo.SaveEmailAsync(ownerId, request.Email, cancellationToken);
+        return Results.Ok(new { Success = true });
+    }
+    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 50312)
+    {
+        return Results.BadRequest(new { Success = false, Message = ex.Message });
+    }
+}).RequireAuthorization();
+
+// ---- Section AZ: OTP / malik ke alert kis raaste se (Super Admin > Message settings) ----
+// DB me - badalne par deploy / restart nahi. SMTP ka password server config me hi.
+app.MapGet("/api/platform/notify-settings", async (INotifySettingsRepository repo, IEmailSender email, CancellationToken cancellationToken) =>
+{
+    var s = await repo.GetAsync(cancellationToken);
+    return Results.Ok(new { s.OtpChannel, s.OwnerAlertChannel, EmailConfigured = email.IsConfigured, EmailFrom = email.FromAddress });
+}).RequireAuthorization("SuperAdminOnly");
+
+app.MapPut("/api/platform/notify-settings", async (SaveNotifySettingsRequest request, ClaimsPrincipal user, INotifySettingsRepository repo, CancellationToken cancellationToken) =>
+{
+    long? byUserId = long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var uid) ? uid : null;
+    try
+    {
+        var s = await repo.SaveAsync(request.OtpChannel, request.OwnerAlertChannel, byUserId, cancellationToken);
+        return Results.Ok(s);
+    }
+    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is 50310 or 50311)
+    {
+        return Results.BadRequest(new { Success = false, Message = ex.Message });
+    }
+}).RequireAuthorization("SuperAdminOnly");
+
+// Email ka intezaam theek hai ya nahi - Super Admin ek test mail bhej ke dekh le.
+app.MapPost("/api/platform/test-email", async (TestEmailRequest request, IEmailSender email, CancellationToken cancellationToken) =>
+{
+    if (!email.IsConfigured)
+    {
+        return Results.BadRequest(new { Success = false, Message = "Email is not set up on the server (Email:Host, Email:Username, Email:Password, Email:From)." });
+    }
+
+    var ok = await email.SendAsync(request.To ?? string.Empty, "PPMS test email",
+        "This is a test email from PPMS. Password OTP and owner alerts will come like this.\n\nये PPMS का टेस्ट ईमेल है।", cancellationToken);
+    return ok
+        ? Results.Ok(new { Success = true })
+        : Results.BadRequest(new { Success = false, Message = "The email could not be sent. Check the server log for the reason (wrong password, host or address)." });
+}).RequireAuthorization("SuperAdminOnly");
 
 app.MapPost("/api/owner-alerts/mobile", async (SaveOwnerAlertMobileRequest request, ClaimsPrincipal user, IOwnerAlertRepository repo, CancellationToken cancellationToken) =>
 {

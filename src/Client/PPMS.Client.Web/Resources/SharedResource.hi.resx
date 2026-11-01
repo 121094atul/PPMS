@@ -4483,4 +4483,142 @@
   <data name="Deposit to bank" xml:space="preserve">
     <value>बैंक में जमा</value>
   </data>
+  <data name="Message Settings" xml:space="preserve">
+    <value>संदेश सेटिंग</value>
+  </data>
+  <data name="Choose how the password OTP and the owner alerts are sent. The change works right away - no deploy needed." xml:space="preserve">
+    <value>पासवर्ड का OTP और मालिक के अलर्ट किस रास्ते से जाएँ, यहाँ चुनिए। बदलाव तुरंत लागू होता है — डिप्लॉय की ज़रूरत नहीं।</value>
+  </data>
+  <data name="Password reset OTP" xml:space="preserve">
+    <value>पासवर्ड बदलने का OTP</value>
+  </data>
+  <data name="Email (free)" xml:space="preserve">
+    <value>ईमेल (मुफ़्त)</value>
+  </data>
+  <data name="SMS / WhatsApp (server setting)" xml:space="preserve">
+    <value>SMS / WhatsApp (सर्वर की सेटिंग)</value>
+  </data>
+  <data name="Off - user calls support" xml:space="preserve">
+    <value>बंद — यूज़र सपोर्ट को कॉल करे</value>
+  </data>
+  <data name="By email the OTP goes to the owner's email (saved in Settings &gt; Alerts or at sign-up). Staff logins have no email - they call support." xml:space="preserve">
+    <value>ईमेल पर OTP मालिक के ईमेल पर जाता है (Settings &gt; Alerts में या साइन-अप के समय भरा)। स्टाफ़ के लॉगिन का ईमेल नहीं होता — वो सपोर्ट को कॉल करें।</value>
+  </data>
+  <data name="Owner alerts (shift closed, purchase, stock loss, bank deposit, large expense, party entry)" xml:space="preserve">
+    <value>मालिक के अलर्ट (शिफ़्ट बंद, ख़रीद, स्टॉक कमी, बैंक जमा, बड़ा ख़र्च, पार्टी एंट्री)</value>
+  </data>
+  <data name="Email (free, no credit used)" xml:space="preserve">
+    <value>ईमेल (मुफ़्त, क्रेडिट नहीं कटता)</value>
+  </data>
+  <data name="SMS / WhatsApp (server setting, uses credit)" xml:space="preserve">
+    <value>SMS / WhatsApp (सर्वर की सेटिंग, क्रेडिट कटता है)</value>
+  </data>
+  <data name="The message to the credit party and the sign-up welcome always go by SMS / WhatsApp." xml:space="preserve">
+    <value>उधार पार्टी को संदेश और साइन-अप का स्वागत संदेश हमेशा SMS / WhatsApp से जाते हैं।</value>
+  </data>
+  <data name="Email on the server" xml:space="preserve">
+    <value>सर्वर पर ईमेल</value>
+  </data>
+  <data name="Set up" xml:space="preserve">
+    <value>तैयार है</value>
+  </data>
+  <data name="Sent from" xml:space="preserve">
+    <value>किस पते से</value>
+  </data>
+  <data name="Not set up" xml:space="preserve">
+    <value>तैयार नहीं</value>
+  </data>
+  <data name="Until then nothing goes by email. On the server set:" xml:space="preserve">
+    <value>तब तक ईमेल से कुछ नहीं जाएगा। सर्वर पर ये भरिए:</value>
+  </data>
+  <data name="Your email" xml:space="preserve">
+    <value>आपका ईमेल</value>
+  </data>
+  <data name="Send test" xml:space="preserve">
+    <value>टेस्ट भेजिए</value>
+  </data>
+  <data name="Message settings saved. They apply right away." xml:space="preserve">
+    <value>संदेश सेटिंग सेव हो गई। तुरंत लागू है।</value>
+  </data>
+  <data name="Test email sent. Check the inbox (and the spam folder)." xml:space="preserve">
+    <value>टेस्ट ईमेल भेज दिया। इनबॉक्स (और स्पैम) देखिए।</value>
+  </data>
+  <data name="Email is not set up on the server (Email:Host, Email:Username, Email:Password, Email:From)." xml:space="preserve">
+    <value>सर्वर पर ईमेल तैयार नहीं है (Email:Host, Email:Username, Email:Password, Email:From)।</value>
+  </data>
+  <data name="The email could not be sent. Check the server log for the reason (wrong password, host or address)." xml:space="preserve">
+    <value>ईमेल नहीं गया। वजह सर्वर के लॉग में देखिए (ग़लत पासवर्ड, होस्ट या पता)।</value>
+  </data>
+  <data name="Could not save the message settings." xml:space="preserve">
+    <value>संदेश सेटिंग सेव नहीं हुई।</value>
+  </data>
+  <data name="The email could not be sent." xml:space="preserve">
+    <value>ईमेल नहीं गया।</value>
+  </data>
+  <data name="Choose how the password OTP is sent." xml:space="preserve">
+    <value>पासवर्ड का OTP किस रास्ते से जाए, चुनिए।</value>
+  </data>
+  <data name="Choose how owner alerts are sent." xml:space="preserve">
+    <value>मालिक के अलर्ट किस रास्ते से जाएँ, चुनिए।</value>
+  </data>
+  <data name="Right now alerts come to your email (free)." xml:space="preserve">
+    <value>अभी अलर्ट आपके ईमेल पर आते हैं (मुफ़्त)।</value>
+  </data>
+  <data name="Right now alerts come by SMS / WhatsApp to the number below." xml:space="preserve">
+    <value>अभी अलर्ट नीचे वाले नंबर पर SMS / WhatsApp से आते हैं।</value>
+  </data>
+  <data name="No email is set, so no alerts are being sent at the moment." xml:space="preserve">
+    <value>ईमेल नहीं भरा है, इसलिए अभी कोई अलर्ट नहीं जा रहा।</value>
+  </data>
+  <data name="Alerts and the forgot-password OTP come to this email." xml:space="preserve">
+    <value>अलर्ट और पासवर्ड भूलने का OTP इसी ईमेल पर आते हैं।</value>
+  </data>
+  <data name="Save email" xml:space="preserve">
+    <value>ईमेल सेव करें</value>
+  </data>
+  <data name="Email saved. Alerts and the password OTP will come to this email." xml:space="preserve">
+    <value>ईमेल सेव हो गया। अलर्ट और पासवर्ड का OTP इसी ईमेल पर आएँगे।</value>
+  </data>
+  <data name="Could not save the email." xml:space="preserve">
+    <value>ईमेल सेव नहीं हुआ।</value>
+  </data>
+  <data name="Please enter a valid email address." xml:space="preserve">
+    <value>सही ईमेल पता भरिए।</value>
+  </data>
+  <data name="Alert turned on." xml:space="preserve">
+    <value>अलर्ट चालू हो गया।</value>
+  </data>
+  <data name="Alert turned off." xml:space="preserve">
+    <value>अलर्ट बंद हो गया।</value>
+  </data>
+  <data name="Mobile number saved. Alerts will now go to this number." xml:space="preserve">
+    <value>मोबाइल नंबर सेव हो गया। अलर्ट अब इसी नंबर पर जाएँगे।</value>
+  </data>
+  <data name="Enter your registered mobile number - we will send an OTP for your account" xml:space="preserve">
+    <value>अपना दर्ज मोबाइल नंबर भरिए — आपके खाते के लिए OTP भेजेंगे</value>
+  </data>
+  <data name="If this number is registered to an owner account, an OTP has been sent to the email saved for that account." xml:space="preserve">
+    <value>अगर ये नंबर किसी मालिक के खाते का है, तो उस खाते के ईमेल पर OTP भेज दिया गया है।</value>
+  </data>
+  <data name="Where alerts come" xml:space="preserve">
+    <value>अलर्ट कहाँ आएँ</value>
+  </data>
+  <data name="Alerts about your pump — shift closed, stock loss, big expenses — come here." xml:space="preserve">
+    <value>आपके पंप के अलर्ट — शिफ़्ट बंद होना, स्टॉक की कमी, बड़ा ख़र्च — यहीं आते हैं।</value>
+  </data>
+  <data name="Mobile number or email" xml:space="preserve">
+    <value>मोबाइल नंबर या ईमेल</value>
+  </data>
+  <data name="Registered mobile number or email" xml:space="preserve">
+    <value>दर्ज मोबाइल नंबर या ईमेल</value>
+  </data>
+  <data name="Enter your registered mobile number or email - we will send an OTP for your account" xml:space="preserve">
+    <value>अपना दर्ज मोबाइल नंबर या ईमेल भरिए — आपके खाते के लिए OTP भेजेंगे</value>
+  </data>
+  <data name="Enter the complete mobile number or a valid email." xml:space="preserve">
+    <value>पूरा मोबाइल नंबर या सही ईमेल भरिए।</value>
+  </data>
+  <data name="If this number or email is registered to an owner account, an OTP has been sent to the email saved for that account." xml:space="preserve">
+    <value>अगर ये नंबर या ईमेल किसी मालिक के खाते का है, तो उस खाते के ईमेल पर OTP भेज दिया गया है।</value>
+  </data>
 </root>

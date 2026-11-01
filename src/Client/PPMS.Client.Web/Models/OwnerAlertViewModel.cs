@@ -21,6 +21,12 @@ public sealed class OwnerAlertViewModel
 
     public IReadOnlyList<ApiOwnerAlertDto> Alerts { get; set; } = Array.Empty<ApiOwnerAlertDto>();
 
+    /// <summary>Alert / password OTP ka email (Owners.Email) - Section AZ.</summary>
+    public string? Email { get; set; }
+
+    /// <summary>Abhi malik ke alert email se jaate hain ya SMS / WhatsApp se (Super Admin ki setting).</summary>
+    public bool AlertsByEmail { get; set; }
+
     public string? Message { get; set; }
 
     /// <summary>Message laal dikhana hai ya hara.</summary>

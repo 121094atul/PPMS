@@ -347,12 +347,12 @@
     };
     const inr = (n, d) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
 
-    const buildProductOptions = () => products.map(p => `<option value="${p.Id}">${p.Label}</option>`).join("");
+    const buildProductOptions = () => products.map(p => `<option value="${p.Id}">${ppmsEsc(p.Label)}</option>`).join("");
     const buildTankOptions = (productId, selectedId) => {
         const list = ['<option value="">@L["-- Select tank --"]</option>'];
         for (const t of tanks.filter(x => !productId || x.ProductId === productId)) {
             const isSel = selectedId && Number(t.Id) === Number(selectedId) ? "selected" : "";
-            list.push(`<option value="${t.Id}" ${isSel}>${t.Label}</option>`);
+            list.push(`<option value="${t.Id}" ${isSel}>${ppmsEsc(t.Label)}</option>`);
         }
         return list.join("");
     };

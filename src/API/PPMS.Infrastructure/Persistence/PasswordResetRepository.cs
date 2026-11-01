@@ -36,4 +36,24 @@ public sealed class PasswordResetRepository(IOptions<DatabaseOptions> options) :
             param: new { UserId = userId, NewPasswordHash = newPasswordHash, ByUserId = byUserId },
             commandType: CommandType.StoredProcedure);
     }
+
+    public async Task<string?> GetResetEmailAsync(long userId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        return await connection.QueryFirstOrDefaultAsync<string?>(new CommandDefinition(
+            "PUMP.sp_PasswordReset_GetEmail",
+            new { UserId = userId },
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken));
+    }
+
+    public async Task<string?> GetMobileForEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(_options.ConnectionString);
+        return await connection.QueryFirstOrDefaultAsync<string?>(new CommandDefinition(
+            "PUMP.sp_PasswordReset_MobileForEmail",
+            new { Email = email },
+            commandType: CommandType.StoredProcedure,
+            cancellationToken: cancellationToken));
+    }
 }

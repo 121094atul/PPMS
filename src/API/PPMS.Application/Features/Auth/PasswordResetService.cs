@@ -7,7 +7,9 @@ namespace PPMS.Application.Features.Auth;
 public sealed class PasswordResetService(
     IPasswordResetRepository repository,
     IPasswordHasher passwordHasher,
-    IWhatsAppNotificationService notificationService) : IPasswordResetService
+    IWhatsAppNotificationService notificationService,
+    INotifySettingsRepository notifySettings,
+    IEmailSender emailSender) : IPasswordResetService
 {
     /// <summary>
     /// Key set na ho to OTP kahin nahi jaata. Aise me "OTP bhej diya" likhna jhooth
@@ -37,14 +39,17 @@ public sealed class PasswordResetService(
 
     public async Task<OtpSendOutcome> RequestOtpAsync(string mobile, string? sourceIp, CancellationToken cancellationToken = default)
     {
-        // SMS ka intezaam hi nahi hai to OTP banana bekaar hai — wo kahin jayega
-        // nahi. Sach batao taaki user support ko call kar sake.
-        if (!IsSmsConfigured)
+        // OTP kis raaste se - Super Admin > Message settings (Section AZ): EMAIL / PROVIDER (SMS-WhatsApp) / OFF.
+        // Intezaam hi nahi hai to OTP banana bekaar hai — wo kahin jayega nahi. Sach batao taaki
+        // user support ko call kar sake.
+        var settings = await notifySettings.GetAsync(cancellationToken);
+        var ready = settings.OtpOff ? false : settings.OtpByEmail ? emailSender.IsConfigured : IsSmsConfigured;
+        if (!ready)
         {
             return OtpSendOutcome.SmsNotConfigured;
         }
 
-        mobile = NormalizeMobile(mobile);
+        mobile = await ResolveMobileAsync(mobile, cancellationToken);
         if (mobile.Length < 10)
         {
             // Bahar se kuch nahi batate — jaisa registered number par hota hai waisa hi.
@@ -74,8 +79,24 @@ public sealed class PasswordResetService(
         bool sent;
         try
         {
-            // OTP ka apna sasta raasta ho sakta hai (Fast2SMS otp route) - baaki sandesh nahi badalte.
-            sent = await notificationService.SendOtpAsync(mobile, otp, message, cancellationToken);
+            if (settings.OtpByEmail)
+            {
+                // Malik ka tenant email (Users me email nahi). Staff / bina email - nahi jaata; bahar wahi
+                // aam jawab, aur screen par "OTP nahi aaya? support" ka raasta hai.
+                var email = await repository.GetResetEmailAsync(row.UserId.Value, cancellationToken);
+                sent = !string.IsNullOrWhiteSpace(email) && await emailSender.SendAsync(
+                    email,
+                    "PPMS password reset OTP",
+                    $"Your PPMS password reset OTP is {otp}.\nIt expires in 10 minutes. Do not share it with anyone.\n\n"
+                    + $"आपका PPMS पासवर्ड बदलने का OTP {otp} है। ये 10 मिनट में ख़त्म हो जाएगा। किसी को न बताएँ।\n\n"
+                    + "If you did not ask for this, ignore this email.",
+                    cancellationToken);
+            }
+            else
+            {
+                // OTP ka apna sasta raasta ho sakta hai (Fast2SMS otp route) - baaki sandesh nahi badalte.
+                sent = await notificationService.SendOtpAsync(mobile, otp, message, cancellationToken);
+            }
         }
         catch (Exception)
         {
@@ -88,12 +109,12 @@ public sealed class PasswordResetService(
         return sent ? OtpSendOutcome.Delivered : OtpSendOutcome.SendFailed;
     }
 
-    public Task<OtpVerifyRow> VerifyAsync(VerifyOtpRequest request, CancellationToken cancellationToken = default)
+    public async Task<OtpVerifyRow> VerifyAsync(VerifyOtpRequest request, CancellationToken cancellationToken = default)
     {
-        var mobile = NormalizeMobile(request.Mobile);
         ValidatePassword(request.NewPassword);
+        var mobile = await ResolveMobileAsync(request.Mobile, cancellationToken);
 
-        return repository.VerifyAsync(
+        return await repository.VerifyAsync(
             mobile,
             HashOtp(mobile, request.Otp.Trim()),
             passwordHasher.HashPassword(request.NewPassword),
@@ -126,6 +147,21 @@ public sealed class PasswordResetService(
     /// numbers 91 ke saath pade hain (jaise 916394389973), isliye poora bhi
     /// aazmate hain — SP dono me se jo mile use uthata hai.
     /// </summary>
+    /// <summary>
+    /// Forgot-password box me mobile ya email (Section AZ). Email ho to us malik-user ka mobile - aage
+    /// sab wahi mobile wala raasta (OTP, rok, jaanch). Na mile to khaali - bahar wahi aam jawab.
+    /// </summary>
+    private async Task<string> ResolveMobileAsync(string input, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(input) && input.Contains('@'))
+        {
+            var found = await repository.GetMobileForEmailAsync(input.Trim(), cancellationToken);
+            return NormalizeMobile(found ?? string.Empty);
+        }
+
+        return NormalizeMobile(input);
+    }
+
     private static string NormalizeMobile(string mobile)
     {
         if (string.IsNullOrWhiteSpace(mobile))

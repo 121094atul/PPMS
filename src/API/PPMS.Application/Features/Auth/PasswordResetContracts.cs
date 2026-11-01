@@ -14,6 +14,12 @@ public interface IPasswordResetRepository
     Task<OtpRequestRow> RequestOtpAsync(string mobile, string otpHash, string? sourceIp, CancellationToken cancellationToken = default);
     Task<OtpVerifyRow> VerifyAsync(string mobile, string otpHash, string newPasswordHash, CancellationToken cancellationToken = default);
     Task AdminResetAsync(long userId, string newPasswordHash, long byUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>OTP email se jaaye to kis par (Section AZ) - malik ka tenant email; staff ka NULL.</summary>
+    Task<string?> GetResetEmailAsync(long userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Forgot-password me email likha ho to us malik-user ka mobile (ek hi mile tabhi).</summary>
+    Task<string?> GetMobileForEmailAsync(string email, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

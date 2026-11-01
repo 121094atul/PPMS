@@ -94,6 +94,11 @@ public static class DependencyInjection
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<PPMS.Application.Features.Staff.IStaffRepository, StaffRepository>();
         services.AddScoped<PPMS.Application.Interfaces.IOwnerAlertRepository, OwnerAlertRepository>();
+        // Section AZ: OTP / malik ke alert email se; raasta Super Admin ki setting me.
+        services.Configure<PPMS.Infrastructure.Services.EmailOptions>(
+            configuration.GetSection(PPMS.Infrastructure.Services.EmailOptions.SectionName));
+        services.AddScoped<PPMS.Application.Interfaces.IEmailSender, PPMS.Infrastructure.Services.SmtpEmailSender>();
+        services.AddScoped<PPMS.Application.Interfaces.INotifySettingsRepository, NotifySettingsRepository>();
         services.AddScoped<PPMS.Application.Interfaces.ICreditRepository, CreditRepository>();
         services.AddScoped<PPMS.Application.Interfaces.ISupportContactRepository, SupportContactRepository>();
         services.AddScoped<ISalaryPaymentRepository, SalaryPaymentRepository>();

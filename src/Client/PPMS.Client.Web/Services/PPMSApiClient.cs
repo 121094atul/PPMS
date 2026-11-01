@@ -2072,6 +2072,51 @@ public sealed class PPMSApiClient(HttpClient httpClient)
         return (false, error);
     }
 
+    // ---- Section AZ: alert / OTP email se ----
+
+    public async Task<(bool Success, string? ErrorMessage)> SaveOwnerAlertEmailAsync(string token, string? email, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/owner-alerts/email");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = JsonContent.Create(new { Email = email });
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode
+            ? (true, null)
+            : (false, await ReadErrorMessageAsync(response, "Could not save the email.", cancellationToken));
+    }
+
+    public async Task<ApiNotifySettings?> GetNotifySettingsAsync(string token, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/platform/notify-settings");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<ApiNotifySettings>(cancellationToken: cancellationToken)
+            : null;
+    }
+
+    public async Task<(bool Success, string? ErrorMessage)> SaveNotifySettingsAsync(string token, string otpChannel, string ownerAlertChannel, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/api/platform/notify-settings");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = JsonContent.Create(new { OtpChannel = otpChannel, OwnerAlertChannel = ownerAlertChannel });
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode
+            ? (true, null)
+            : (false, await ReadErrorMessageAsync(response, "Could not save the message settings.", cancellationToken));
+    }
+
+    public async Task<(bool Success, string? ErrorMessage)> SendTestEmailAsync(string token, string to, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/platform/test-email");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = JsonContent.Create(new { To = to });
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode
+            ? (true, null)
+            : (false, await ReadErrorMessageAsync(response, "The email could not be sent.", cancellationToken));
+    }
+
     // ---- Staff: employee + login ek saath (Section L) ----
     public async Task<IReadOnlyList<ApiStaffDto>> GetStaffAsync(string token, long ownerId, long pumpId, CancellationToken cancellationToken = default)
     {

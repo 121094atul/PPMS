@@ -10,7 +10,15 @@ public interface IOwnerAlertRepository
     Task SaveAsync(long ownerId, string alertKey, bool isEnabled, CancellationToken cancellationToken = default);
 
     Task SaveMobileAsync(long ownerId, string? mobile, CancellationToken cancellationToken = default);
+
+    // Section AZ: alert email par bhi ja sakte hain.
+    Task<string?> GetEmailAsync(long ownerId, CancellationToken cancellationToken = default);
+
+    Task SaveEmailAsync(long ownerId, string? email, CancellationToken cancellationToken = default);
 }
+
+/// <summary>Alert kis email par jayein.</summary>
+public sealed record SaveOwnerAlertEmailRequest(string? Email);
 
 /// <summary>
 /// sp_Notification_GetOwnerTarget ka nateeja. CLAUDE.md niyam 5 — SP ka har

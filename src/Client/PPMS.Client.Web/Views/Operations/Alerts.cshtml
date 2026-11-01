@@ -2,26 +2,27 @@
 @{
     ViewData["Title"] = "Alert Settings";
     var hasMobile = !string.IsNullOrWhiteSpace(Model.Mobile);
+    var hasEmail = !string.IsNullOrWhiteSpace(Model.Email);
 }
 
 <div class="row g-3">
     <div class="col-lg-5">
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <h5 class="card-title mb-1">@L["Alert number"]</h5>
+                <h5 class="card-title mb-1">@L["Where alerts come"]</h5>
                 <p class="text-muted small mb-3">
-                    @L["Alerts about your pump — shift closed, stock loss, big expenses — go to this number."]
+                    @L["Alerts about your pump — shift closed, stock loss, big expenses — come here."]
                 </p>
 
                 @if (!string.IsNullOrWhiteSpace(Model.Message))
                 {
                     <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") alert-dismissible fade show py-2 small" role="alert">
-                        @Model.Message
+                        @L.GetString(Model.Message).Value
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="@L["Close"]"></button>
                     </div>
                 }
 
-                @if (!hasMobile)
+                @if (!hasMobile && !Model.AlertsByEmail)
                 {
                     @* Ye sabse zaroori baat hai — number ke bina kuch bhi nahi jayega,
                        aur user ko iska koi ishaara kahin aur nahi milta. *@
@@ -29,6 +30,35 @@
                         @L["No number is set, so no alerts are being sent at the moment."]
                     </div>
                 }
+
+                @* Section AZ: alert (aur password OTP) email par - Super Admin ki setting se. *@
+                <div class="alert @(Model.AlertsByEmail ? "alert-info" : "alert-light border") py-2 px-2 small">
+                    @if (Model.AlertsByEmail)
+                    {
+                        @L["Right now alerts come to your email (free)."]
+                    }
+                    else
+                    {
+                        @L["Right now alerts come by SMS / WhatsApp to the number below."]
+                    }
+                </div>
+                @if (Model.AlertsByEmail && !hasEmail)
+                {
+                    <div class="alert alert-warning py-2 px-2 small">
+                        @L["No email is set, so no alerts are being sent at the moment."]
+                    </div>
+                }
+
+                <form method="post" asp-action="SaveAlertEmail" class="mb-4">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label class="form-label" for="alertEmail">@L["Email"]</label>
+                        <input id="alertEmail" name="email" type="email" value="@Model.Email" maxlength="100"
+                               class="form-control form-control-sm" placeholder="name@example.com" />
+                        <div class="form-text">@L["Alerts and the forgot-password OTP come to this email."]</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm px-4">@L["Save email"]</button>
+                </form>
 
                 <form method="post" asp-action="SaveAlertMobile">
                     @Html.AntiForgeryToken()
