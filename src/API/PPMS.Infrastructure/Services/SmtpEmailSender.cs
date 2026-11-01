@@ -41,7 +41,13 @@ public sealed class SmtpEmailSender(IOptions<EmailOptions> options, ILogger<Smtp
 
     public string? FromAddress => string.IsNullOrWhiteSpace(_o.From) ? _o.Username : _o.From;
 
-    public async Task<bool> SendAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
+    public Task<bool> SendAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
+        => SendCoreAsync(to, subject, body, null, null, cancellationToken);
+
+    public Task<bool> SendWithAttachmentAsync(string to, string subject, string body, string fileName, byte[] content, CancellationToken cancellationToken = default)
+        => SendCoreAsync(to, subject, body, fileName, content, cancellationToken);
+
+    private async Task<bool> SendCoreAsync(string to, string subject, string body, string? fileName, byte[]? content, CancellationToken cancellationToken)
     {
         if (!IsConfigured)
         {
@@ -67,11 +73,18 @@ public sealed class SmtpEmailSender(IOptions<EmailOptions> options, ILogger<Smtp
             };
             message.To.Add(new MailAddress(to.Trim()));
 
+            // MailMessage dispose hone par stream bhi band - isliye using nahi.
+            if (fileName is not null && content is not null)
+            {
+                message.Attachments.Add(new Attachment(new MemoryStream(content), fileName, "application/zip"));
+            }
+
             using var client = new SmtpClient(_o.Host, _o.Port)
             {
                 EnableSsl = _o.EnableSsl,
                 DeliveryMethod = SmtpDeliveryMethod.Network,
-                Timeout = 20000
+                // Backup ki file badi ho sakti hai - kamzor upload par 20 second kam padte.
+                Timeout = content is null ? 20000 : 120000
             };
             if (!string.IsNullOrWhiteSpace(_o.Username))
             {

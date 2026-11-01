@@ -80,6 +80,7 @@ builder.Services.AddAntiforgery(options => options.HeaderName = "RequestVerifica
 // Support ke number (Section AR) - chhota cache, Super Admin save par saaf.
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<PPMS.Client.Web.Services.SupportContactService>();
+builder.Services.AddScoped<PPMS.Client.Web.Services.PlanPriceService>();   // Section BB
 // Grahak ka asli IP API tak (login / sign-up ki per-IP rok ke liye) - ForwardUserIpHandler dekho.
 builder.Services.AddTransient<PPMS.Client.Web.Services.ForwardUserIpHandler>();
 builder.Services.AddHttpClient<PPMSApiClient>((sp, client) =>

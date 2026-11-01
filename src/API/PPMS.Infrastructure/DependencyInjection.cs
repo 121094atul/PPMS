@@ -99,6 +99,12 @@ public static class DependencyInjection
             configuration.GetSection(PPMS.Infrastructure.Services.EmailOptions.SectionName));
         services.AddScoped<PPMS.Application.Interfaces.IEmailSender, PPMS.Infrastructure.Services.SmtpEmailSender>();
         services.AddScoped<PPMS.Application.Interfaces.INotifySettingsRepository, NotifySettingsRepository>();
+        // Section BA: roz ka backup email par (shared server par BACKUP DATABASE ki ijaazat nahi).
+        services.AddScoped<PPMS.Application.Interfaces.IBackupEmailRepository, BackupEmailRepository>();
+        // Section BB: login page par plan ka rate.
+        services.AddScoped<PPMS.Application.Interfaces.IPlanPriceRepository, PlanPriceRepository>();
+        services.AddScoped<PPMS.Application.Interfaces.IBackupEmailRunner, PPMS.Infrastructure.Services.BackupEmailRunner>();
+        services.AddHostedService<PPMS.Infrastructure.Services.EmailBackupService>();
         services.AddScoped<PPMS.Application.Interfaces.ICreditRepository, CreditRepository>();
         services.AddScoped<PPMS.Application.Interfaces.ISupportContactRepository, SupportContactRepository>();
         services.AddScoped<ISalaryPaymentRepository, SalaryPaymentRepository>();

@@ -24401,3 +24401,229 @@ GO
 
 PRINT '=== Section AZ done ===';
 GO
+
+
+/* ==========================================================================================
+   SECTION BA — Roz ka backup EMAIL par (2026-11-01)
+   ------------------------------------------------------------------------------------------
+   Live shared server par DB user ko BACKUP DATABASE ki ijaazat nahi (HAS_PERMS = 0) - isliye
+   Backup:Enabled wala raat ka .bak aaj tak ek baar bhi nahi bana (AuditLog me 0 AUTO_BACKUP).
+   Owner: "daily ka backup mail wala bana do, auto mail aa jaye".
+
+   API khud saari PUMP tables padh ke zip (table-table JSON) banati hai aur Gmail se bhejti hai.
+   Shared server par app raat ko so jaati hai, isliye "theek 3 baje" nahi - tay ghante ke BAAD jab
+   bhi app jaage aur aaj ka backup na gaya ho, tab. Ek din me ek hi (kai copy chalein to bhi).
+
+   BA1 AppSettings (OwnerId = 0): Backup.EmailEnabled (1), Backup.EmailTo ('' = Email:From par),
+       Backup.EmailHour (3, India ka samay), Backup.LastSuccessDate, Backup.LastAttemptOn, Backup.LastStatus.
+   BA2 sp_BackupEmail_Get / _Save (Super Admin > Message settings).
+   BA3 sp_BackupEmail_Claim - aaj ka backup kaun bheje (UPDLOCK; fail ho to 1 ghante baad dobara).
+   BA4 sp_BackupEmail_SetResult - kamyaab / galti likho.
+   ========================================================================================== */
+PRINT '=== Section BA: roz ka backup email par ===';
+GO
+
+/* ---- BA1 ---- */
+DECLARE @k TABLE (SettingKey NVARCHAR(100), SettingValue NVARCHAR(400), Description NVARCHAR(400));
+INSERT INTO @k VALUES
+    ('Backup.EmailEnabled',     '1', N'Roz ka backup email: 1 chalu / 0 band (Super Admin > Message settings)'),
+    ('Backup.EmailTo',          '',  N'Backup kis email par - khaali = Email:From (bhejne wala Gmail)'),
+    ('Backup.EmailHour',        '3', N'Kitne baje ke baad (India ka samay, 0-23)'),
+    ('Backup.LastSuccessDate',  '',  N'Aakhri kamyaab backup ki tareekh (yyyy-MM-dd) - app likhti hai'),
+    ('Backup.LastAttemptOn',    '',  N'Aakhri koshish kab - app likhti hai'),
+    ('Backup.LastStatus',       '',  N'Aakhri backup ka natija - app likhti hai');
+INSERT INTO PUMP.AppSettings (SettingKey, SettingValue, OwnerId, Description)
+SELECT k.SettingKey, k.SettingValue, 0, k.Description
+FROM @k k
+WHERE NOT EXISTS (SELECT 1 FROM PUMP.AppSettings a WHERE a.SettingKey = k.SettingKey AND a.OwnerId = 0);
+PRINT '  + BA1: Backup.Email* settings';
+GO
+
+/* ---- BA2 ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_BackupEmail_Get
+AS
+BEGIN
+    SET NOCOUNT ON;
+    /* NOTE (CLAUDE.md niyam 5): BackupEmailSettings record ke param theek isi kram / type me. */
+    DECLARE @s TABLE (SettingKey NVARCHAR(100), SettingValue NVARCHAR(400));
+    INSERT INTO @s SELECT SettingKey, LTRIM(RTRIM(ISNULL(SettingValue, ''))) FROM PUMP.AppSettings
+    WHERE OwnerId = 0 AND SettingKey LIKE 'Backup.%';
+
+    SELECT
+        Enabled         = CAST(CASE WHEN ISNULL((SELECT SettingValue FROM @s WHERE SettingKey = 'Backup.EmailEnabled'), '1') = '0' THEN 0 ELSE 1 END AS BIT),
+        EmailTo         = CAST(NULLIF((SELECT SettingValue FROM @s WHERE SettingKey = 'Backup.EmailTo'), '') AS NVARCHAR(100)),
+        Hour            = CAST(ISNULL(TRY_CAST((SELECT SettingValue FROM @s WHERE SettingKey = 'Backup.EmailHour') AS INT), 3) AS INT),
+        LastSuccessDate = TRY_CAST(NULLIF((SELECT SettingValue FROM @s WHERE SettingKey = 'Backup.LastSuccessDate'), '') AS DATE),
+        LastAttemptOn   = TRY_CAST(NULLIF((SELECT SettingValue FROM @s WHERE SettingKey = 'Backup.LastAttemptOn'), '') AS DATETIME2),
+        LastStatus      = CAST(NULLIF((SELECT SettingValue FROM @s WHERE SettingKey = 'Backup.LastStatus'), '') AS NVARCHAR(400));
+END
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_BackupEmail_Save
+(
+    @Enabled BIT,
+    @EmailTo NVARCHAR(100) = NULL,
+    @Hour    INT = 3,
+    @UserId  BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    SET @EmailTo = NULLIF(LTRIM(RTRIM(@EmailTo)), N'');
+    IF @EmailTo IS NOT NULL
+       AND (@EmailTo NOT LIKE N'_%@_%._%' OR @EmailTo LIKE N'% %' OR LEN(@EmailTo) - LEN(REPLACE(@EmailTo, N'@', N'')) <> 1)
+        THROW 50320, 'Please enter a valid email address.', 1;
+    IF @Hour IS NULL OR @Hour < 0 OR @Hour > 23
+        THROW 50321, 'Choose an hour between 0 and 23.', 1;
+
+    BEGIN TRANSACTION;
+        MERGE PUMP.AppSettings AS t
+        USING (VALUES ('Backup.EmailEnabled', CASE WHEN @Enabled = 1 THEN N'1' ELSE N'0' END),
+                      ('Backup.EmailTo', ISNULL(@EmailTo, N'')),
+                      ('Backup.EmailHour', CAST(@Hour AS NVARCHAR(10)))) AS s (SettingKey, SettingValue)
+           ON t.SettingKey = s.SettingKey AND t.OwnerId = 0
+        WHEN MATCHED THEN UPDATE SET SettingValue = s.SettingValue, ModifiedOn = SYSDATETIME()
+        WHEN NOT MATCHED THEN INSERT (SettingKey, SettingValue, OwnerId, Description)
+                              VALUES (s.SettingKey, s.SettingValue, 0, N'Super Admin > Message settings');
+    COMMIT TRANSACTION;
+
+    EXEC PUMP.sp_Audit_Log @UserId = @UserId, @EntityName = 'AppSettings', @Action = 'UPDATE',
+         @NewValues = N'Backup email settings', @Reason = N'Backup email (Super Admin)';
+
+    EXEC PUMP.sp_BackupEmail_Get;
+END
+GO
+PRINT '  + BA2: sp_BackupEmail_Get / _Save';
+GO
+
+/* ---- BA3: aaj ka backup kaun bheje ----
+   @Today = India ki aaj ki tareekh (app deti hai). Claim tabhi jab: chalu hai, aaj kamyaab nahi hua,
+   aur pichhli koshish 60 minute se purani hai (Gmail ki chhoti galti par ghante bhar baad phir). */
+CREATE OR ALTER PROCEDURE PUMP.sp_BackupEmail_Claim
+(
+    @Today  DATE,
+    @Force  BIT = 0     -- "abhi bhejiye" button: tareekh / samay ki rok nahi
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @Claimed BIT = 0;
+
+    BEGIN TRANSACTION;
+        DECLARE @Enabled NVARCHAR(10), @LastOk DATE, @LastTry DATETIME2;
+        SELECT @Enabled = SettingValue FROM PUMP.AppSettings WITH (UPDLOCK, HOLDLOCK)
+        WHERE OwnerId = 0 AND SettingKey = 'Backup.EmailEnabled';
+        SELECT @LastOk = TRY_CAST(NULLIF(SettingValue, '') AS DATE) FROM PUMP.AppSettings WITH (UPDLOCK, HOLDLOCK)
+        WHERE OwnerId = 0 AND SettingKey = 'Backup.LastSuccessDate';
+        SELECT @LastTry = TRY_CAST(NULLIF(SettingValue, '') AS DATETIME2) FROM PUMP.AppSettings WITH (UPDLOCK, HOLDLOCK)
+        WHERE OwnerId = 0 AND SettingKey = 'Backup.LastAttemptOn';
+
+        IF @Force = 1
+           OR (ISNULL(@Enabled, '1') <> '0'
+               AND (@LastOk IS NULL OR @LastOk < @Today)
+               AND (@LastTry IS NULL OR @LastTry < DATEADD(MINUTE, -60, SYSDATETIME())))
+        BEGIN
+            UPDATE PUMP.AppSettings SET SettingValue = CONVERT(NVARCHAR(30), SYSDATETIME(), 126), ModifiedOn = SYSDATETIME()
+            WHERE OwnerId = 0 AND SettingKey = 'Backup.LastAttemptOn';
+            SET @Claimed = 1;
+        END
+    COMMIT TRANSACTION;
+
+    SELECT Claimed = @Claimed;
+END
+GO
+PRINT '  + BA3: sp_BackupEmail_Claim';
+GO
+
+/* ---- BA4 ---- */
+CREATE OR ALTER PROCEDURE PUMP.sp_BackupEmail_SetResult
+(
+    @Ok     BIT,
+    @Today  DATE,
+    @Status NVARCHAR(400)
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE PUMP.AppSettings SET SettingValue = LEFT(@Status, 400), ModifiedOn = SYSDATETIME()
+    WHERE OwnerId = 0 AND SettingKey = 'Backup.LastStatus';
+    IF @Ok = 1
+        UPDATE PUMP.AppSettings SET SettingValue = CONVERT(NVARCHAR(10), @Today, 23), ModifiedOn = SYSDATETIME()
+        WHERE OwnerId = 0 AND SettingKey = 'Backup.LastSuccessDate';
+END
+GO
+PRINT '  + BA4: sp_BackupEmail_SetResult';
+GO
+
+PRINT '=== Section BA done ===';
+GO
+
+
+/* ==========================================================================================
+   SECTION BB — Login page par plan ka rate, Super Admin se (2026-11-01)
+   ------------------------------------------------------------------------------------------
+   Owner: "login pe jo 6 month or 1 saal wala likha hai uski superadmin me setting bana do ki
+   rate waha se daal du to dikh jaye". Pehle dabbe me sirf "Plan" likha tha.
+   AppSettings (OwnerId = 0): Plan.Price6Month, Plan.Price1Year - khaali = rate nahi dikhta.
+   sp_PlanPrices_Get (bina login - login page), sp_PlanPrices_Save (Super Admin).
+   ========================================================================================== */
+PRINT '=== Section BB: plan ka rate ===';
+GO
+
+IF NOT EXISTS (SELECT 1 FROM PUMP.AppSettings WHERE SettingKey = 'Plan.Price6Month' AND OwnerId = 0)
+    INSERT INTO PUMP.AppSettings (SettingKey, SettingValue, OwnerId, Description)
+    VALUES ('Plan.Price6Month', '', 0, N'6 mahine ke plan ka rate (Rs) - login page par dikhta hai; khaali = nahi dikhta');
+IF NOT EXISTS (SELECT 1 FROM PUMP.AppSettings WHERE SettingKey = 'Plan.Price1Year' AND OwnerId = 0)
+    INSERT INTO PUMP.AppSettings (SettingKey, SettingValue, OwnerId, Description)
+    VALUES ('Plan.Price1Year', '', 0, N'1 saal ke plan ka rate (Rs) - login page par dikhta hai; khaali = nahi dikhta');
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_PlanPrices_Get
+AS
+BEGIN
+    SET NOCOUNT ON;
+    /* NOTE (CLAUDE.md niyam 5): PlanPrices record ke param theek isi kram / type me. */
+    SELECT
+        Price6Month = TRY_CAST(NULLIF(LTRIM(RTRIM((SELECT SettingValue FROM PUMP.AppSettings WHERE SettingKey = 'Plan.Price6Month' AND OwnerId = 0))), '') AS DECIMAL(18,2)),
+        Price1Year  = TRY_CAST(NULLIF(LTRIM(RTRIM((SELECT SettingValue FROM PUMP.AppSettings WHERE SettingKey = 'Plan.Price1Year'  AND OwnerId = 0))), '') AS DECIMAL(18,2));
+END
+GO
+
+CREATE OR ALTER PROCEDURE PUMP.sp_PlanPrices_Save
+(
+    @Price6Month DECIMAL(18,2) = NULL,
+    @Price1Year  DECIMAL(18,2) = NULL,
+    @UserId      BIGINT = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Price6Month < 0 OR @Price1Year < 0 OR @Price6Month > 10000000 OR @Price1Year > 10000000
+        THROW 50330, 'Enter a valid rate.', 1;
+
+    BEGIN TRANSACTION;
+        MERGE PUMP.AppSettings AS t
+        USING (VALUES ('Plan.Price6Month', ISNULL(CONVERT(NVARCHAR(30), @Price6Month), N'')),
+                      ('Plan.Price1Year',  ISNULL(CONVERT(NVARCHAR(30), @Price1Year),  N''))) AS s (SettingKey, SettingValue)
+           ON t.SettingKey = s.SettingKey AND t.OwnerId = 0
+        WHEN MATCHED THEN UPDATE SET SettingValue = s.SettingValue, ModifiedOn = SYSDATETIME()
+        WHEN NOT MATCHED THEN INSERT (SettingKey, SettingValue, OwnerId, Description)
+                              VALUES (s.SettingKey, s.SettingValue, 0, N'Plan ka rate (Super Admin > Support numbers)');
+    COMMIT TRANSACTION;
+
+    DECLARE @New NVARCHAR(200) = CONCAT('6 month: ', @Price6Month, ' / 1 year: ', @Price1Year);
+    EXEC PUMP.sp_Audit_Log @UserId = @UserId, @EntityName = 'AppSettings', @Action = 'UPDATE',
+         @NewValues = @New, @Reason = N'Plan prices (login page)';
+
+    EXEC PUMP.sp_PlanPrices_Get;
+END
+GO
+PRINT '  + BB1: Plan.Price6Month / Plan.Price1Year, sp_PlanPrices_Get / _Save';
+PRINT '=== Section BB done ===';
+GO

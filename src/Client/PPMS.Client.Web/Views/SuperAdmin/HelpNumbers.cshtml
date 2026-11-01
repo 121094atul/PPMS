@@ -61,6 +61,35 @@
             </div>
         </div>
     </div>
+
+    @* Section BB: login page ke 6 mahine / 1 saal wale dabbe me rate. *@
+    @if (ViewBag.PlanPrices is PPMS.Client.Web.Services.ApiPlanPrices pp)
+    {
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-1">💰 @L["Plan rates on the login page"]</h5>
+                    <p class="text-muted small mb-3">@L["This rate shows in the 6 Month and 1 Year boxes on the login page. Leave blank to show only \"Plan\"."]</p>
+                    <form method="post" asp-action="PlanPrices">
+                        @Html.AntiForgeryToken()
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label" for="price6">@L["6 Month"] (₹)</label>
+                                <input type="number" class="form-control" id="price6" name="price6Month" min="0" step="1"
+                                       value="@pp.Price6Month?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" placeholder="4999" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label" for="price12">@L["1 Year"] (₹)</label>
+                                <input type="number" class="form-control" id="price12" name="price1Year" min="0" step="1"
+                                       value="@pp.Price1Year?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" placeholder="8999" />
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">@L["Save"]</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @section Scripts {

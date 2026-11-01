@@ -1,9 +1,12 @@
 ﻿@model PPMS.Client.Web.Models.LoginViewModel
 @inject PPMS.Client.Web.Services.SupportContactService SupportContacts
+@inject PPMS.Client.Web.Services.PlanPriceService PlanPrices
 @{
     Layout = null;
     // Support ke number Super Admin daalta hai (Section AR) - yahan code me nahi.
     var help = await SupportContacts.GetAsync();
+    // Plan ka rate Super Admin bharta hai (Section BB) - khaali ho to dabbe me "Plan" hi.
+    var prices = await PlanPrices.GetAsync();
     // WhatsApp ko desh ka code chahiye: 10 ank ho to aage 91.
     var waNumber = help.Primary is null ? null : (help.Primary.Length == 10 ? "91" + help.Primary : help.Primary);
 }
@@ -310,11 +313,11 @@
                         </div>
                         <div onclick="selectModalPlan('6_MONTH', this)" class="modal-plan-card" style="background:rgba(59,130,246,0.08); border:2px solid rgba(59,130,246,0.25); border-radius:10px; padding:0.6rem 0.4rem; cursor:pointer; text-align:center;">
                             <div style="color:#60a5fa; font-size:1.1rem; font-weight:800;">@L["6 Month"]</div>
-                            <div style="color:#93c5fd; font-size:0.7rem; font-weight:700;">@L["Plan"]</div>
+                            <div style="color:#93c5fd; font-size:0.7rem; font-weight:700;">@(prices.Price6Month is decimal p6 ? PPMS.Client.Web.Services.PlanPriceService.Format(p6) : L["Plan"].Value)</div>
                         </div>
                         <div onclick="selectModalPlan('1_YEAR', this)" class="modal-plan-card" style="background:rgba(168,85,247,0.08); border:2px solid rgba(168,85,247,0.25); border-radius:10px; padding:0.6rem 0.4rem; cursor:pointer; text-align:center;">
                             <div style="color:#c084fc; font-size:1.1rem; font-weight:800;">@L["1 Year"]</div>
-                            <div style="color:#d8b4fe; font-size:0.7rem; font-weight:700;">@L["Plan"]</div>
+                            <div style="color:#d8b4fe; font-size:0.7rem; font-weight:700;">@(prices.Price1Year is decimal p12 ? PPMS.Client.Web.Services.PlanPriceService.Format(p12) : L["Plan"].Value)</div>
                         </div>
                     </div>
 

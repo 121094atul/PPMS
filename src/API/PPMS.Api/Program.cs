@@ -1493,6 +1493,23 @@ app.MapPost("/api/platform-credit/settings", async (SaveCreditSettingsRequest re
 app.MapGet("/api/support-contacts", async (ISupportContactRepository repo, CancellationToken cancellationToken) =>
     Results.Ok(await repo.GetAsync(cancellationToken)));
 
+// Section BB: login page par plan ka rate - bina login padhna (login page), badalna sirf Super Admin.
+app.MapGet("/api/plan-prices", async (IPlanPriceRepository repo, CancellationToken cancellationToken) =>
+    Results.Ok(await repo.GetAsync(cancellationToken)));
+
+app.MapPost("/api/plan-prices", async (SavePlanPricesRequest request, ClaimsPrincipal user, IPlanPriceRepository repo, CancellationToken cancellationToken) =>
+{
+    long? byUserId = long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var uid) ? uid : null;
+    try
+    {
+        return Results.Ok(await repo.SaveAsync(request.Price6Month, request.Price1Year, byUserId, cancellationToken));
+    }
+    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 50330)
+    {
+        return Results.BadRequest(new { Success = false, Message = ex.Message });
+    }
+}).RequireAuthorization("SuperAdminOnly");
+
 app.MapPost("/api/support-contacts", async (SaveSupportContactsRequest request, ClaimsPrincipal user, ISupportContactRepository repo, CancellationToken cancellationToken) =>
 {
     // Sirf ank. "+91 98765-43210" / "098765..." -> 10 ank ka mobile; landline 11-13 ank tak.
@@ -1593,6 +1610,41 @@ app.MapPost("/api/owner-alerts", async (SaveOwnerAlertRequest request, ClaimsPri
     await repo.SaveAsync(ownerId, request.AlertKey, request.IsEnabled, cancellationToken);
     return Results.Ok(new { Success = true });
 }).RequireAuthorization();
+
+// ---- Section BA: roz ka backup email par (Super Admin > Message settings) ----
+app.MapGet("/api/platform/backup-email", async (IBackupEmailRepository repo, IEmailSender email, CancellationToken cancellationToken) =>
+{
+    var s = await repo.GetAsync(cancellationToken);
+    return Results.Ok(new
+    {
+        s.Enabled, s.EmailTo, s.Hour, s.LastSuccessDate, s.LastAttemptOn, s.LastStatus,
+        // Khaali EmailTo = bhejne wale Gmail par hi.
+        SendsTo = string.IsNullOrWhiteSpace(s.EmailTo) ? email.FromAddress : s.EmailTo,
+        EmailConfigured = email.IsConfigured
+    });
+}).RequireAuthorization("SuperAdminOnly");
+
+app.MapPut("/api/platform/backup-email", async (SaveBackupEmailRequest request, ClaimsPrincipal user, IBackupEmailRepository repo, CancellationToken cancellationToken) =>
+{
+    long? byUserId = long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var uid) ? uid : null;
+    try
+    {
+        return Results.Ok(await repo.SaveAsync(request.Enabled, request.EmailTo, request.Hour, byUserId, cancellationToken));
+    }
+    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is 50320 or 50321)
+    {
+        return Results.BadRequest(new { Success = false, Message = ex.Message });
+    }
+}).RequireAuthorization("SuperAdminOnly");
+
+// "Abhi bhejiye" - tareekh / ghante ki rok nahi. Badi DB me kuch second lagte hain.
+app.MapPost("/api/platform/backup-email/send-now", async (IBackupEmailRunner runner, CancellationToken cancellationToken) =>
+{
+    var r = await runner.RunAsync(force: true, cancellationToken);
+    return r is { Ok: true }
+        ? Results.Ok(new { Success = true, Message = r.Status })
+        : Results.BadRequest(new { Success = false, Message = r?.Status ?? "Another backup is being sent right now. Try again in a minute." });
+}).RequireAuthorization("SuperAdminOnly");
 
 // Section AZ: alert email par bhi - malik apna email yahan rakhe.
 app.MapPost("/api/owner-alerts/email", async (SaveOwnerAlertEmailRequest request, ClaimsPrincipal user, IOwnerAlertRepository repo, CancellationToken cancellationToken) =>

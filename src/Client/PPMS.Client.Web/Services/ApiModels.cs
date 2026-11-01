@@ -1291,6 +1291,11 @@ public sealed record ApiOwnerAlertsResponse(string? Mobile, IReadOnlyList<ApiOwn
 /// <summary>Super Admin > Message settings (Section AZ). Channel: EMAIL / PROVIDER / OFF.</summary>
 public sealed record ApiNotifySettings(string OtpChannel, string OwnerAlertChannel, bool EmailConfigured = false, string? EmailFrom = null);
 
+/// <summary>Roz ka backup email (Section BA).</summary>
+public sealed record ApiBackupEmail(
+    bool Enabled, string? EmailTo, int Hour, DateTime? LastSuccessDate, DateTime? LastAttemptOn,
+    string? LastStatus, string? SendsTo = null, bool EmailConfigured = false);
+
 public sealed record ApiSaveOwnerAlertRequest(string AlertKey, bool IsEnabled);
 
 public sealed record ApiSaveOwnerAlertMobileRequest(string? Mobile);
@@ -1308,6 +1313,9 @@ public sealed record ApiCreditSettings(string UpiId, string UpiName, decimal? Pr
 public sealed record ApiSaveCreditSettingsRequest(string? UpiId, string? UpiName, decimal? PricePerCredit);
 
 /// <summary>Support ke number (Section AR). Phone1 zaroori, baaki do khaali ho sakte hain.</summary>
+/// <summary>Login page par plan ka rate (Section BB). Null = dabbe me "Plan" hi.</summary>
+public sealed record ApiPlanPrices(decimal? Price6Month, decimal? Price1Year);
+
 public sealed record ApiSupportContacts(string? Phone1, string? Phone2, string? Phone3)
 {
     public IReadOnlyList<string> Numbers =>

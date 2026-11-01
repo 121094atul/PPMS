@@ -44,4 +44,7 @@ public interface IEmailSender
     string? FromAddress { get; }
 
     Task<bool> SendAsync(string to, string subject, string body, CancellationToken cancellationToken = default);
+
+    /// <summary>Ek file ke saath (roz ka backup zip - Section BA).</summary>
+    Task<bool> SendWithAttachmentAsync(string to, string subject, string body, string fileName, byte[] content, CancellationToken cancellationToken = default);
 }

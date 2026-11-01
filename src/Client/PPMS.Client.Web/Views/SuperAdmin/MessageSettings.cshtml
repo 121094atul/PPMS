@@ -75,4 +75,73 @@
             </div>
         </div>
     </div>
+
+    @* Section BA: roz ka backup email par. Purani API par null - tab ye hissa nahi. *@
+    @if (ViewBag.Backup is PPMS.Client.Web.Services.ApiBackupEmail b)
+    {
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-1">🗄️ @L["Daily backup by email"]</h5>
+                    <p class="text-muted small mb-3">
+                        @L["Every day the full data of all pumps comes to this email as a zip file. On the shared server the database cannot make its own backup, so this is your backup - keep the emails."]
+                    </p>
+
+                    <form method="post" asp-action="SaveBackupEmail">
+                        @Html.AntiForgeryToken()
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" role="switch" id="bkEnabled" name="enabled" value="true" @(b.Enabled ? "checked" : "") />
+                            <input type="hidden" name="enabled" value="false" />
+                            <label class="form-check-label" for="bkEnabled">@L["Send the backup every day"]</label>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-7">
+                                <label class="form-label" for="bkTo">@L["Send to"]</label>
+                                <input type="email" class="form-control" id="bkTo" name="emailTo" value="@b.EmailTo" maxlength="100"
+                                       placeholder="@(b.SendsTo ?? "")" />
+                                <div class="form-text">@L["Leave blank to send to the Gmail that sends the mails."]</div>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label" for="bkHour">@L["After (India time)"]</label>
+                                <select class="form-select" id="bkHour" name="hour">
+                                    @for (var h = 0; h < 24; h++)
+                                    {
+                                        <option value="@h" selected="@(h == b.Hour)">@(new DateTime(2000, 1, 1, h, 0, 0).ToString("hh:00 tt"))</option>
+                                    }
+                                </select>
+                                <div class="form-text">@L["The server sleeps at night - it goes the first time the software is used after this time."]</div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">@L["Save"]</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted text-uppercase small mb-2">@L["Last backup"]</h6>
+                    @if (b.LastSuccessDate.HasValue)
+                    {
+                        <div class="fw-semibold @(b.LastSuccessDate.Value.Date >= DateTime.Today.AddDays(-1) ? "text-success" : "text-danger") mb-1">
+                            ✔ @b.LastSuccessDate.Value.ToString("dd MMM yyyy")
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-danger fw-semibold mb-1">✖ @L["No backup has been sent yet"]</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(b.LastStatus))
+                    {
+                        <div class="small text-muted mb-3" style="word-break:break-word;">@b.LastStatus</div>
+                    }
+                    <div class="small mb-3">@L["Goes to"]: <strong>@(b.SendsTo ?? "-")</strong></div>
+                    <form method="post" asp-action="SendBackupNow">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-primary" @(b.EmailConfigured ? "" : "disabled")>@L["Send backup now"]</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
 </div>

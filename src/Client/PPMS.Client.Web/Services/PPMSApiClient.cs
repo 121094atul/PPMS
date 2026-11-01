@@ -2003,6 +2003,22 @@ public sealed class PPMSApiClient(HttpClient httpClient)
     public Task<(bool Success, string? ErrorMessage)> SaveSupportContactsAsync(string token, ApiSupportContacts body, CancellationToken ct = default)
         => PostJsonAsync(token, "/api/support-contacts", body, "Could not save the support numbers.", ct);
 
+    // ---- Section BB: login page par plan ka rate ----
+    public async Task<ApiPlanPrices?> GetPlanPricesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync("/api/plan-prices", ct);
+            if (!response.IsSuccessStatusCode) { return null; }
+            return await response.Content.ReadFromJsonAsync<ApiPlanPrices>(cancellationToken: ct);
+        }
+        catch (HttpRequestException) { return null; }
+        catch (TaskCanceledException) { return null; }
+    }
+
+    public Task<(bool Success, string? ErrorMessage)> SavePlanPricesAsync(string token, ApiPlanPrices body, CancellationToken ct = default)
+        => PostJsonAsync(token, "/api/plan-prices", body, "Could not save the plan rates.", ct);
+
     public async Task<IReadOnlyList<ApiRechargeRequestDto>> GetAllRechargesAsync(string token, string? status, CancellationToken ct = default)
         => await GetJsonAsync<List<ApiRechargeRequestDto>>(token, "/api/platform-credit/recharges" + (string.IsNullOrEmpty(status) ? "" : "?status=" + status), ct)
            ?? (IReadOnlyList<ApiRechargeRequestDto>)Array.Empty<ApiRechargeRequestDto>();
@@ -2104,6 +2120,39 @@ public sealed class PPMSApiClient(HttpClient httpClient)
         return response.IsSuccessStatusCode
             ? (true, null)
             : (false, await ReadErrorMessageAsync(response, "Could not save the message settings.", cancellationToken));
+    }
+
+    // ---- Section BA: roz ka backup email ----
+
+    public async Task<ApiBackupEmail?> GetBackupEmailAsync(string token, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/platform/backup-email");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<ApiBackupEmail>(cancellationToken: cancellationToken)
+            : null;
+    }
+
+    public async Task<(bool Success, string? ErrorMessage)> SaveBackupEmailAsync(string token, bool enabled, string? emailTo, int hour, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/api/platform/backup-email");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = JsonContent.Create(new { Enabled = enabled, EmailTo = emailTo, Hour = hour });
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode
+            ? (true, null)
+            : (false, await ReadErrorMessageAsync(response, "Could not save the backup settings.", cancellationToken));
+    }
+
+    /// <returns>(ho gaya?, sandesh) - sandesh dono haal me server ka.</returns>
+    public async Task<(bool Success, string? Message)> SendBackupNowAsync(string token, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/platform/backup-email/send-now");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+        return (response.IsSuccessStatusCode,
+                await ReadErrorMessageAsync(response, response.IsSuccessStatusCode ? "Backup sent." : "The backup could not be sent.", cancellationToken));
     }
 
     public async Task<(bool Success, string? ErrorMessage)> SendTestEmailAsync(string token, string to, CancellationToken cancellationToken = default)

@@ -4621,4 +4621,67 @@
   <data name="If this number or email is registered to an owner account, an OTP has been sent to the email saved for that account." xml:space="preserve">
     <value>अगर ये नंबर या ईमेल किसी मालिक के खाते का है, तो उस खाते के ईमेल पर OTP भेज दिया गया है।</value>
   </data>
+  <data name="Daily backup by email" xml:space="preserve">
+    <value>रोज़ का बैकअप ईमेल पर</value>
+  </data>
+  <data name="Every day the full data of all pumps comes to this email as a zip file. On the shared server the database cannot make its own backup, so this is your backup - keep the emails." xml:space="preserve">
+    <value>हर दिन सारे पंप का पूरा डेटा zip फ़ाइल बनकर इस ईमेल पर आता है। शेयर्ड सर्वर पर डेटाबेस अपना बैकअप ख़ुद नहीं बना सकता, इसलिए यही आपका बैकअप है — ये ईमेल सँभाल कर रखिए।</value>
+  </data>
+  <data name="Send the backup every day" xml:space="preserve">
+    <value>रोज़ बैकअप भेजें</value>
+  </data>
+  <data name="Send to" xml:space="preserve">
+    <value>किसे भेजें</value>
+  </data>
+  <data name="Leave blank to send to the Gmail that sends the mails." xml:space="preserve">
+    <value>ख़ाली छोड़ें तो उसी Gmail पर जाएगा जिससे मेल जाते हैं।</value>
+  </data>
+  <data name="After (India time)" xml:space="preserve">
+    <value>कितने बजे के बाद (भारत का समय)</value>
+  </data>
+  <data name="The server sleeps at night - it goes the first time the software is used after this time." xml:space="preserve">
+    <value>रात में सर्वर सो जाता है — इस समय के बाद जब पहली बार सॉफ़्टवेयर खुलेगा, तब जाएगा।</value>
+  </data>
+  <data name="Last backup" xml:space="preserve">
+    <value>आख़िरी बैकअप</value>
+  </data>
+  <data name="No backup has been sent yet" xml:space="preserve">
+    <value>अभी तक कोई बैकअप नहीं गया</value>
+  </data>
+  <data name="Goes to" xml:space="preserve">
+    <value>किस पर जाता है</value>
+  </data>
+  <data name="Send backup now" xml:space="preserve">
+    <value>अभी बैकअप भेजिए</value>
+  </data>
+  <data name="Backup settings saved." xml:space="preserve">
+    <value>बैकअप की सेटिंग सेव हो गई।</value>
+  </data>
+  <data name="Could not save the backup settings." xml:space="preserve">
+    <value>बैकअप की सेटिंग सेव नहीं हुई।</value>
+  </data>
+  <data name="The backup could not be sent." xml:space="preserve">
+    <value>बैकअप नहीं गया।</value>
+  </data>
+  <data name="Choose an hour between 0 and 23." xml:space="preserve">
+    <value>0 से 23 के बीच घंटा चुनिए।</value>
+  </data>
+  <data name="Another backup is being sent right now. Try again in a minute." xml:space="preserve">
+    <value>अभी एक बैकअप जा रहा है। एक मिनट बाद फिर कोशिश कीजिए।</value>
+  </data>
+  <data name="Plan rates on the login page" xml:space="preserve">
+    <value>लॉगिन पेज पर प्लान का रेट</value>
+  </data>
+  <data name="This rate shows in the 6 Month and 1 Year boxes on the login page. Leave blank to show only &quot;Plan&quot;." xml:space="preserve">
+    <value>ये रेट लॉगिन पेज के 6 महीने और 1 साल वाले डिब्बे में दिखता है। ख़ाली छोड़ें तो सिर्फ़ "प्लान" दिखेगा।</value>
+  </data>
+  <data name="Plan rates saved." xml:space="preserve">
+    <value>प्लान का रेट सेव हो गया।</value>
+  </data>
+  <data name="Could not save the plan rates." xml:space="preserve">
+    <value>प्लान का रेट सेव नहीं हुआ।</value>
+  </data>
+  <data name="Enter a valid rate." xml:space="preserve">
+    <value>सही रेट भरिए।</value>
+  </data>
 </root>

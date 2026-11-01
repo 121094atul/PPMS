@@ -27,10 +27,15 @@ public sealed class TenantBackupWriter(IOptions<TenantBackupOptions> options) : 
 
     public async Task<string> WriteAsync(long ownerId, string ownerName, IReadOnlyList<TenantExportTableDto> tables, CancellationToken cancellationToken = default)
     {
-        Directory.CreateDirectory(_options.Path);
+        // Shared server (Plesk) par C:\ me likhne ki ijaazat nahi hoti - "App_Data\tenant-deletes" jaisa
+        // chhota raasta app ke apne folder se juda maana jaata hai.
+        var folder = System.IO.Path.IsPathRooted(_options.Path)
+            ? _options.Path
+            : System.IO.Path.Combine(AppContext.BaseDirectory, _options.Path);
+        Directory.CreateDirectory(folder);
 
         var file = System.IO.Path.Combine(
-            _options.Path,
+            folder,
             $"tenant-{ownerId}-{SafeName(ownerName)}-{DateTime.Now:yyyyMMdd-HHmmss}.json");
 
         // CreateNew - pehle se file ho to purani par likhna nahi.

@@ -201,7 +201,38 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
 
         var settings = await apiClient.GetNotifySettingsAsync(GetAccessToken(), cancellationToken)
                        ?? new ApiNotifySettings("EMAIL", "EMAIL");
+        // Section BA: roz ka backup email - purani API (BA se pehle) par null, tab hissa nahi dikhta.
+        ViewBag.Backup = await apiClient.GetBackupEmailAsync(GetAccessToken(), cancellationToken);
         return View(settings);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveBackupEmail(bool enabled, string? emailTo, int hour, CancellationToken cancellationToken)
+    {
+        if (!IsSuperAdmin())
+        {
+            return RedirectToAction("Index", "Home");
+        }
+
+        var (ok, error) = await apiClient.SaveBackupEmailAsync(GetAccessToken(), enabled, emailTo, hour, cancellationToken);
+        if (ok) TempData["SuperAdminOk"] = "Backup settings saved.";
+        else TempData["SuperAdminMessage"] = error;
+        return RedirectToAction(nameof(MessageSettings));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendBackupNow(CancellationToken cancellationToken)
+    {
+        if (!IsSuperAdmin())
+        {
+            return RedirectToAction("Index", "Home");
+        }
+
+        var (ok, message) = await apiClient.SendBackupNowAsync(GetAccessToken(), cancellationToken);
+        TempData[ok ? "SuperAdminOk" : "SuperAdminMessage"] = message;
+        return RedirectToAction(nameof(MessageSettings));
     }
 
     [HttpPost]
@@ -305,7 +336,24 @@ public class SuperAdminController(PPMSApiClient apiClient) : Controller
         support.Invalidate();   // hamesha taaza dikhao
         ViewBag.Message = TempData["HelpMessage"] as string;
         ViewBag.IsError = TempData["HelpIsError"] is true;
+        // Section BB: login page par plan ka rate (API na mile to bhi khaali form).
+        ViewBag.PlanPrices = await apiClient.GetPlanPricesAsync(cancellationToken) ?? new ApiPlanPrices(null, null);
         return View(await support.GetAsync(cancellationToken));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PlanPrices(decimal? price6Month, decimal? price1Year,
+        [FromServices] PlanPriceService prices, CancellationToken cancellationToken)
+    {
+        if (!IsSuperAdmin()) return NotAllowed();
+
+        var result = await apiClient.SavePlanPricesAsync(GetAccessToken(), new ApiPlanPrices(price6Month, price1Year), cancellationToken);
+        prices.Invalidate();   // login page par turant naya rate
+
+        TempData["HelpMessage"] = result.Success ? "Plan rates saved." : (result.ErrorMessage ?? "Could not save the plan rates.");
+        TempData["HelpIsError"] = !result.Success;
+        return RedirectToAction(nameof(HelpNumbers));
     }
 
     [HttpPost]
